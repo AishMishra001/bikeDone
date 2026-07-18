@@ -25,6 +25,7 @@ public class AuthController {
     private final DateTimeProvider dateTimeProvider;
     private final EmailVerificationService emailVerificationService;
 
+
     @PostMapping("/signup")
     public ApiResponse<SignupResponse> signup(@Valid @RequestBody SignupRequest request) {
 
@@ -75,6 +76,19 @@ public class AuthController {
         return ApiResponse.<Void>builder()
                 .success(true)
                 .message("Verification email sent successfully.")
+                .timestamp(dateTimeProvider.now())
+                .build();
+    }
+
+    @GetMapping("/verify-email")
+    public ApiResponse<Void> verifyEmail(
+            @RequestParam String token) {
+
+        emailVerificationService.verifyEmail(token);
+
+        return ApiResponse.<Void>builder()
+                .success(true)
+                .message("Email verified successfully.")
                 .timestamp(dateTimeProvider.now())
                 .build();
     }

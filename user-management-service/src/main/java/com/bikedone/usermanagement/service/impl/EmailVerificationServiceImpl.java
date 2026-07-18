@@ -54,6 +54,7 @@ public class EmailVerificationServiceImpl implements EmailVerificationService {
         emailVerificationTokenRepository.deleteByUser_Id(user.getId());
 
         String rawToken = refreshTokenGenerator.generate();
+
         String tokenHash = tokenHasher.hash(rawToken);
 
         var now = dateTimeProvider.now();
@@ -68,11 +69,37 @@ public class EmailVerificationServiceImpl implements EmailVerificationService {
         emailVerificationTokenRepository.save(verificationToken);
 
         log.info("Email verification token generated for userId={}", user.getId());
-        log.debug("Verification token={}", rawToken);
     }
 
     @Override
+    @Transactional
     public void verifyEmail(String token) {
 
+        String tokenHash = tokenHasher.hash(token);
+
+        EmailVerificationToken verificationToken =
+                emailVerificationTokenRepository
+                        .findByTokenHashAndVerifiedAtIsNull(tokenHash)
+                        .orElseThrow(() ->
+                                new BadRequestException("Invalid verification token."));
+
+        if (verificationToken.isExpired(dateTimeProvider.now())) {
+            throw new BadRequestException("Verification token has expired.");
+        }
+
+        User user = verificationToken.getUser();
+
+        if (Boolean.TRUE.equals(user.getEmailVerified())) {
+            throw new BadRequestException("Email is already verified.");
+        }
+
+        user.setEmailVerified(true);
+
+        verificationToken.markVerified(dateTimeProvider.now());
+
+        userRepository.save(user);
+
+        log.info("Email verified successfully for userId={}", user.getId());
     }
+
 }
