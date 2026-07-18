@@ -1,6 +1,6 @@
 package com.bikedone.usermanagement.service.impl;
 
-import com.bikedone.usermanagement.common.security.PasswordPolicyValidator;
+import com.bikedone.usermanagement.common.security.PasswordSimilarityValidator;
 import com.bikedone.usermanagement.dto.request.ChangePasswordRequest;
 import com.bikedone.usermanagement.dto.request.UpdateProfileRequest;
 import com.bikedone.usermanagement.dto.response.UserProfileResponse;
@@ -82,7 +82,7 @@ public class UserServiceImpl implements UserService {
             throw new BadRequestException("New password cannot be the same as your current password.");
         }
 
-        PasswordPolicyValidator.validate(
+        PasswordSimilarityValidator.validate(
                 request.getCurrentPassword(),
                 request.getNewPassword());
 
