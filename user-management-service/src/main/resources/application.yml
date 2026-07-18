@@ -35,3 +35,4 @@ jwt:
   access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION}
   refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION}
   email-verification-token-expiration: ${EMAIL_VERIFICATION_TOKEN_EXPIRATION}
+  password-reset-token-expiration: ${PASSWORD_RESET_TOKEN_EXPIRATION}

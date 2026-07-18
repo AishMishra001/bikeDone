@@ -28,4 +28,6 @@ public class JwtProperties {
 
     private long emailVerificationTokenExpiration;
 
+    private long passwordResetTokenExpiration;
+
 }
