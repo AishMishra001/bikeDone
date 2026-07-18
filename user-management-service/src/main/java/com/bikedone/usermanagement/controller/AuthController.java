@@ -7,6 +7,7 @@ import com.bikedone.usermanagement.dto.request.SignupRequest;
 import com.bikedone.usermanagement.dto.response.LoginResponse;
 import com.bikedone.usermanagement.dto.response.SignupResponse;
 import com.bikedone.usermanagement.security.authentication.AuthService;
+import com.bikedone.usermanagement.service.EmailVerificationService;
 import com.bikedone.usermanagement.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +23,7 @@ public class AuthController {
     private final AuthService authService;
     private final UserService userService;
     private final DateTimeProvider dateTimeProvider;
+    private final EmailVerificationService emailVerificationService;
 
     @PostMapping("/signup")
     public ApiResponse<SignupResponse> signup(@Valid @RequestBody SignupRequest request) {
@@ -65,4 +67,15 @@ public class AuthController {
                 .build();
     }
 
+    @PostMapping("/send-email-verification")
+    public ApiResponse<Void> sendEmailVerification() {
+
+        emailVerificationService.sendVerificationEmail();
+
+        return ApiResponse.<Void>builder()
+                .success(true)
+                .message("Verification email sent successfully.")
+                .timestamp(dateTimeProvider.now())
+                .build();
+    }
 }
