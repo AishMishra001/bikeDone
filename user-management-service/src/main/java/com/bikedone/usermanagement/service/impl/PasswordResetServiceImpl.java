@@ -1,0 +1,87 @@
+package com.bikedone.usermanagement.service.impl;
+
+import com.bikedone.usermanagement.common.datetime.DateTimeProvider;
+import com.bikedone.usermanagement.config.JwtProperties;
+import com.bikedone.usermanagement.dto.request.ResetPasswordRequest;
+import com.bikedone.usermanagement.repository.PasswordResetTokenRepository;
+import com.bikedone.usermanagement.repository.UserRepository;
+import com.bikedone.usermanagement.security.token.RefreshTokenGenerator;
+import com.bikedone.usermanagement.security.token.RefreshTokenService;
+import com.bikedone.usermanagement.security.token.TokenHasher;
+import com.bikedone.usermanagement.service.PasswordResetService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import com.bikedone.usermanagement.entity.User;
+import com.bikedone.usermanagement.entity.PasswordResetToken;
+
+import java.time.Duration;
+import java.time.LocalDateTime;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class PasswordResetServiceImpl implements PasswordResetService {
+
+    private final UserRepository userRepository;
+
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
+
+    private final RefreshTokenGenerator refreshTokenGenerator;
+
+    private final TokenHasher tokenHasher;
+
+    private final DateTimeProvider dateTimeProvider;
+
+    private final JwtProperties jwtProperties;
+
+    private final PasswordEncoder passwordEncoder;
+
+    private final RefreshTokenService refreshTokenService;
+
+
+    @Override
+    @Transactional
+    public void forgotPassword(String email) {
+
+        User user = userRepository.findUserWithRoleByEmail(email).orElse(null);
+
+        if (user == null) {
+            log.info("Password reset requested for non-existing email: {}", email);
+            return;
+        }
+
+        passwordResetTokenRepository.deleteByUser_Id(user.getId());
+
+        String rawToken = refreshTokenGenerator.generate();
+
+        String tokenHash = tokenHasher.hash(rawToken);
+
+        LocalDateTime now = dateTimeProvider.now();
+
+        PasswordResetToken passwordResetToken = new PasswordResetToken();
+        passwordResetToken.setUser(user);
+        passwordResetToken.setTokenHash(tokenHash);
+        passwordResetToken.setCreatedAt(now);
+        passwordResetToken.setExpiresAt(
+                now.plus(Duration.ofMillis(jwtProperties.getPasswordResetTokenExpiration()))
+        );
+
+        passwordResetTokenRepository.save(passwordResetToken);
+
+        // TODO: Replace with Brevo email
+        log.debug("Password Reset Token : {}", rawToken);
+
+        log.info("Password reset token generated successfully for user: {}", user.getEmail());
+    }
+
+    @Override
+    public void resetPassword(ResetPasswordRequest request) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+
+
+}
