@@ -26,4 +26,6 @@ public class JwtProperties {
      */
     private Long refreshTokenExpiration;
 
+    private long emailVerificationTokenExpiration;
+
 }
