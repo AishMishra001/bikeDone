@@ -2,12 +2,12 @@ package com.bikedone.usermanagement.common.security;
 
 import com.bikedone.usermanagement.exception.BadRequestException;
 
-public final class PasswordPolicyValidator {
+public final class PasswordSimilarityValidator {
 
     private static final String ERROR_MESSAGE =
             "New password is too similar to the current password.";
 
-    private PasswordPolicyValidator() {
+    private PasswordSimilarityValidator() {
     }
 
     public static void validate(String currentPassword,
