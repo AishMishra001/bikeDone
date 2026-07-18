@@ -3,6 +3,7 @@ package com.bikedone.usermanagement.service.impl;
 import com.bikedone.usermanagement.common.datetime.DateTimeProvider;
 import com.bikedone.usermanagement.config.JwtProperties;
 import com.bikedone.usermanagement.dto.request.ResetPasswordRequest;
+import com.bikedone.usermanagement.exception.BadRequestException;
 import com.bikedone.usermanagement.repository.PasswordResetTokenRepository;
 import com.bikedone.usermanagement.repository.UserRepository;
 import com.bikedone.usermanagement.security.token.RefreshTokenGenerator;
@@ -78,10 +79,45 @@ public class PasswordResetServiceImpl implements PasswordResetService {
     }
 
     @Override
+    @Transactional
     public void resetPassword(ResetPasswordRequest request) {
-        throw new UnsupportedOperationException("Not implemented yet");
+
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new BadRequestException("New password and confirm password do not match.");
+        }
+
+        // Reuse your existing validator (if available)
+        // passwordPolicyValidator.validate(request.getNewPassword());
+
+        String tokenHash = tokenHasher.hash(request.getToken());
+
+        PasswordResetToken passwordResetToken = passwordResetTokenRepository
+                .findByTokenHashAndUsedAtIsNull(tokenHash)
+                .orElseThrow(() ->
+                        new BadRequestException("Invalid password reset token."));
+
+        LocalDateTime now = dateTimeProvider.now();
+
+        if (passwordResetToken.isExpired(now)) {
+            throw new BadRequestException("Password reset token has expired.");
+        }
+
+        User user = passwordResetToken.getUser();
+
+        if (passwordEncoder.matches(request.getNewPassword(), user.getPassword())) {
+            throw new BadRequestException("New password cannot be the same as the current password.");
+        }
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+
+        passwordResetToken.markUsed(now);
+
+        // Revoke all active refresh tokens after password change
+        refreshTokenService.revokeAllUserTokens(user.getId());
+
+        userRepository.save(user);
+
+        log.info("Password reset successfully for user: {}", user.getEmail());
     }
-
-
 
 }
