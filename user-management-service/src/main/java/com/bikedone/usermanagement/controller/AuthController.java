@@ -2,12 +2,14 @@ package com.bikedone.usermanagement.controller;
 
 import com.bikedone.usermanagement.common.datetime.DateTimeProvider;
 import com.bikedone.usermanagement.common.response.ApiResponse;
+import com.bikedone.usermanagement.dto.request.ForgotPasswordRequest;
 import com.bikedone.usermanagement.dto.request.LoginRequest;
 import com.bikedone.usermanagement.dto.request.SignupRequest;
 import com.bikedone.usermanagement.dto.response.LoginResponse;
 import com.bikedone.usermanagement.dto.response.SignupResponse;
 import com.bikedone.usermanagement.security.authentication.AuthService;
 import com.bikedone.usermanagement.service.EmailVerificationService;
+import com.bikedone.usermanagement.service.PasswordResetService;
 import com.bikedone.usermanagement.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +26,7 @@ public class AuthController {
     private final UserService userService;
     private final DateTimeProvider dateTimeProvider;
     private final EmailVerificationService emailVerificationService;
+    private final PasswordResetService passwordResetService;
 
 
     @PostMapping("/signup")
@@ -92,4 +95,19 @@ public class AuthController {
                 .timestamp(dateTimeProvider.now())
                 .build();
     }
+
+    @PostMapping("/forgot-password")
+    public ApiResponse<Void> forgotPassword(
+            @Valid @RequestBody ForgotPasswordRequest request) {
+
+        passwordResetService.forgotPassword(request.getEmail());
+
+        return ApiResponse.<Void>builder()
+                .success(true)
+                .message("If an account exists with this email, a password reset link has been sent.")
+                .timestamp(dateTimeProvider.now())
+                .build();
+    }
+
+
 }
