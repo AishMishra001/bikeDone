@@ -1,6 +1,7 @@
 package com.bikedone.usermanagement.service.impl;
 
 import com.bikedone.usermanagement.common.datetime.DateTimeProvider;
+import com.bikedone.usermanagement.config.EmailProperties;
 import com.bikedone.usermanagement.config.JwtProperties;
 import com.bikedone.usermanagement.dto.request.ResetPasswordRequest;
 import com.bikedone.usermanagement.exception.BadRequestException;
@@ -9,6 +10,7 @@ import com.bikedone.usermanagement.repository.UserRepository;
 import com.bikedone.usermanagement.security.token.RefreshTokenGenerator;
 import com.bikedone.usermanagement.security.token.RefreshTokenService;
 import com.bikedone.usermanagement.security.token.TokenHasher;
+import com.bikedone.usermanagement.service.EmailService;
 import com.bikedone.usermanagement.service.PasswordResetService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -42,6 +44,10 @@ public class PasswordResetServiceImpl implements PasswordResetService {
 
     private final RefreshTokenService refreshTokenService;
 
+    private final EmailProperties emailProperties;
+
+    private final EmailService emailService;
+
 
     @Override
     @Transactional
@@ -73,7 +79,17 @@ public class PasswordResetServiceImpl implements PasswordResetService {
         passwordResetTokenRepository.save(passwordResetToken);
 
         // TODO: Replace with Brevo email
-        log.debug("Password Reset Token : {}", rawToken);
+        // log.debug("Password Reset Token : {}", rawToken);
+
+        String resetUrl =
+                emailProperties.getFrontendUrl()
+                        + "/reset-password?token=" + rawToken;
+
+        emailService.sendPasswordResetEmail(
+                user.getEmail(),
+                user.getFirstName(),
+                resetUrl
+        );
 
         log.info("Password reset token generated successfully for user: {}", user.getEmail());
     }
