@@ -115,6 +115,11 @@ public class EmailVerificationServiceImpl implements EmailVerificationService {
 
         userRepository.save(user);
 
+        emailService.sendWelcomeEmail(
+                user.getEmail(),
+                user.getFirstName()
+        );
+
         log.info("Email verified successfully for userId={}", user.getId());
     }
 
