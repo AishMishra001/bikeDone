@@ -5,6 +5,7 @@ import com.bikedone.usermanagement.dto.request.BrevoEmailRequest;
 import com.bikedone.usermanagement.dto.request.Recipient;
 import com.bikedone.usermanagement.dto.request.Sender;
 import com.bikedone.usermanagement.service.EmailService;
+import com.bikedone.usermanagement.service.EmailTemplateService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
@@ -24,6 +25,7 @@ public class BrevoEmailService implements EmailService {
 
     private final RestClient restClient;
     private final EmailProperties emailProperties;
+    private final EmailTemplateService emailTemplateService;
 
     @Override
     public void sendVerificationEmail(
@@ -31,30 +33,10 @@ public class BrevoEmailService implements EmailService {
             String name,
             String verificationUrl) {
 
-        String html = """
-            <h2>Welcome to Bike Done</h2>
-
-            <p>Hello %s,</p>
-
-            <p>Click the button below to verify your email address.</p>
-
-            <p>
-                <a href="%s"
-                   style="display:inline-block;
-                          padding:12px 24px;
-                          background:#2563eb;
-                          color:#ffffff;
-                          text-decoration:none;
-                          border-radius:6px;">
-                    Verify Email
-                </a>
-            </p>
-
-            <p>This link will expire soon.</p>
-
-            <p>If you didn't create this account, please ignore this email.</p>
-            """
-                .formatted(name, verificationUrl);
+        String html = emailTemplateService.buildVerificationEmail(
+                name,
+                verificationUrl
+        );
 
         sendEmail(
                 to,
@@ -70,28 +52,10 @@ public class BrevoEmailService implements EmailService {
             String name,
             String resetUrl) {
 
-        String html = """
-            <h2>Reset Your Password</h2>
-
-            <p>Hello %s,</p>
-
-            <p>Click the button below to reset your password.</p>
-
-            <p>
-                <a href="%s"
-                   style="display:inline-block;
-                          padding:12px 24px;
-                          background:#dc2626;
-                          color:#ffffff;
-                          text-decoration:none;
-                          border-radius:6px;">
-                    Reset Password
-                </a>
-            </p>
-
-            <p>If you didn't request a password reset, you can safely ignore this email.</p>
-            """
-                .formatted(name, resetUrl);
+        String html = emailTemplateService.buildPasswordResetEmail(
+                name,
+                resetUrl
+        );
 
         sendEmail(
                 to,
