@@ -1,6 +1,7 @@
 package com.bikedone.usermanagement.service.impl;
 
 import com.bikedone.usermanagement.common.datetime.DateTimeProvider;
+import com.bikedone.usermanagement.config.EmailProperties;
 import com.bikedone.usermanagement.config.JwtProperties;
 import com.bikedone.usermanagement.entity.EmailVerificationToken;
 import com.bikedone.usermanagement.entity.User;
@@ -11,6 +12,7 @@ import com.bikedone.usermanagement.security.authentication.AuthenticationFacade;
 import com.bikedone.usermanagement.security.token.RefreshTokenGenerator;
 import com.bikedone.usermanagement.security.token.TokenHasher;
 import com.bikedone.usermanagement.security.user.UserPrincipal;
+import com.bikedone.usermanagement.service.EmailService;
 import com.bikedone.usermanagement.service.EmailVerificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,6 +39,10 @@ public class EmailVerificationServiceImpl implements EmailVerificationService {
     private final DateTimeProvider dateTimeProvider;
 
     private final JwtProperties jwtProperties;
+
+    private final EmailProperties emailProperties;
+
+    private final EmailService emailService;
 
     @Override
     @Transactional
@@ -67,6 +73,16 @@ public class EmailVerificationServiceImpl implements EmailVerificationService {
                 now.plus(Duration.ofMillis(jwtProperties.getEmailVerificationTokenExpiration()))
         );
         emailVerificationTokenRepository.save(verificationToken);
+
+        String verificationUrl =
+                emailProperties.getFrontendUrl()
+                        + "/verify-email?token=" + rawToken;
+
+        emailService.sendVerificationEmail(
+                user.getEmail(),
+                user.getFirstName(),
+                verificationUrl
+        );
 
         log.info("Email verification token generated for userId={}", user.getId());
     }
