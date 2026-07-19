@@ -12,4 +12,6 @@ public interface EmailService {
             String name,
             String resetUrl);
 
+    void sendWelcomeEmail(String to, String name);
+
 }
