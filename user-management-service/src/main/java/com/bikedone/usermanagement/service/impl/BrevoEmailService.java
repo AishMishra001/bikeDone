@@ -65,6 +65,18 @@ public class BrevoEmailService implements EmailService {
         );
     }
 
+    @Override
+    public void sendWelcomeEmail(String to, String name){
+        String html = emailTemplateService.buildWelcomeEmail(name);
+
+        sendEmail(
+                to,
+                name,
+                "Welcome Email - Bike Done",
+                html
+        );
+    }
+
     // 👇 This private helper method goes here
     private void sendEmail(
             String to,
