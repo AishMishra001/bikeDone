@@ -36,3 +36,9 @@ jwt:
   refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION}
   email-verification-token-expiration: ${EMAIL_VERIFICATION_TOKEN_EXPIRATION}
   password-reset-token-expiration: ${PASSWORD_RESET_TOKEN_EXPIRATION}
+
+email:
+  api-key: ${BREVO_API_KEY}
+  from-email: ${BREVO_FROM_EMAIL}
+  from-name: ${BREVO_FROM_NAME}
+  frontend-url: ${FRONTEND_URL}
