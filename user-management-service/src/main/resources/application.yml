@@ -17,6 +17,13 @@ spring:
   config:
     import: optional:file:./config/${spring.profiles.active}/secrets.properties
 
+  datasource:
+    hikari:
+      connection-timeout: 30000
+
+  flyway:
+    connect-retries: 10
+
 server:
   port: ${PORT:5000}
 
