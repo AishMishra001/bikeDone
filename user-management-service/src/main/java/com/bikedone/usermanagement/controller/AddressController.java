@@ -10,6 +10,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/v1/addresses")
 @RequiredArgsConstructor
@@ -28,6 +30,19 @@ public class AddressController {
         return ApiResponse.<AddressResponse>builder()
                 .success(true)
                 .message("Address created successfully.")
+                .data(response)
+                .timestamp(dateTimeProvider.now())
+                .build();
+    }
+
+    @GetMapping
+    public ApiResponse<List<AddressResponse>> getMyAddresses() {
+
+        List<AddressResponse> response = addressService.getMyAddresses();
+
+        return ApiResponse.<List<AddressResponse>>builder()
+                .success(true)
+                .message("Addresses fetched successfully.")
                 .data(response)
                 .timestamp(dateTimeProvider.now())
                 .build();

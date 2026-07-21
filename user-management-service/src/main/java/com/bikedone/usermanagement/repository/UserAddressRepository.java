@@ -10,7 +10,7 @@ import java.util.UUID;
 
 public interface UserAddressRepository extends JpaRepository<UserAddress, UUID> {
 
-    List<UserAddress> findByUserAndDeletedFalse(User user);
+    List<UserAddress> findByUserAndDeletedFalseOrderByDefaultAddressDescCreatedAtDesc(User user);
 
     Optional<UserAddress> findByUserAndDefaultAddressTrueAndDeletedFalse(User user);
 

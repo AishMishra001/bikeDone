@@ -55,7 +55,16 @@ public class AddressServiceImpl implements AddressService {
 
     @Override
     public List<AddressResponse> getMyAddresses() {
-        return List.of();
+
+        UserPrincipal currentUser = authenticationFacade.getCurrentUser();
+
+        User user = userRepository.findById(currentUser.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found."));
+
+        return userAddressRepository.findByUserAndDeletedFalseOrderByDefaultAddressDescCreatedAtDesc(user)
+                .stream()
+                .map(addressMapper::toResponse)
+                .toList();
     }
 
     @Override
