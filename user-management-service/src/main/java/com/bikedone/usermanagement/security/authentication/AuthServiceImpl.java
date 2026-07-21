@@ -1,5 +1,8 @@
 package com.bikedone.usermanagement.security.authentication;
 
+import com.bikedone.usermanagement.common.logging.LogLevel;
+import com.bikedone.usermanagement.common.logging.LogStep;
+import com.bikedone.usermanagement.common.logging.Logger;
 import com.bikedone.usermanagement.config.JwtProperties;
 import com.bikedone.usermanagement.constants.SecurityConstants;
 import com.bikedone.usermanagement.dto.request.LoginRequest;
@@ -53,16 +56,22 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public SignupResponse signup(SignupRequest request) {
 
+        Logger.printLog( LogLevel.INFO, LogStep.AUTH, "Signup request received", request.getEmail(), null, null );
+
         if (userRepository.existsByEmail(request.getEmail())) {
+            Logger.printLog( LogLevel.WARN, LogStep.AUTH, "Signup failed", "Email already exists: " + request.getEmail(), null, null );
             throw new BadRequestException("Email already exists");
         }
 
         if (userRepository.existsByMobileNumber(request.getMobileNumber())) {
+            Logger.printLog( LogLevel.WARN, LogStep.AUTH, "Signup failed", "Mobile number already exists: " + request.getMobileNumber(), null, null );
             throw new BadRequestException("Mobile number already exists");
         }
 
         Role role = roleRepository.findByRoleCode(RoleCode.CUSTOMER)
                 .orElseThrow(() -> new BadRequestException("Customer role not found"));
+
+        Logger.printLog( LogLevel.INFO, LogStep.AUTH, "Customer role fetched", "Role: " + role.getRoleCode().name(), null, null );
 
         User user = userMapper.toEntity(request);
 
@@ -72,13 +81,21 @@ public class AuthServiceImpl implements AuthService {
         user.setMobileVerified(false);
         user.setPassword(passwordEncoder.encode(request.getPassword()));
 
+        Logger.printLog( LogLevel.DEBUG, LogStep.AUTH, "Password encoded", request.getEmail(), null, null );
+
         User savedUser = userRepository.save(user);
+
+        Logger.printLog( LogLevel.INFO, LogStep.AUTH, "Customer registered successfully", "Customer account created successfully", savedUser.getId().toString(), savedUser.getId().toString() );
+
+        Logger.printLog( LogLevel.INFO, LogStep.AUTH, "Signup completed successfully", "Response sent to client", savedUser.getId().toString(), null );
 
         return userMapper.toResponse(savedUser);
     }
 
     @Override
     public LoginResponse login(LoginRequest request) {
+
+        Logger.printLog( LogLevel.INFO, LogStep.AUTH, "Login request received", request.getEmail(), null, null );
 
         Authentication authentication =
                 authenticationManager.authenticate(
@@ -88,17 +105,26 @@ public class AuthServiceImpl implements AuthService {
                         )
                 );
 
+        Logger.printLog( LogLevel.INFO, LogStep.AUTH, "Authentication successful", "User credentials validated successfully", null, null );
+
         UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();
 
         User user = userRepository.findUserWithRoleByEmail(principal.getUsername())
                 .orElseThrow(() -> new BadRequestException("User not found"));
 
+        Logger.printLog( LogLevel.INFO, LogStep.AUTH, "User details fetched", "Authenticated user loaded from database", user.getId().toString(), null );
+
         // Generate Access Token
         String accessToken = jwtService.generateToken(principal);
 
+        Logger.printLog( LogLevel.DEBUG, LogStep.JWT, "Access token generated", "JWT access token generated successfully", user.getId().toString(), null );
+
         // Generate & Save Refresh Token
-        RefreshTokenResult refreshTokenResult =
-                refreshTokenService.createRefreshToken(user);
+        RefreshTokenResult refreshTokenResult = refreshTokenService.createRefreshToken(user);
+
+        Logger.printLog( LogLevel.DEBUG, LogStep.JWT, "Refresh token generated", "Refresh token created and persisted successfully", user.getId().toString(), null );
+
+        Logger.printLog( LogLevel.INFO, LogStep.AUTH, "Login completed successfully", "Login response returned to client", user.getId().toString(), null );
 
         return LoginResponse.builder()
                 .accessToken(accessToken)
@@ -108,10 +134,13 @@ public class AuthServiceImpl implements AuthService {
                 .refreshTokenExpiresIn(jwtProperties.getRefreshTokenExpiration())
                 .user(userMapper.toLoginResponse(user))
                 .build();
+
     }
 
     @Override
     public LoginResponse refresh(RefreshTokenRequest request) {
+
+        Logger.printLog( LogLevel.INFO, LogStep.JWT, "Refresh token request received", null, null, null );
 
         // Validate old refresh token
         RefreshToken existingRefreshToken =
@@ -120,6 +149,8 @@ public class AuthServiceImpl implements AuthService {
                 );
 
         User user = existingRefreshToken.getUser();
+
+        Logger.printLog( LogLevel.INFO, LogStep.JWT, "Refresh token validated successfully", user.getEmail(), user.getId().toString(), existingRefreshToken.getId().toString() );
 
         // Build principal
         UserPrincipal principal = new UserPrincipal(user);
@@ -131,9 +162,15 @@ public class AuthServiceImpl implements AuthService {
         // Revoke old refresh token
         refreshTokenService.revokeToken(existingRefreshToken);
 
+        Logger.printLog( LogLevel.DEBUG, LogStep.JWT, "Old refresh token revoked", user.getEmail(), user.getId().toString(), existingRefreshToken.getId().toString() );
+
         // Generate new refresh token
         RefreshTokenResult refreshTokenResult =
                 refreshTokenService.createRefreshToken(user);
+
+        Logger.printLog( LogLevel.INFO, LogStep.JWT, "New refresh token generated successfully", user.getEmail(), user.getId().toString(), null );
+
+        Logger.printLog( LogLevel.INFO, LogStep.AUTH, "Token refresh completed successfully", user.getEmail(), user.getId().toString(), null );
 
         return LoginResponse.builder()
                 .accessToken(accessToken)
