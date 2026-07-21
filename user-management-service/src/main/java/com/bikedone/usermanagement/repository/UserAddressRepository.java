@@ -16,6 +16,10 @@ public interface UserAddressRepository extends JpaRepository<UserAddress, UUID> 
 
     Optional<UserAddress> findByIdAndDeletedFalse(UUID id);
 
+    Optional<UserAddress> findByIdAndUserAndDeletedFalse(UUID id, User user);
+
     long countByUserAndDeletedFalse(User user);
+
+    List<UserAddress> findByUserAndDeletedFalseAndIdNot(User user, UUID id);
 
 }

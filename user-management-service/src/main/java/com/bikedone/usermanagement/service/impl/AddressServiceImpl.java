@@ -69,17 +69,71 @@ public class AddressServiceImpl implements AddressService {
 
     @Override
     public AddressResponse getAddressById(UUID addressId) {
-        return null;
+
+        UserPrincipal currentUser = authenticationFacade.getCurrentUser();
+
+        User user = userRepository.findById(currentUser.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found."));
+
+        UserAddress address = userAddressRepository
+                .findByIdAndUserAndDeletedFalse(addressId, user)
+                .orElseThrow(() -> new ResourceNotFoundException("Address not found."));
+
+        return addressMapper.toResponse(address);
     }
 
     @Override
     public AddressResponse updateAddress(UUID addressId, UpdateAddressRequest request) {
-        return null;
+
+        UserPrincipal currentUser = authenticationFacade.getCurrentUser();
+
+        User user = userRepository.findById(currentUser.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found."));
+
+        UserAddress address = userAddressRepository
+                .findByIdAndUserAndDeletedFalse(addressId, user)
+                .orElseThrow(() -> new ResourceNotFoundException("Address not found."));
+
+        addressMapper.updateEntity(request, address);
+
+        UserAddress updatedAddress = userAddressRepository.save(address);
+
+        return addressMapper.toResponse(updatedAddress);
     }
 
     @Override
     public void deleteAddress(UUID addressId) {
 
+        UserPrincipal currentUser = authenticationFacade.getCurrentUser();
+
+        User user = userRepository.findById(currentUser.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found."));
+
+        UserAddress address = userAddressRepository
+                .findByIdAndUserAndDeletedFalse(addressId, user)
+                .orElseThrow(() -> new ResourceNotFoundException("Address not found."));
+
+        boolean wasDefault = Boolean.TRUE.equals(address.getDefaultAddress());
+
+        address.setDeleted(true);
+        address.setDefaultAddress(false);
+
+        userAddressRepository.save(address);
+
+        if (wasDefault) {
+
+            List<UserAddress> remainingAddresses =
+                    userAddressRepository.findByUserAndDeletedFalseAndIdNot(user, addressId);
+
+            if (!remainingAddresses.isEmpty()) {
+
+                UserAddress newDefault = remainingAddresses.get(0);
+
+                newDefault.setDefaultAddress(true);
+
+                userAddressRepository.save(newDefault);
+            }
+        }
     }
 
     @Override
