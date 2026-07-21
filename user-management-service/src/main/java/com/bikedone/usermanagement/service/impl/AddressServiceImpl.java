@@ -137,7 +137,33 @@ public class AddressServiceImpl implements AddressService {
     }
 
     @Override
+    @Transactional
     public void setDefaultAddress(UUID addressId) {
 
+        UserPrincipal currentUser = authenticationFacade.getCurrentUser();
+
+        User user = userRepository.findById(currentUser.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found."));
+
+        UserAddress newDefaultAddress = userAddressRepository
+                .findByIdAndUserAndDeletedFalse(addressId, user)
+                .orElseThrow(() -> new ResourceNotFoundException("Address not found."));
+
+        // If already default, nothing to do
+        if (Boolean.TRUE.equals(newDefaultAddress.getDefaultAddress())) {
+            return;
+        }
+
+        userAddressRepository
+                .findByUserAndDefaultAddressTrueAndDeletedFalse(user)
+                .ifPresent(address -> {
+                    address.setDefaultAddress(false);
+                    userAddressRepository.save(address);
+                });
+
+        newDefaultAddress.setDefaultAddress(true);
+
+        userAddressRepository.save(newDefaultAddress);
     }
+
 }

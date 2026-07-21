@@ -91,4 +91,17 @@ public class AddressController {
                 .timestamp(dateTimeProvider.now())
                 .build();
     }
+
+    @PatchMapping("/{addressId}/default")
+    public ApiResponse<Void> setDefaultAddress(
+            @PathVariable UUID addressId) {
+
+        addressService.setDefaultAddress(addressId);
+
+        return ApiResponse.<Void>builder()
+                .success(true)
+                .message("Default address updated successfully.")
+                .timestamp(dateTimeProvider.now())
+                .build();
+    }
 }
