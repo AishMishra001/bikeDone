@@ -10,13 +10,69 @@ import { Feather } from '@expo/vector-icons';
 import InputField from '../ui/InputField';
 import PrimaryButton from '../ui/PrimaryButton';
 
+import { api } from '../../services/api';
+import { tokenStorage } from '../../services/tokenStorage';
+
 interface LoginScreenProps {
   onNavigate: (screen: string) => void;
 }
 
 export default function LoginScreen({ onNavigate }: LoginScreenProps) {
-  const [email, setEmail] = useState('user@bikedone.com');
-  const [password, setPassword] = useState('123456');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleLogin = async () => {
+    if (!email.trim() || !email.includes('@')) {
+      alert("Please enter a valid email address");
+      return;
+    }
+    if (!password) {
+      alert("Please enter your password");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await api.post<any>('/auth/login', {
+        email: email.trim(),
+        password: password
+      }, { requiresAuth: false });
+
+      if (response && response.accessToken) {
+        await tokenStorage.setAccessToken(response.accessToken);
+        await tokenStorage.setRefreshToken(response.refreshToken);
+        if (response.user) {
+          await tokenStorage.setUser(response.user);
+        }
+        onNavigate('Home');
+      } else {
+        throw new Error("Invalid response from server");
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || "Login failed. Please check your credentials.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email.trim() || !email.includes('@')) {
+      alert("Please enter your email address in the Email input first, then tap 'Forgot Password?'.");
+      return;
+    }
+    setLoading(true);
+    try {
+      await api.post('/auth/forgot-password', { email: email.trim() }, { requiresAuth: false });
+      alert("✉️ If an account exists with this email, a password reset link has been sent.");
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || "Forgot password request failed.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <View style={styles.screenContainer}>
@@ -38,9 +94,11 @@ export default function LoginScreen({ onNavigate }: LoginScreenProps) {
         {/* Inputs */}
         <InputField
           iconName="mail"
-          placeholder="Email or Phone Number"
+          placeholder="Email Address"
           value={email}
           onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
         />
 
         <InputField
@@ -49,14 +107,15 @@ export default function LoginScreen({ onNavigate }: LoginScreenProps) {
           isPassword
           value={password}
           onChangeText={setPassword}
+          autoCapitalize="none"
         />
 
-        <TouchableOpacity style={styles.forgotPassword}>
+        <TouchableOpacity style={styles.forgotPassword} onPress={handleForgotPassword} disabled={loading}>
           <Text style={styles.brandText}>Forgot Password?</Text>
         </TouchableOpacity>
 
         {/* Action Button */}
-        <PrimaryButton title="Log In" onPress={() => onNavigate('Home')} />
+        <PrimaryButton title="Log In" loading={loading} onPress={handleLogin} />
 
         {/* Social Login Divider */}
         <View style={styles.dividerContainer}>

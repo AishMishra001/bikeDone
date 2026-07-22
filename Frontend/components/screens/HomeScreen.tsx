@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -8,6 +8,7 @@ import {
   ScrollView
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { tokenStorage, LoggedInUser } from '../../services/tokenStorage';
 
 interface HomeScreenProps {
   onNavigate: (screen: string) => void;
@@ -15,6 +16,15 @@ interface HomeScreenProps {
 
 export default function HomeScreen({ onNavigate }: HomeScreenProps) {
   const [searchText, setSearchText] = useState('');
+  const [user, setUser] = useState<LoggedInUser | null>(null);
+
+  useEffect(() => {
+    const loadUser = async () => {
+      const u = await tokenStorage.getUser();
+      setUser(u);
+    };
+    loadUser();
+  }, []);
 
   const services = [
     { id: 1, title: 'General Service', icon: 'tool', color: '#f97316', bg: '#fff3eb' },
@@ -41,7 +51,7 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
             <View style={styles.notificationDot} />
           </View>
         </View>
-        <Text style={styles.greetingText}>Hello, Alex! 🏍️</Text>
+        <Text style={styles.greetingText}>Hello, {user ? user.firstName : 'Rider'}! 🏍️</Text>
         <Text style={styles.greetingSub}>What does your bike need today?</Text>
       </View>
 
@@ -99,11 +109,11 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
           <Feather name="home" size={24} color="#f97316" />
           <Text style={[styles.navText, { color: '#f97316' }]}>Home</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity style={styles.navItem} onPress={() => onNavigate('Booking')}>
           <Feather name="file-text" size={24} color="#9ca3af" />
           <Text style={styles.navText}>Bookings</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity style={styles.navItem} onPress={() => onNavigate('Profile')}>
           <Feather name="user" size={24} color="#9ca3af" />
           <Text style={styles.navText}>Profile</Text>
         </TouchableOpacity>
