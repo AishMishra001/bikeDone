@@ -10,15 +10,58 @@ import InputField from '../ui/InputField';
 import PrimaryButton from '../ui/PrimaryButton';
 import BackButton from '../ui/BackButton';
 
+import { api } from '../../services/api';
+
 interface SignupScreenProps {
   onNavigate: (screen: string) => void;
 }
 
 export default function SignupScreen({ onNavigate }: SignupScreenProps) {
-  const [fullName, setFullName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [mobileNumber, setMobileNumber] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSignup = async () => {
+    if (!firstName.trim()) {
+      alert("First Name is required");
+      return;
+    }
+    if (!email.trim() || !email.includes('@')) {
+      alert("Please enter a valid email address");
+      return;
+    }
+    const mobileRegex = /^[6-9]\d{9}$/;
+    if (!mobileRegex.test(mobileNumber)) {
+      alert("Please enter a valid 10-digit mobile number starting with 6-9");
+      return;
+    }
+    if (password.length < 8) {
+      alert("Password must be at least 8 characters");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await api.post('/auth/signup', {
+        firstName: firstName.trim(),
+        lastName: lastName.trim() || undefined,
+        email: email.trim(),
+        mobileNumber: mobileNumber.trim(),
+        password
+      }, { requiresAuth: false });
+      
+      alert("🎉 Customer registered successfully! Please log in.");
+      onNavigate('Login');
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || "Registration failed. Please check your details and try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <View style={styles.screenContainer}>
@@ -37,9 +80,16 @@ export default function SignupScreen({ onNavigate }: SignupScreenProps) {
 
         <InputField
           iconName="user"
-          placeholder="Full Name"
-          value={fullName}
-          onChangeText={setFullName}
+          placeholder="First Name"
+          value={firstName}
+          onChangeText={setFirstName}
+        />
+
+        <InputField
+          iconName="user"
+          placeholder="Last Name (Optional)"
+          value={lastName}
+          onChangeText={setLastName}
         />
 
         <InputField
@@ -68,8 +118,9 @@ export default function SignupScreen({ onNavigate }: SignupScreenProps) {
 
         <PrimaryButton
           title="Sign Up"
+          loading={loading}
           style={{ marginTop: 20 }}
-          onPress={() => onNavigate('Home')}
+          onPress={handleSignup}
         />
 
         <Text style={styles.termsText}>
