@@ -10,7 +10,6 @@ import com.bikedone.usermanagement.dto.request.RefreshTokenRequest;
 import com.bikedone.usermanagement.dto.request.SignupRequest;
 import com.bikedone.usermanagement.dto.response.LoginResponse;
 import com.bikedone.usermanagement.dto.response.SignupResponse;
-import com.bikedone.usermanagement.dto.response.UserProfileResponse;
 import com.bikedone.usermanagement.entity.RefreshToken;
 import com.bikedone.usermanagement.entity.Role;
 import com.bikedone.usermanagement.entity.User;
