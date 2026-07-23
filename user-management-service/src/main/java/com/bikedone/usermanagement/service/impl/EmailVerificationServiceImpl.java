@@ -1,8 +1,12 @@
 package com.bikedone.usermanagement.service.impl;
 
 import com.bikedone.usermanagement.common.datetime.DateTimeProvider;
+import com.bikedone.usermanagement.common.logging.LogLevel;
+import com.bikedone.usermanagement.common.logging.LogStep;
+import com.bikedone.usermanagement.common.logging.Logger;
 import com.bikedone.usermanagement.config.EmailProperties;
 import com.bikedone.usermanagement.config.JwtProperties;
+import com.bikedone.usermanagement.dto.request.ResendEmailVerificationRequest;
 import com.bikedone.usermanagement.entity.EmailVerificationToken;
 import com.bikedone.usermanagement.entity.User;
 import com.bikedone.usermanagement.exception.BadRequestException;
@@ -129,6 +133,60 @@ public class EmailVerificationServiceImpl implements EmailVerificationService {
         );
 
         log.info("Email verification token generated for userId={}", user.getId());
+    }
+
+    @Override
+    @Transactional
+    public void resendVerificationEmail(ResendEmailVerificationRequest request) {
+
+        Logger.printLog(
+                LogLevel.INFO,
+                LogStep.AUTH,
+                "Resend email verification requested",
+                request.getEmail(),
+                null,
+                null
+        );
+
+        User user = userRepository.findUserWithRoleByEmail(request.getEmail())
+                .orElseThrow(() -> {
+
+                    Logger.printLog(
+                            LogLevel.WARN,
+                            LogStep.AUTH,
+                            "Resend verification failed",
+                            "User not found",
+                            null,
+                            null
+                    );
+
+                    return new BadRequestException("User not found.");
+                });
+
+        if (Boolean.TRUE.equals(user.getEmailVerified())) {
+
+            Logger.printLog(
+                    LogLevel.WARN,
+                    LogStep.AUTH,
+                    "Resend verification skipped",
+                    "Email already verified",
+                    user.getId().toString(),
+                    null
+            );
+
+            throw new BadRequestException("Email is already verified.");
+        }
+
+        sendVerificationEmail(user);
+
+        Logger.printLog(
+                LogLevel.INFO,
+                LogStep.AUTH,
+                "Verification email resent successfully",
+                "Verification email sent",
+                user.getId().toString(),
+                null
+        );
     }
 
 }
