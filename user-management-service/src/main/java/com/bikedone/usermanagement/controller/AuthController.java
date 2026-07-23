@@ -37,7 +37,7 @@ public class AuthController {
 
         return ApiResponse.<SignupResponse>builder()
                 .success(true)
-                .message("Customer registered successfully.")
+                .message("Registration successful. Please verify your email before logging in.")
                 .data(response)
                 .timestamp(dateTimeProvider.now())
                 .build();

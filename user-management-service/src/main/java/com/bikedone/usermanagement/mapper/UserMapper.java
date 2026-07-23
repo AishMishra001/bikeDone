@@ -22,6 +22,7 @@ public interface UserMapper {
     User toEntity(SignupRequest request);
 
     @Mapping(source = "id", target = "userId")
+    @Mapping(source = "emailVerified", target = "emailVerified")
     SignupResponse toResponse(User user);
 
     @Mapping(source = "role.roleCode", target = "role")

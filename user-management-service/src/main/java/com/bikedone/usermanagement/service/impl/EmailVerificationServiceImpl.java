@@ -53,38 +53,8 @@ public class EmailVerificationServiceImpl implements EmailVerificationService {
         User user = userRepository.findUserWithRoleByEmail(principal.getUsername())
                 .orElseThrow(() -> new BadRequestException("User not found."));
 
-        if (Boolean.TRUE.equals(user.getEmailVerified())) {
-            throw new BadRequestException("Email is already verified.");
-        }
+        sendVerificationEmail(user);
 
-        emailVerificationTokenRepository.deleteByUser_Id(user.getId());
-
-        String rawToken = refreshTokenGenerator.generate();
-
-        String tokenHash = tokenHasher.hash(rawToken);
-
-        var now = dateTimeProvider.now();
-
-        EmailVerificationToken verificationToken = new EmailVerificationToken();
-        verificationToken.setUser(user);
-        verificationToken.setTokenHash(tokenHash);
-        verificationToken.setCreatedAt(now);
-        verificationToken.setExpiresAt(
-                now.plus(Duration.ofMillis(jwtProperties.getEmailVerificationTokenExpiration()))
-        );
-        emailVerificationTokenRepository.save(verificationToken);
-
-        String verificationUrl =
-                emailProperties.getFrontendUrl()
-                        + "/verify-email?token=" + rawToken;
-
-        emailService.sendVerificationEmail(
-                user.getEmail(),
-                user.getFirstName(),
-                verificationUrl
-        );
-
-        log.info("Email verification token generated for userId={}", user.getId());
     }
 
     @Override
@@ -121,6 +91,44 @@ public class EmailVerificationServiceImpl implements EmailVerificationService {
         );
 
         log.info("Email verified successfully for userId={}", user.getId());
+    }
+
+    @Override
+    @Transactional
+    public void sendVerificationEmail(User user) {
+
+        if (Boolean.TRUE.equals(user.getEmailVerified())) {
+            throw new BadRequestException("Email is already verified.");
+        }
+
+        emailVerificationTokenRepository.deleteByUser_Id(user.getId());
+
+        String rawToken = refreshTokenGenerator.generate();
+        String tokenHash = tokenHasher.hash(rawToken);
+
+        var now = dateTimeProvider.now();
+
+        EmailVerificationToken verificationToken = new EmailVerificationToken();
+        verificationToken.setUser(user);
+        verificationToken.setTokenHash(tokenHash);
+        verificationToken.setCreatedAt(now);
+        verificationToken.setExpiresAt(
+                now.plus(Duration.ofMillis(jwtProperties.getEmailVerificationTokenExpiration()))
+        );
+
+        emailVerificationTokenRepository.save(verificationToken);
+
+        String verificationUrl =
+                emailProperties.getFrontendUrl()
+                        + "/verify-email?token=" + rawToken;
+
+        emailService.sendVerificationEmail(
+                user.getEmail(),
+                user.getFirstName(),
+                verificationUrl
+        );
+
+        log.info("Email verification token generated for userId={}", user.getId());
     }
 
 }

@@ -17,6 +17,7 @@ import com.bikedone.usermanagement.entity.User;
 import com.bikedone.usermanagement.enums.RoleCode;
 import com.bikedone.usermanagement.enums.UserStatus;
 import com.bikedone.usermanagement.exception.BadRequestException;
+import com.bikedone.usermanagement.exception.EmailNotVerifiedException;
 import com.bikedone.usermanagement.mapper.UserMapper;
 import com.bikedone.usermanagement.repository.RoleRepository;
 import com.bikedone.usermanagement.repository.UserRepository;
@@ -24,6 +25,7 @@ import com.bikedone.usermanagement.security.jwt.JwtService;
 import com.bikedone.usermanagement.security.token.RefreshTokenResult;
 import com.bikedone.usermanagement.security.token.RefreshTokenService;
 import com.bikedone.usermanagement.security.user.UserPrincipal;
+import com.bikedone.usermanagement.service.EmailVerificationService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -52,6 +54,8 @@ public class AuthServiceImpl implements AuthService {
     private final JwtProperties jwtProperties;
 
     private final RefreshTokenService refreshTokenService;
+
+    private final EmailVerificationService emailVerificationService;
 
     @Override
     public SignupResponse signup(SignupRequest request) {
@@ -87,9 +91,13 @@ public class AuthServiceImpl implements AuthService {
 
         Logger.printLog( LogLevel.INFO, LogStep.AUTH, "Customer registered successfully", "Customer account created successfully", savedUser.getId().toString(), savedUser.getId().toString() );
 
+        emailVerificationService.sendVerificationEmail(savedUser);
+
+        Logger.printLog( LogLevel.INFO, LogStep.AUTH, "Verification email sent", "Email verification link sent successfully", savedUser.getId().toString(), null );
+
         Logger.printLog( LogLevel.INFO, LogStep.AUTH, "Signup completed successfully", "Response sent to client", savedUser.getId().toString(), null );
 
-        return userMapper.toResponse(savedUser);
+       return userMapper.toResponse(savedUser);
     }
 
     @Override
@@ -113,6 +121,24 @@ public class AuthServiceImpl implements AuthService {
                 .orElseThrow(() -> new BadRequestException("User not found"));
 
         Logger.printLog( LogLevel.INFO, LogStep.AUTH, "User details fetched", "Authenticated user loaded from database", user.getId().toString(), null );
+
+        if (!Boolean.TRUE.equals(user.getEmailVerified())) {
+
+            Logger.printLog(
+                    LogLevel.WARN,
+                    LogStep.AUTH,
+                    "Login blocked",
+                    "Email is not verified",
+                    user.getId().toString(),
+                    null
+            );
+
+            throw new EmailNotVerifiedException(
+                    "Email is not verified. Please verify your email before logging in."
+            );
+        }
+
+        Logger.printLog( LogLevel.INFO, LogStep.AUTH, "Email verification validated", "Email is verified", user.getId().toString(), null );
 
         // Generate Access Token
         String accessToken = jwtService.generateToken(principal);
