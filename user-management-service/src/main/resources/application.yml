@@ -62,3 +62,9 @@ aws:
   region: ${AWS_REGION}
   access-key: ${AWS_ACCESS_KEY}
   secret-key: ${AWS_SECRET_KEY}
+
+firebase:
+  service-account-path: ${FIREBASE_SERVICE_ACCOUNT_PATH}
+
+encryption:
+  secret-key: ${ENCRYPTION_SECRET_KEY}

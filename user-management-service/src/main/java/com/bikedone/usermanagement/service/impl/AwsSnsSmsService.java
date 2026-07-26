@@ -9,15 +9,11 @@ import software.amazon.awssdk.services.sns.model.PublishResponse;
 
 @Service
 @RequiredArgsConstructor
-public class AwsSnsSmsService implements SmsService {
+public class AwsSnsSmsService {
 
     private final SnsClient snsClient;
 
-    @Override
-    public void sendOtp(
-            String mobileNumber,
-            String otp
-    ) {
+    public void sendOtp(String mobileNumber, String otp) {
 
         String message = String.format(
                 "Your Bike Done verification OTP is %s. It is valid for 5 minutes. Do not share this OTP with anyone.",
