@@ -4,6 +4,7 @@ import com.bikedone.usermanagement.common.datetime.DateTimeProvider;
 import com.bikedone.usermanagement.common.response.ApiResponse;
 import com.bikedone.usermanagement.dto.request.ForgotPasswordRequest;
 import com.bikedone.usermanagement.dto.request.LoginRequest;
+import com.bikedone.usermanagement.dto.request.ResendEmailVerificationRequest;
 import com.bikedone.usermanagement.dto.request.ResetPasswordRequest;
 import com.bikedone.usermanagement.dto.request.SignupRequest;
 import com.bikedone.usermanagement.dto.response.LoginResponse;
@@ -37,7 +38,7 @@ public class AuthController {
 
         return ApiResponse.<SignupResponse>builder()
                 .success(true)
-                .message("Customer registered successfully.")
+                .message("Registration successful. Please verify your email before logging in.")
                 .data(response)
                 .timestamp(dateTimeProvider.now())
                 .build();
@@ -76,6 +77,19 @@ public class AuthController {
     public ApiResponse<Void> sendEmailVerification() {
 
         emailVerificationService.sendVerificationEmail();
+
+        return ApiResponse.<Void>builder()
+                .success(true)
+                .message("Verification email sent successfully.")
+                .timestamp(dateTimeProvider.now())
+                .build();
+    }
+
+    @PostMapping("/resend-email-verification")
+    public ApiResponse<Void> resendEmailVerification(
+            @Valid @RequestBody ResendEmailVerificationRequest request) {
+
+        emailVerificationService.resendVerificationEmail(request);
 
         return ApiResponse.<Void>builder()
                 .success(true)
