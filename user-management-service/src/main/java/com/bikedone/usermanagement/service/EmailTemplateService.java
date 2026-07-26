@@ -8,7 +8,8 @@ public interface EmailTemplateService {
 
     String buildPasswordResetEmail(
             String name,
-            String resetUrl);
+            String resetUrl,
+            String token);
 
     String buildWelcomeEmail(
             String name);

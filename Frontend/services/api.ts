@@ -1,6 +1,20 @@
+import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 import { tokenStorage, LoggedInUser } from './tokenStorage';
 
-const BASE_URL = 'http://user-management-service.ap-south-1.elasticbeanstalk.com/api/v1';
+const getLocalBackendUrl = () => {
+  const hostUri = Constants.expoConfig?.hostUri || (Constants as any).manifest2?.extra?.expoGo?.developer?.manifest?.debuggerHost;
+  if (hostUri) {
+    const ip = hostUri.split(':')[0];
+    return `http://${ip}:8080/api/v1`;
+  }
+  if (Platform.OS === 'android') {
+    return 'http://10.0.2.2:8080/api/v1';
+  }
+  return 'http://localhost:8080/api/v1';
+};
+
+const BASE_URL = getLocalBackendUrl();
 
 let isRefreshing = false;
 let refreshSubscribers: ((accessToken: string) => void)[] = [];

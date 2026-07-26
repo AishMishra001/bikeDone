@@ -50,11 +50,13 @@ public class BrevoEmailService implements EmailService {
     public void sendPasswordResetEmail(
             String to,
             String name,
-            String resetUrl) {
+            String resetUrl,
+            String token) {
 
         String html = emailTemplateService.buildPasswordResetEmail(
                 name,
-                resetUrl
+                resetUrl,
+                token
         );
 
         sendEmail(
