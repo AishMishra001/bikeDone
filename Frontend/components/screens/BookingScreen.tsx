@@ -6,11 +6,13 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
-  Alert
+  Alert,
+  ActivityIndicator
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import PrimaryButton from '../ui/PrimaryButton';
 import BackButton from '../ui/BackButton';
+import { useUserLocation } from '../../hooks/useUserLocation';
 
 interface BookingScreenProps {
   onNavigate: (screen: string) => void;
@@ -18,6 +20,7 @@ interface BookingScreenProps {
 
 export default function BookingScreen({ onNavigate }: BookingScreenProps) {
   const [description, setDescription] = useState('');
+  const { loading: locationLoading, location, errorType, refreshLocation } = useUserLocation();
 
   const handleRequest = () => {
     // Works on both iOS/Android and web (React Native fallback for web alert)
@@ -73,7 +76,11 @@ export default function BookingScreen({ onNavigate }: BookingScreenProps) {
         />
 
         <Text style={[styles.label, { marginTop: 24 }]}>SERVICE LOCATION</Text>
-        <View style={styles.locationCard}>
+        <TouchableOpacity 
+          style={styles.locationCard}
+          onPress={refreshLocation}
+          activeOpacity={0.7}
+        >
           <Feather
             name="map-pin"
             size={20}
@@ -81,12 +88,31 @@ export default function BookingScreen({ onNavigate }: BookingScreenProps) {
             style={{ marginTop: 2 }}
           />
           <View style={{ marginLeft: 12, flex: 1 }}>
-            <Text style={styles.locationName}>Connaught Place</Text>
-            <Text style={styles.locationDesc}>
-              Block A, Connaught Place, New Delhi, Delhi 110001
-            </Text>
+            {locationLoading ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <ActivityIndicator size="small" color="#f97316" style={{ marginRight: 6 }} />
+                <Text style={styles.locationName}>Detecting current location...</Text>
+              </View>
+            ) : location ? (
+              <>
+                <Text style={styles.locationName}>{location.shortAddress}</Text>
+                <Text style={styles.locationDesc}>{location.fullAddress}</Text>
+              </>
+            ) : (
+              <>
+                <Text style={styles.locationName}>Location services unavailable</Text>
+                <Text style={styles.locationDesc}>
+                  {errorType === 'DISABLED' 
+                    ? 'Location turned off on device. Tap to retry.' 
+                    : errorType === 'DENIED' 
+                    ? 'Location permission denied. Tap to retry.' 
+                    : 'Tap to fetch current location.'}
+                </Text>
+              </>
+            )}
           </View>
-        </View>
+          <Feather name="refresh-cw" size={16} color="#6b7280" style={{ alignSelf: 'center' }} />
+        </TouchableOpacity>
 
         <View style={styles.spacer} />
 

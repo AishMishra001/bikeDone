@@ -5,10 +5,12 @@ import {
   View,
   TextInput,
   TouchableOpacity,
-  ScrollView
+  ScrollView,
+  ActivityIndicator
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { tokenStorage, LoggedInUser } from '../../services/tokenStorage';
+import { useUserLocation } from '../../hooks/useUserLocation';
 
 interface HomeScreenProps {
   onNavigate: (screen: string) => void;
@@ -17,6 +19,7 @@ interface HomeScreenProps {
 export default function HomeScreen({ onNavigate }: HomeScreenProps) {
   const [searchText, setSearchText] = useState('');
   const [user, setUser] = useState<LoggedInUser | null>(null);
+  const { loading: locationLoading, location, errorType, refreshLocation } = useUserLocation();
 
   useEffect(() => {
     const loadUser = async () => {
@@ -33,6 +36,27 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
     { id: 4, title: 'Emergency Tow', icon: 'truck', color: '#a855f7', bg: '#faf5ff' },
   ] as const;
 
+  const renderLocationText = () => {
+    if (locationLoading) {
+      return (
+        <View style={styles.locationLoadingRow}>
+          <ActivityIndicator size="small" color="#ffffff" style={{ marginRight: 6 }} />
+          <Text style={styles.headerLocation}>Detecting location...</Text>
+        </View>
+      );
+    }
+    if (location) {
+      return <Text style={styles.headerLocation}> {location.shortAddress} </Text>;
+    }
+    if (errorType === 'DISABLED') {
+      return <Text style={styles.headerLocation}> Turn on location 🔄 </Text>;
+    }
+    if (errorType === 'DENIED') {
+      return <Text style={styles.headerLocation}> Enable location permissions 🔄 </Text>;
+    }
+    return <Text style={styles.headerLocation}> Tap to fetch location 🔄 </Text>;
+  };
+
   return (
     <View style={styles.screenContainer}>
       {/* Top Header */}
@@ -40,11 +64,15 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
         <View style={styles.headerRow}>
           <View>
             <Text style={styles.headerLabel}>Current Location</Text>
-            <View style={styles.locationContainer}>
+            <TouchableOpacity 
+              style={styles.locationContainer} 
+              onPress={refreshLocation}
+              activeOpacity={0.7}
+            >
               <Feather name="map-pin" size={14} color="white" />
-              <Text style={styles.headerLocation}> Connaught Place, Delhi </Text>
+              {renderLocationText()}
               <Feather name="chevron-down" size={14} color="white" />
-            </View>
+            </TouchableOpacity>
           </View>
           <View style={styles.bellIcon}>
             <Feather name="bell" size={20} color="white" />
@@ -293,5 +321,9 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginTop: 4,
     color: '#9ca3af',
+  },
+  locationLoadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 });
