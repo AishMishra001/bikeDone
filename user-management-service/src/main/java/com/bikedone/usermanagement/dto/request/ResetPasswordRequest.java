@@ -14,7 +14,7 @@ public class ResetPasswordRequest {
 
     @NotBlank
     @Pattern(
-            regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$",
+            regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&#_\\-]).{8,}$",
             message = "Password must contain at least 8 characters, one uppercase, one lowercase, one number and one special character."
     )
     private String newPassword;

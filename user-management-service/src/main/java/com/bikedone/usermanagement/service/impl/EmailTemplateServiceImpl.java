@@ -32,12 +32,14 @@ public class EmailTemplateServiceImpl
     @Override
     public String buildPasswordResetEmail(
             String name,
-            String resetUrl) {
+            String resetUrl,
+            String token) {
 
         Context context = new Context();
 
         context.setVariable("name", name);
         context.setVariable("resetUrl", resetUrl);
+        context.setVariable("token", token);
 
         return templateEngine.process(
                 "emails/reset-password",

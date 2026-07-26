@@ -10,7 +10,8 @@ public interface EmailService {
     void sendPasswordResetEmail(
             String to,
             String name,
-            String resetUrl);
+            String resetUrl,
+            String token);
 
     void sendWelcomeEmail(String to, String name);
 
