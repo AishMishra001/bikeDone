@@ -19,4 +19,6 @@ public interface VehicleBrandRepository extends JpaRepository<VehicleBrand, UUID
 
     List<VehicleBrand> findAllByIsActiveTrueOrderByBrandNameAsc();
 
+    Optional<VehicleBrand> findByIdAndIsActiveTrue(UUID id);
+
 }
