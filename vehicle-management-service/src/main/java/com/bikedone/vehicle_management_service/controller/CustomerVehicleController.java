@@ -2,6 +2,7 @@ package com.bikedone.vehicle_management_service.controller;
 
 import com.bikedone.vehicle_management_service.common.response.ApiResponse;
 import com.bikedone.vehicle_management_service.dto.request.CreateCustomerVehicleRequest;
+import com.bikedone.vehicle_management_service.dto.request.UpdateCustomerVehicleRequest;
 import com.bikedone.vehicle_management_service.dto.response.CustomerVehicleResponse;
 import com.bikedone.vehicle_management_service.service.CustomerVehicleService;
 import jakarta.validation.Valid;
@@ -52,6 +53,29 @@ public class CustomerVehicleController {
 
         return ResponseEntity.ok(
                 ApiResponse.success(response, "Vehicle details fetched successfully.")
+        );
+    }
+
+    @PutMapping("/{vehicleId}")
+    public ResponseEntity<ApiResponse<CustomerVehicleResponse>> updateVehicle(
+            @PathVariable UUID vehicleId,
+            @Valid @RequestBody UpdateCustomerVehicleRequest request) {
+
+        CustomerVehicleResponse response = customerVehicleService.updateVehicle(vehicleId, request);
+
+        return ResponseEntity.ok(
+                ApiResponse.success(response, "Vehicle updated successfully.")
+        );
+    }
+
+    @PatchMapping("/{vehicleId}/default")
+    public ResponseEntity<ApiResponse<CustomerVehicleResponse>> setDefaultVehicle(
+            @PathVariable UUID vehicleId) {
+
+        CustomerVehicleResponse response = customerVehicleService.setDefaultVehicle(vehicleId);
+
+        return ResponseEntity.ok(
+                ApiResponse.success(response, "Default vehicle updated successfully.")
         );
     }
 }

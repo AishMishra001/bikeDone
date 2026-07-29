@@ -1,6 +1,7 @@
 package com.bikedone.vehicle_management_service.service;
 
 import com.bikedone.vehicle_management_service.dto.request.CreateCustomerVehicleRequest;
+import com.bikedone.vehicle_management_service.dto.request.UpdateCustomerVehicleRequest;
 import com.bikedone.vehicle_management_service.dto.response.CustomerVehicleResponse;
 
 import java.util.List;
@@ -14,4 +15,10 @@ public interface CustomerVehicleService {
 
     CustomerVehicleResponse getVehicleById(UUID vehicleId);
 
+    CustomerVehicleResponse updateVehicle(
+            UUID vehicleId,
+            UpdateCustomerVehicleRequest request
+    );
+
+    CustomerVehicleResponse setDefaultVehicle(UUID vehicleId);
 }

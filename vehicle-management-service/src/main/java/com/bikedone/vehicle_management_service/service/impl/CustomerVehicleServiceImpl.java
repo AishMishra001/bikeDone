@@ -1,5 +1,7 @@
 package com.bikedone.vehicle_management_service.service.impl;
 
+import com.bikedone.vehicle_management_service.dto.request.UpdateCustomerVehicleRequest;
+import com.bikedone.vehicle_management_service.exception.BadRequestException;
 import com.bikedone.vehicle_management_service.exception.ResourceNotFoundException;
 import com.bikedone.vehicle_management_service.dto.request.CreateCustomerVehicleRequest;
 import com.bikedone.vehicle_management_service.dto.response.CustomerVehicleResponse;
@@ -14,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.extern.slf4j.Slf4j;
 
+import java.time.Year;
 import java.util.List;
 import java.util.UUID;
 
@@ -133,5 +136,83 @@ public class CustomerVehicleServiceImpl implements CustomerVehicleService {
 
         return customerVehicleMapper.toResponse(customerVehicle);
     }
+
+    @Override
+    @Transactional
+    public CustomerVehicleResponse updateVehicle(
+            UUID vehicleId,
+            UpdateCustomerVehicleRequest request) {
+
+        UUID userId = authenticationFacade.getCurrentUserId();
+
+        log.info("Updating vehicle. vehicleId={}, userId={}", vehicleId, userId);
+
+        CustomerVehicle customerVehicle = getCustomerVehicle(vehicleId, userId);
+
+        customerVehicleValidator.validateManufacturingYear(
+                request.getManufacturingYear());
+
+        customerVehicleValidator.validateOdometer(
+                customerVehicle.getOdometerKm(),
+                request.getOdometerKm());
+
+        String color = request.getColor().trim();
+
+        customerVehicle.setColor(color);
+        customerVehicle.setManufacturingYear(request.getManufacturingYear());
+        customerVehicle.setOdometerKm(request.getOdometerKm());
+
+        CustomerVehicle updatedVehicle =
+                customerVehicleRepository.save(customerVehicle);
+
+        log.info("Vehicle updated successfully. vehicleId={}, userId={}",
+                vehicleId,
+                userId);
+
+        return customerVehicleMapper.toResponse(updatedVehicle);
+    }
+
+    private CustomerVehicle getCustomerVehicle(
+            UUID vehicleId,
+            UUID userId) {
+
+        return customerVehicleRepository
+                .findByIdAndUserIdAndIsActiveTrue(vehicleId, userId)
+                .orElseThrow(() -> {
+                    log.info("Vehicle not found. vehicleId={}, userId={}", vehicleId,userId);
+                    return new ResourceNotFoundException(
+                            "Vehicle not found."
+                    );
+                });
+    }
+
+    @Override
+    @Transactional
+    public CustomerVehicleResponse setDefaultVehicle(UUID vehicleId) {
+
+        UUID userId = authenticationFacade.getCurrentUserId();
+
+        log.info("Setting default vehicle. vehicleId={}, userId={}", vehicleId, userId);
+
+        CustomerVehicle customerVehicle = getCustomerVehicle(vehicleId, userId);
+
+        if (Boolean.TRUE.equals(customerVehicle.getIsDefault())) {
+
+            log.info("Vehicle is already default. vehicleId={}, userId={}", vehicleId, userId);
+
+            return customerVehicleMapper.toResponse(customerVehicle);
+        }
+
+        customerVehicleRepository.clearDefaultVehicle(userId);
+
+        customerVehicle.setIsDefault(true);
+
+        CustomerVehicle updatedVehicle = customerVehicleRepository.save(customerVehicle);
+
+        log.info("Default vehicle updated successfully. vehicleId={}, userId={}", vehicleId, userId);
+
+        return customerVehicleMapper.toResponse(updatedVehicle);
+    }
+
 
 }

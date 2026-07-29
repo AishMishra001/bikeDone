@@ -2,6 +2,7 @@ package com.bikedone.vehicle_management_service.validation;
 
 import com.bikedone.vehicle_management_service.entity.VehicleBrand;
 import com.bikedone.vehicle_management_service.entity.VehicleModel;
+import com.bikedone.vehicle_management_service.exception.BadRequestException;
 import com.bikedone.vehicle_management_service.exception.ConflictException;
 import com.bikedone.vehicle_management_service.exception.ResourceNotFoundException;
 import com.bikedone.vehicle_management_service.repository.CustomerVehicleRepository;
@@ -10,6 +11,7 @@ import com.bikedone.vehicle_management_service.repository.VehicleModelRepository
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.time.Year;
 import java.util.UUID;
 
 @Component
@@ -80,4 +82,21 @@ public class CustomerVehicleValidator {
         }
     }
 
+    public void validateManufacturingYear(Integer manufacturingYear) {
+
+        if (manufacturingYear > Year.now().getValue()) {
+            throw new BadRequestException("Manufacturing year cannot be in the future.");
+        }
+    }
+
+    public void validateOdometer(
+            Integer existingOdometer,
+            Integer newOdometer) {
+
+        if (newOdometer < existingOdometer) {
+            throw new BadRequestException(
+                    "Odometer reading cannot be less than existing reading."
+            );
+        }
+    }
 }
