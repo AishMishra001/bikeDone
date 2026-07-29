@@ -41,4 +41,9 @@ public interface CustomerVehicleRepository extends JpaRepository<CustomerVehicle
         AND cv.isActive = true
     """)
     void clearDefaultVehicle(UUID userId);
+
+    List<CustomerVehicle> findByUserIdAndIsActiveTrueOrderByIsDefaultDescCreatedAtDesc(UUID userId);
+
+    Optional<CustomerVehicle> findByIdAndUserIdAndIsActiveTrue(UUID id,UUID userId);
+
 }

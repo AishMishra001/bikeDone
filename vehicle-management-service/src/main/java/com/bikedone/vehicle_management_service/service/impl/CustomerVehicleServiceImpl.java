@@ -12,9 +12,12 @@ import com.bikedone.vehicle_management_service.validation.CustomerVehicleValidat
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import lombok.extern.slf4j.Slf4j;
 
+import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -91,6 +94,44 @@ public class CustomerVehicleServiceImpl implements CustomerVehicleService {
                 .orElseThrow(() -> new ResourceNotFoundException("Vehicle not found."));
 
         return customerVehicleMapper.toResponse(vehicleWithAssociations);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CustomerVehicleResponse> getMyVehicles() {
+
+        UUID userId = authenticationFacade.getCurrentUserId();
+
+        log.info("Fetching vehicles for userId={}", userId);
+
+        List<CustomerVehicle> customerVehicles =
+                customerVehicleRepository.findByUserIdAndIsActiveTrueOrderByIsDefaultDescCreatedAtDesc(userId);
+
+        log.info("Found {} active vehicle(s) for userId={}", customerVehicles.size(), userId);
+
+        return customerVehicles.stream()
+                .map(customerVehicleMapper::toResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CustomerVehicleResponse getVehicleById(UUID vehicleId) {
+
+        UUID userId = authenticationFacade.getCurrentUserId();
+
+        log.info("Fetching vehicle details for vehicleId={} and userId={}", vehicleId, userId);
+
+        CustomerVehicle customerVehicle = customerVehicleRepository
+                .findByIdAndUserIdAndIsActiveTrue(vehicleId, userId)
+                .orElseThrow(() -> {
+                    log.warn("Vehicle not found. vehicleId={}, userId={}", vehicleId, userId);
+                    return new ResourceNotFoundException("Vehicle not found.");
+                });
+
+        log.info("Vehicle details fetched successfully. vehicleId={}, userId={}", vehicleId, userId);
+
+        return customerVehicleMapper.toResponse(customerVehicle);
     }
 
 }

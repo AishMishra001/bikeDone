@@ -10,6 +10,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+import java.util.UUID;
+
 @RestController
 @RequestMapping("/api/v1/customer-vehicles")
 @RequiredArgsConstructor
@@ -29,5 +32,26 @@ public class CustomerVehicleController {
                         response,
                         "Vehicle registered successfully."
                 ));
+    }
+
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<CustomerVehicleResponse>>> getMyVehicles() {
+
+        List<CustomerVehicleResponse> response = customerVehicleService.getMyVehicles();
+
+        return ResponseEntity.ok(
+                ApiResponse.success(response, "Vehicles fetched successfully.")
+        );
+    }
+
+    @GetMapping("/{vehicleId}")
+    public ResponseEntity<ApiResponse<CustomerVehicleResponse>> getVehicleById(
+            @PathVariable UUID vehicleId) {
+
+        CustomerVehicleResponse response = customerVehicleService.getVehicleById(vehicleId);
+
+        return ResponseEntity.ok(
+                ApiResponse.success(response, "Vehicle details fetched successfully.")
+        );
     }
 }
