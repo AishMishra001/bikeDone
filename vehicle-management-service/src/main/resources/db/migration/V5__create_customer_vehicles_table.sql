@@ -10,7 +10,7 @@ CREATE TABLE customer_vehicles
 
     registration_number VARCHAR(20) NOT NULL,
 
-    manufacturing_year SMALLINT,
+    manufacturing_year INTEGER,
 
     color VARCHAR(50),
 

@@ -2,6 +2,7 @@ package com.bikedone.vehicle_management_service.security.jwt;
 
 import com.bikedone.vehicle_management_service.security.config.JwtProperties;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
@@ -71,7 +72,11 @@ public class JwtService {
 
     public boolean validateToken(String token) {
 
-        return !isTokenExpired(token);
+        try {
+            return !isTokenExpired(token);
+        } catch (JwtException | IllegalArgumentException e) {
+            return false;
+        }
 
     }
 
