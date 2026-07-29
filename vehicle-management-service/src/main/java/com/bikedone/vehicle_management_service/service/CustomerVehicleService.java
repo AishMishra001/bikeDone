@@ -21,4 +21,6 @@ public interface CustomerVehicleService {
     );
 
     CustomerVehicleResponse setDefaultVehicle(UUID vehicleId);
+
+    void deleteVehicle(UUID vehicleId);
 }

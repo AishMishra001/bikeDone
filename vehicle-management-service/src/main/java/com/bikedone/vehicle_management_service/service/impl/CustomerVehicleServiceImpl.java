@@ -214,5 +214,42 @@ public class CustomerVehicleServiceImpl implements CustomerVehicleService {
         return customerVehicleMapper.toResponse(updatedVehicle);
     }
 
+    @Override
+    @Transactional
+    public void deleteVehicle(UUID vehicleId) {
+
+        UUID userId = authenticationFacade.getCurrentUserId();
+
+        log.info("Deleting vehicle. vehicleId={}, userId={}", vehicleId, userId);
+
+        CustomerVehicle customerVehicle = getCustomerVehicle(vehicleId, userId);
+
+        boolean wasDefault = Boolean.TRUE.equals(customerVehicle.getIsDefault());
+
+        customerVehicle.setIsActive(false);
+        customerVehicle.setIsDefault(false);
+
+        customerVehicleRepository.save(customerVehicle);
+
+        if (wasDefault) {
+
+            customerVehicleRepository
+                    .findFirstByUserIdAndIsActiveTrueOrderByCreatedAtAsc(userId)
+                    .ifPresent(vehicle -> {
+
+                        vehicle.setIsDefault(true);
+
+                        customerVehicleRepository.save(vehicle);
+
+                        log.info(
+                                "Assigned new default vehicle. vehicleId={}, userId={}",
+                                vehicle.getId(),
+                                userId
+                        );
+                    });
+        }
+
+        log.info("Vehicle deleted successfully. vehicleId={}, userId={}",vehicleId, userId);
+    }
 
 }

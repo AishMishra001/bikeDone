@@ -46,4 +46,5 @@ public interface CustomerVehicleRepository extends JpaRepository<CustomerVehicle
 
     Optional<CustomerVehicle> findByIdAndUserIdAndIsActiveTrue(UUID id,UUID userId);
 
+    Optional<CustomerVehicle> findFirstByUserIdAndIsActiveTrueOrderByCreatedAtAsc(UUID userId);
 }
