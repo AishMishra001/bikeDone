@@ -117,6 +117,9 @@ public class CustomerVehicleServiceImpl implements CustomerVehicleService {
                 .toList();
     }
 
+    /**
+     * Returns all active vehicles of the authenticated customer.
+     */
     @Override
     @Transactional(readOnly = true)
     public CustomerVehicleResponse getVehicleById(UUID vehicleId) {
@@ -125,17 +128,13 @@ public class CustomerVehicleServiceImpl implements CustomerVehicleService {
 
         log.info("Fetching vehicle details for vehicleId={} and userId={}", vehicleId, userId);
 
-        CustomerVehicle customerVehicle = customerVehicleRepository
-                .findByIdAndUserIdAndIsActiveTrue(vehicleId, userId)
-                .orElseThrow(() -> {
-                    log.warn("Vehicle not found. vehicleId={}, userId={}", vehicleId, userId);
-                    return new ResourceNotFoundException("Vehicle not found.");
-                });
+        CustomerVehicle customerVehicle = getCustomerVehicle(vehicleId, userId);
 
         log.info("Vehicle details fetched successfully. vehicleId={}, userId={}", vehicleId, userId);
 
         return customerVehicleMapper.toResponse(customerVehicle);
     }
+
 
     @Override
     @Transactional
