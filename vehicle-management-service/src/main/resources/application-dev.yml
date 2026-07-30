@@ -1,8 +1,8 @@
 spring:
   datasource:
-    url: ${DB_URL}
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
+    url: ${DB_URL:jdbc:postgresql://bike-done-dev-db.cvk2aqc60r72.ap-south-1.rds.amazonaws.com:5432/bike_done_dev}
+    username: ${DB_USERNAME:bike_done_admin}
+    password: ${DB_PASSWORD:BD7ArT2c2EsjvBQ}
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -17,3 +17,5 @@ spring:
     enabled: true
     locations: classpath:db/migration
     repair-on-migrate: true
+    baseline-on-migrate: true
+    baseline-version: 0

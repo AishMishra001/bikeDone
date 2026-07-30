@@ -28,6 +28,8 @@ spring:
   flyway:
     connect-retries: 10
     table: vehicle_flyway_schema_history
+    baseline-on-migrate: true
+    baseline-version: 0
 
 server:
   port: ${PORT:8082}
