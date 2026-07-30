@@ -11,17 +11,14 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @Entity
-@Table(name = "vehicle_brands")
-public class VehicleBrand extends BaseEntity {
+@Table(name = "fuel_types")
+public class FuelType extends BaseEntity {
 
-    @Column(name = "brand_name", nullable = false, length = 100)
-    private String brandName;
+    @Column(nullable = false, unique = true, length = 30)
+    private String code;
 
-    @Column(name = "brand_code", nullable = false, length = 50)
-    private String brandCode;
-
-    @Column(name = "logo_url", length = 500)
-    private String logoUrl;
+    @Column(name = "display_name", nullable = false, length = 50)
+    private String displayName;
 
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;

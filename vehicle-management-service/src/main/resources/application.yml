@@ -28,6 +28,8 @@ spring:
   flyway:
     connect-retries: 10
     table: vehicle_flyway_schema_history
+    baseline-on-migrate: true
+    baseline-version: 0
 
 server:
   port: ${PORT:8082}
@@ -45,3 +47,7 @@ logging:
   level:
     root: INFO
     com.bikedone.vehicle_management_service: INFO
+
+jwt:
+  secret: ${JWT_SECRET}
+  access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION}
