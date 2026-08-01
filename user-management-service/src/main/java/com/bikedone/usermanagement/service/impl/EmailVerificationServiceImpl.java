@@ -123,8 +123,7 @@ public class EmailVerificationServiceImpl implements EmailVerificationService {
         emailVerificationTokenRepository.save(verificationToken);
 
         String verificationUrl =
-                emailProperties.getFrontendUrl()
-                        + "/verify-email?token=" + rawToken;
+                emailProperties.buildUrl("verify-email?token=" + rawToken);
 
         emailService.sendVerificationEmail(
                 user.getEmail(),
