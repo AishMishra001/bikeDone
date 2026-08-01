@@ -4,7 +4,9 @@ import {
   Text,
   View,
   TouchableOpacity,
-  ScrollView
+  ScrollView,
+  Alert,
+  Platform
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import InputField from '../ui/InputField';
@@ -21,6 +23,23 @@ export default function LoginScreen({ onNavigate }: LoginScreenProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const handleResendVerificationLink = async () => {
+    if (!email.trim() || !email.includes('@')) {
+      alert("Please enter your registered email address in the Email input first.");
+      return;
+    }
+    setLoading(true);
+    try {
+      await api.post('/auth/resend-email-verification', { email: email.trim() }, { requiresAuth: false });
+      alert("✉️ A new verification link has been sent to your email. Please check your inbox.");
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || "Failed to resend verification email.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLogin = async () => {
     if (!email.trim() || !email.includes('@')) {
@@ -51,7 +70,29 @@ export default function LoginScreen({ onNavigate }: LoginScreenProps) {
       }
     } catch (err: any) {
       console.error(err);
-      alert(err.message || "Login failed. Please check your credentials.");
+      const errMsg = err.message || "Login failed. Please check your credentials.";
+      if (errMsg.toLowerCase().includes("verify") || errMsg.toLowerCase().includes("verification")) {
+        if (Platform.OS === 'web') {
+          const resend = window.confirm(`${errMsg}\n\nWould you like to resend the verification link?`);
+          if (resend) {
+            handleResendVerificationLink();
+          }
+        } else {
+          Alert.alert(
+            "Email Verification Required",
+            errMsg,
+            [
+              { text: "Cancel", style: "cancel" },
+              {
+                text: "Resend Email",
+                onPress: handleResendVerificationLink
+              }
+            ]
+          );
+        }
+      } else {
+        alert(errMsg);
+      }
     } finally {
       setLoading(false);
     }

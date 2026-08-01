@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -102,6 +103,9 @@ public class BrevoEmailService implements EmailService {
         request.setSubject(subject);
 
         request.setHtmlContent(htmlContent);
+
+        // Disable Brevo link tracking so deep link URIs like bikedone:// are sent untouched
+        request.setHeaders(Map.of("X-Mailin-Track", "0"));
 
         try {
 

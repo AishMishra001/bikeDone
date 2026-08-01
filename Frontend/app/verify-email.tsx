@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ActivityIndicator, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { api } from '../services/api';
 
@@ -27,6 +27,14 @@ export default function VerifyEmailRoute() {
       });
   }, [token]);
 
+  const handleBackToLogin = () => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.location.href = '/';
+    } else {
+      router.replace('/');
+    }
+  };
+
   return (
     <View style={styles.container}>
       {status === 'loading' && (
@@ -38,7 +46,7 @@ export default function VerifyEmailRoute() {
             {status === 'success' ? 'Email Verified! 🎉' : 'Verification Failed ❌'}
           </Text>
           <Text style={styles.message}>{message}</Text>
-          <TouchableOpacity style={styles.button} onPress={() => router.replace('/')}>
+          <TouchableOpacity style={styles.button} onPress={handleBackToLogin}>
             <Text style={styles.buttonText}>Back to Login</Text>
           </TouchableOpacity>
         </View>
