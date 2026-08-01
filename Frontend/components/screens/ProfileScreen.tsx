@@ -1,14 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   StyleSheet,
   Text,
   View,
   ScrollView,
   TouchableOpacity,
-  ActivityIndicator
+  ActivityIndicator,
+  TextInput,
+  Alert
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { api } from '../../services/api';
+import { auth } from '../../config/firebase';
+import { signInWithPhoneNumber, RecaptchaVerifier } from 'firebase/auth';
 import { tokenStorage } from '../../services/tokenStorage';
 import InputField from '../ui/InputField';
 import PrimaryButton from '../ui/PrimaryButton';
@@ -23,7 +27,7 @@ interface UserProfile {
   firstName: string;
   lastName?: string;
   email: string;
-  mobileNumber: string;
+  mobileNumber?: string;
   role: string;
   status: string;
   emailVerified: boolean;
@@ -33,13 +37,33 @@ interface UserProfile {
 export default function ProfileScreen({ onNavigate }: ProfileScreenProps) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
+
+  // Edit mobile / profile
+  const [mobileNumber, setMobileNumber] = useState('');
+  const [isEditingMobile, setIsEditingMobile] = useState(false);
+  const [updatingProfile, setUpdatingProfile] = useState(false);
+
+  // Password fields
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [updatingPassword, setUpdatingPassword] = useState(false);
 
+  // OTP Verification states
+  const [showOtpSection, setShowOtpSection] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+  const [verificationProvider, setVerificationProvider] = useState<'FIREBASE' | 'AWS_SNS'>('FIREBASE');
+  const timerRef = useRef<any>(null);
+  const confirmationResultRef = useRef<any>(null);
+
   useEffect(() => {
     fetchProfile();
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
   }, []);
 
   const fetchProfile = async () => {
@@ -47,29 +71,232 @@ export default function ProfileScreen({ onNavigate }: ProfileScreenProps) {
     try {
       const data = await api.get<UserProfile>('/users/me');
       setProfile(data);
+      if (data.mobileNumber) {
+        setMobileNumber(data.mobileNumber);
+      }
     } catch (err: any) {
       console.error(err);
-      alert(err.message || "Failed to load profile details.");
+      alert(err.message || 'Failed to load profile details.');
     } finally {
       setLoadingProfile(false);
     }
   };
 
-  const handleChangePassword = async () => {
-    if (!currentPassword) {
-      alert("Current Password is required");
+  const startCooldownTimer = (seconds: number = 60) => {
+    setCooldown(seconds);
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => {
+      setCooldown((prev) => {
+        if (prev <= 1) {
+          if (timerRef.current) clearInterval(timerRef.current);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const calculateCompletion = (): number => {
+    if (!profile) return 50;
+    let score = 0;
+    if (profile.firstName) score += 25;
+    if (profile.emailVerified) score += 25;
+    if (profile.mobileNumber && profile.mobileNumber.trim().length >= 10) score += 25;
+    if (profile.mobileVerified) score += 25;
+    return score;
+  };
+
+  const completionPercentage = calculateCompletion();
+
+  const handleSaveMobileNumber = async () => {
+    const cleanMobile = mobileNumber.trim();
+    const mobileRegex = /^[6-9]\d{9}$/;
+    if (!mobileRegex.test(cleanMobile)) {
+      alert('Please enter a valid 10-digit Indian mobile number starting with 6-9.');
       return;
     }
 
-    // Backend regex validation check
+    if (!profile) return;
+
+    setUpdatingProfile(true);
+    try {
+      const updated = await api.put<UserProfile>('/users/me', {
+        firstName: profile.firstName,
+        lastName: profile.lastName || '',
+        mobileNumber: cleanMobile,
+      });
+      setProfile(updated);
+      setIsEditingMobile(false);
+      alert('Mobile number updated successfully!');
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || 'Failed to update mobile number.');
+    } finally {
+      setUpdatingProfile(false);
+    }
+  };
+
+  const handleSendOtp = async () => {
+    if (!profile?.mobileNumber || profile.mobileNumber.trim().length < 10) {
+      alert('Please save a valid mobile number first before requesting OTP.');
+      setIsEditingMobile(true);
+      return;
+    }
+
+    setSendingOtp(true);
+    try {
+      const response: any = await api.post('/mobile-verification/send-otp', {});
+      setShowOtpSection(true);
+      startCooldownTimer(60);
+
+      const isFirebase = response?.clientShouldInitiateFirebase || response?.provider === 'FIREBASE';
+      if (isFirebase) {
+        setVerificationProvider('FIREBASE');
+        let formattedPhone = profile.mobileNumber.trim();
+        if (!formattedPhone.startsWith('+')) {
+          formattedPhone = `+91${formattedPhone}`;
+        }
+
+        try {
+          let recaptchaVerifier: any = (window as any).recaptchaVerifier;
+          if (typeof document !== 'undefined' && document.body) {
+            try {
+              let container = document.getElementById('recaptcha-container');
+              if (!container) {
+                container = document.createElement('div');
+                container.id = 'recaptcha-container';
+                container.style.margin = '10px 0';
+                document.body.appendChild(container);
+              }
+              if (!recaptchaVerifier) {
+                recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+                  size: 'normal',
+                  callback: (response: any) => {
+                    console.log('reCAPTCHA solved successfully:', response);
+                  },
+                  'expired-callback': () => {
+                    console.warn('reCAPTCHA expired.');
+                  }
+                });
+                (window as any).recaptchaVerifier = recaptchaVerifier;
+              }
+            } catch (err) {
+              console.warn('Web RecaptchaVerifier init failed:', err);
+            }
+          }
+
+          if (!recaptchaVerifier) {
+            // ApplicationVerifier for React Native native runtime
+            recaptchaVerifier = {
+              type: 'recaptcha',
+              verify: async () => 'fake-recaptcha-token',
+              _reset: () => {},
+              _resetRecaptchaToken: () => {},
+              clear: () => {},
+            };
+          }
+
+          console.log('Initiating signInWithPhoneNumber for:', formattedPhone);
+          const confirmation = await signInWithPhoneNumber(auth, formattedPhone, recaptchaVerifier);
+          confirmationResultRef.current = confirmation;
+          alert(`📩 Firebase OTP sent to ${formattedPhone}.\nPlease enter the 6-digit OTP code received on your phone.`);
+        } catch (firebaseErr: any) {
+          console.error('Firebase signInWithPhoneNumber error:', firebaseErr);
+          alert(`⚠️ Firebase SMS Error: ${firebaseErr.message || firebaseErr.code || 'Failed to send SMS OTP via Firebase.'}`);
+        }
+      } else {
+        setVerificationProvider('AWS_SNS');
+        alert(`📩 OTP sent to +91 ${profile.mobileNumber}.`);
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || 'Failed to send OTP. Please try again.');
+    } finally {
+      setSendingOtp(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (cooldown > 0) return;
+
+    setSendingOtp(true);
+    try {
+      if (verificationProvider === 'FIREBASE') {
+        alert('Resend OTP initiated via Firebase.');
+      } else {
+        await api.post('/mobile-verification/resend-otp', {});
+      }
+      startCooldownTimer(60);
+      alert('📩 Resent OTP to your mobile number.');
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || 'Failed to resend OTP.');
+    } finally {
+      setSendingOtp(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    const cleanOtp = otpCode.trim();
+    if (!cleanOtp) {
+      alert('Please enter the OTP code or Firebase ID Token.');
+      return;
+    }
+
+    setVerifyingOtp(true);
+    try {
+      if (verificationProvider === 'FIREBASE') {
+        let tokenToSubmit = '';
+
+        if (confirmationResultRef.current && typeof confirmationResultRef.current.confirm === 'function') {
+          try {
+            const userCredential = await confirmationResultRef.current.confirm(cleanOtp);
+            tokenToSubmit = await userCredential.user.getIdToken();
+          } catch (confirmErr: any) {
+            console.error('Firebase OTP confirm error:', confirmErr);
+            alert(`⚠️ Firebase Verification Failed: ${confirmErr.message || 'Invalid 6-digit OTP code.'}`);
+            return;
+          }
+        } else {
+          // If no Firebase confirmation object exists (e.g. testing in dev mode or direct token input)
+          tokenToSubmit = cleanOtp;
+        }
+
+        // Submit JWT token to Backend /mobile-verification/verify-firebase-token
+        await api.post('/mobile-verification/verify-firebase-token', { firebaseIdToken: tokenToSubmit });
+      } else {
+        await api.post('/mobile-verification/verify-otp', { otp: cleanOtp });
+      }
+
+      alert('🎉 Mobile number verified successfully! Profile is now 100% complete.');
+      setShowOtpSection(false);
+      setOtpCode('');
+      // Refresh profile to reflect mobileVerified: true
+      await fetchProfile();
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || 'Invalid or expired OTP / Token. Please try again.');
+    } finally {
+      setVerifyingOtp(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!currentPassword) {
+      alert('Current Password is required');
+      return;
+    }
+
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
     if (!passwordRegex.test(newPassword)) {
-      alert("New password must be at least 8 characters, and contain at least one uppercase letter, one lowercase letter, one number, and one special character.");
+      alert(
+        'New password must be at least 8 characters, and contain at least one uppercase letter, one lowercase letter, one number, and one special character.'
+      );
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      alert("New password and confirm password do not match");
+      alert('New password and confirm password do not match');
       return;
     }
 
@@ -78,15 +305,15 @@ export default function ProfileScreen({ onNavigate }: ProfileScreenProps) {
       await api.put('/users/change-password', {
         currentPassword,
         newPassword,
-        confirmPassword
+        confirmPassword,
       });
-      alert("🎉 Password changed successfully!");
+      alert('🎉 Password changed successfully!');
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (err: any) {
       console.error(err);
-      alert(err.message || "Failed to change password. Please try again.");
+      alert(err.message || 'Failed to change password. Please try again.');
     } finally {
       setUpdatingPassword(false);
     }
@@ -119,6 +346,28 @@ export default function ProfileScreen({ onNavigate }: ProfileScreenProps) {
         ) : (
           profile && (
             <>
+              {/* Profile Completion Progress Header */}
+              <View style={styles.completionHeaderCard}>
+                <View style={styles.completionRow}>
+                  <View style={styles.completionTextContainer}>
+                    <Text style={styles.completionCardTitle}>Profile Completion</Text>
+                    <Text style={styles.completionCardSub}>
+                      {completionPercentage === 100
+                        ? 'Your profile is 100% verified and complete!'
+                        : 'Verify mobile number to get 100% profile score.'}
+                    </Text>
+                  </View>
+                  <View style={styles.percentageCircle}>
+                    <Text style={styles.percentageCircleText}>{completionPercentage}%</Text>
+                  </View>
+                </View>
+
+                {/* Progress bar track */}
+                <View style={styles.progressTrack}>
+                  <View style={[styles.progressFill, { width: `${completionPercentage}%` }]} />
+                </View>
+              </View>
+
               {/* Profile details card */}
               <View style={styles.detailsCard}>
                 <View style={styles.avatarRow}>
@@ -147,30 +396,157 @@ export default function ProfileScreen({ onNavigate }: ProfileScreenProps) {
                   </View>
                   <View style={[styles.badge, profile.emailVerified ? styles.verifiedBadge : styles.unverifiedBadge]}>
                     <Text style={[styles.badgeText, profile.emailVerified ? styles.verifiedText : styles.unverifiedText]}>
-                      {profile.emailVerified ? 'Verified' : 'Unverified'}
+                      {profile.emailVerified ? 'Verified ✓' : 'Unverified'}
                     </Text>
                   </View>
                 </View>
 
-                {/* Mobile info */}
+                {/* Mobile info & edit */}
                 <View style={styles.infoRow}>
                   <Feather name="phone" size={18} color="#6b7280" style={styles.infoIcon} />
                   <View style={styles.infoTextContainer}>
                     <Text style={styles.infoLabel}>MOBILE NUMBER</Text>
-                    <Text style={styles.infoValue}>{profile.mobileNumber}</Text>
+                    {isEditingMobile ? (
+                      <TextInput
+                        style={styles.mobileInput}
+                        value={mobileNumber}
+                        onChangeText={setMobileNumber}
+                        keyboardType="phone-pad"
+                        placeholder="Enter 10-digit mobile"
+                        maxLength={10}
+                      />
+                    ) : (
+                      <Text style={styles.infoValue}>{profile.mobileNumber || 'Not provided'}</Text>
+                    )}
                   </View>
                   <View style={[styles.badge, profile.mobileVerified ? styles.verifiedBadge : styles.unverifiedBadge]}>
                     <Text style={[styles.badgeText, profile.mobileVerified ? styles.verifiedText : styles.unverifiedText]}>
-                      {profile.mobileVerified ? 'Verified' : 'Unverified'}
+                      {profile.mobileVerified ? 'Verified ✓' : 'Unverified'}
                     </Text>
                   </View>
                 </View>
+
+                {/* Edit Mobile / Save Mobile Actions */}
+                {!profile.mobileVerified && (
+                  <View style={styles.mobileActionsContainer}>
+                    {isEditingMobile ? (
+                      <TouchableOpacity
+                        style={styles.saveMobileButton}
+                        onPress={handleSaveMobileNumber}
+                        disabled={updatingProfile}
+                      >
+                        {updatingProfile ? (
+                          <ActivityIndicator color="#ffffff" size="small" />
+                        ) : (
+                          <Text style={styles.saveMobileButtonText}>Save Mobile Number</Text>
+                        )}
+                      </TouchableOpacity>
+                    ) : (
+                      <View style={styles.actionButtonsRow}>
+                        <TouchableOpacity
+                          style={styles.editMobileButton}
+                          onPress={() => setIsEditingMobile(true)}
+                        >
+                          <Feather name="edit-2" size={14} color="#374151" style={{ marginRight: 4 }} />
+                          <Text style={styles.editMobileButtonText}>
+                            {profile.mobileNumber ? 'Change Number' : 'Add Number'}
+                          </Text>
+                        </TouchableOpacity>
+
+                        {!showOtpSection && (
+                          <TouchableOpacity
+                            style={styles.sendOtpButton}
+                            onPress={handleSendOtp}
+                            disabled={sendingOtp}
+                          >
+                            {sendingOtp ? (
+                              <ActivityIndicator color="#ffffff" size="small" />
+                            ) : (
+                              <>
+                                <Feather name="send" size={14} color="#ffffff" style={{ marginRight: 6 }} />
+                                <Text style={styles.sendOtpButtonText}>Send OTP</Text>
+                              </>
+                            )}
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    )}
+                  </View>
+                )}
               </View>
+
+              {/* OTP Verification Section / Card */}
+              {showOtpSection && !profile.mobileVerified && (
+                <View style={styles.otpCard}>
+                  <View style={styles.otpCardHeader}>
+                    <View style={styles.otpIconBox}>
+                      <Feather name="shield" size={20} color="#f97316" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.otpTitle}>Mobile OTP Verification</Text>
+                      <Text style={styles.otpSubtitle}>
+                        Enter 6-digit code sent to +91 {profile.mobileNumber}
+                      </Text>
+                    </View>
+                    <TouchableOpacity onPress={() => setShowOtpSection(false)}>
+                      <Feather name="x" size={20} color="#9ca3af" />
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Local Testing / Firebase Banner */}
+                  <View style={styles.localTestingBanner}>
+                    <Feather name="info" size={14} color="#2563eb" style={{ marginRight: 6 }} />
+                    <Text style={styles.localTestingText}>
+                      {verificationProvider === 'FIREBASE'
+                        ? 'Firebase Authentication: Enter the OTP received on your mobile or test ID token.'
+                        : 'Expo Local Testing: Check backend terminal logs for the 6-digit OTP code.'}
+                    </Text>
+                  </View>
+
+                  {/* OTP Code Input */}
+                  <View style={styles.otpInputRow}>
+                    <TextInput
+                      style={styles.otpCodeInput}
+                      value={otpCode}
+                      onChangeText={setOtpCode}
+                      placeholder="Enter 6-digit OTP"
+                      placeholderTextColor="#9ca3af"
+                      keyboardType="number-pad"
+                      maxLength={6}
+                    />
+                  </View>
+
+                  {/* Actions */}
+                  <PrimaryButton
+                    title="Verify OTP Code"
+                    loading={verifyingOtp}
+                    onPress={handleVerifyOtp}
+                    style={{ marginTop: 12 }}
+                  />
+
+                  <View style={styles.resendRow}>
+                    <Text style={styles.resendLabel}>{"Didn't receive code? "}</Text>
+                    <TouchableOpacity
+                      onPress={handleResendOtp}
+                      disabled={cooldown > 0 || sendingOtp}
+                    >
+                      <Text
+                        style={[
+                          styles.resendLink,
+                          (cooldown > 0 || sendingOtp) && { color: '#9ca3af' }
+                        ]}
+                      >
+                        {cooldown > 0 ? `Resend OTP in ${cooldown}s` : 'Resend OTP'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
 
               {/* Password change card */}
               <View style={styles.passwordCard}>
                 <Text style={styles.sectionTitle}>Change Password</Text>
-                
+
                 <InputField
                   iconName="lock"
                   placeholder="Current Password"
@@ -260,6 +636,65 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     fontSize: 14,
   },
+  completionHeaderCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#ffedd5',
+    shadowColor: '#f97316',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  completionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  completionTextContainer: {
+    flex: 1,
+    marginRight: 12,
+  },
+  completionCardTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#111827',
+  },
+  completionCardSub: {
+    fontSize: 12,
+    color: '#6b7280',
+    marginTop: 2,
+  },
+  percentageCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#fff3eb',
+    borderWidth: 2,
+    borderColor: '#f97316',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  percentageCircleText: {
+    color: '#f97316',
+    fontWeight: 'bold',
+    fontSize: 13,
+  },
+  progressTrack: {
+    height: 8,
+    backgroundColor: '#f3f4f6',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#f97316',
+    borderRadius: 4,
+  },
   detailsCard: {
     backgroundColor: '#ffffff',
     borderRadius: 16,
@@ -334,6 +769,17 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginTop: 2,
   },
+  mobileInput: {
+    height: 38,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    fontSize: 14,
+    color: '#111827',
+    marginTop: 4,
+    backgroundColor: '#ffffff',
+  },
   badge: {
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -354,6 +800,139 @@ const styles = StyleSheet.create({
   },
   unverifiedText: {
     color: '#dc2626',
+  },
+  mobileActionsContainer: {
+    marginTop: 8,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderColor: '#f3f4f6',
+  },
+  actionButtonsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  editMobileButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    backgroundColor: '#f9fafb',
+  },
+  editMobileButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  saveMobileButton: {
+    backgroundColor: '#3b82f6',
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  saveMobileButtonText: {
+    color: '#ffffff',
+    fontWeight: 'bold',
+    fontSize: 13,
+  },
+  sendOtpButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f97316',
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+  },
+  sendOtpButtonText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  otpCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 18,
+    borderWidth: 2,
+    borderColor: '#f97316',
+    marginBottom: 20,
+    shadowColor: '#f97316',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  otpCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  otpIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#fff3eb',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  otpTitle: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: '#111827',
+  },
+  otpSubtitle: {
+    fontSize: 12,
+    color: '#6b7280',
+    marginTop: 2,
+  },
+  localTestingBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#eff6ff',
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 14,
+  },
+  localTestingText: {
+    fontSize: 11,
+    color: '#1e40af',
+    flex: 1,
+    lineHeight: 16,
+  },
+  otpInputRow: {
+    marginBottom: 12,
+  },
+  otpCodeInput: {
+    height: 50,
+    borderWidth: 1.5,
+    borderColor: '#d1d5db',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#111827',
+    letterSpacing: 4,
+    textAlign: 'center',
+    backgroundColor: '#fafafa',
+  },
+  resendRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 14,
+  },
+  resendLabel: {
+    fontSize: 12,
+    color: '#6b7280',
+  },
+  resendLink: {
+    fontSize: 12,
+    color: '#f97316',
+    fontWeight: 'bold',
   },
   passwordCard: {
     backgroundColor: '#ffffff',

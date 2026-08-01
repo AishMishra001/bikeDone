@@ -44,8 +44,6 @@ public class AwsMobileVerificationStrategy implements MobileVerificationStrategy
     public MobileVerificationResponse sendOtp(User user) {
         validateResendCooldown(user);
 
-        mobileVerificationOtpRepository.deleteByUser_Id(user.getId());
-
         String otp = otpGenerator.generateOtp();
         MobileVerificationOtp entity = buildOtpEntity(user, otp);
         mobileVerificationOtpRepository.save(entity);
@@ -192,12 +190,18 @@ public class AwsMobileVerificationStrategy implements MobileVerificationStrategy
     }
 
     private MobileVerificationOtp buildOtpEntity(User user, String otp) {
-        MobileVerificationOtp entity = new MobileVerificationOtp();
-        entity.setId(UUID.randomUUID());
-        entity.setUser(user);
+        MobileVerificationOtp entity = mobileVerificationOtpRepository.findByUser(user)
+                .orElseGet(() -> {
+                    MobileVerificationOtp newEntity = new MobileVerificationOtp();
+                    newEntity.setId(UUID.randomUUID());
+                    newEntity.setUser(user);
+                    return newEntity;
+                });
+
         entity.setMobileNumber(user.getMobileNumber());
         entity.setOtpHash(passwordEncoder.encode(otp));
         entity.setAttempts(0);
+        entity.setVerifiedAt(null);
 
         LocalDateTime now = dateTimeProvider.now();
         entity.setCreatedAt(now);

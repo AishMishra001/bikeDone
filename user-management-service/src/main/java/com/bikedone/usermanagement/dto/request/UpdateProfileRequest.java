@@ -13,4 +13,7 @@ public class UpdateProfileRequest {
     private String firstName;
 
     private String lastName;
+
+    @Pattern(regexp = "^[6-9]\\d{9}$", message = "Invalid Mobile Number")
+    private String mobileNumber;
 }

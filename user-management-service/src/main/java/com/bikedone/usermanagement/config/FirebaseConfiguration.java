@@ -1,5 +1,8 @@
 package com.bikedone.usermanagement.config;
 
+import com.bikedone.usermanagement.entity.IntegrationConfiguration;
+import com.bikedone.usermanagement.enums.IntegrationProvider;
+import com.bikedone.usermanagement.repository.IntegrationConfigurationRepository;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
@@ -8,11 +11,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.io.ClassPathResource;
-import org.springframework.core.io.FileSystemResource;
-import org.springframework.core.io.Resource;
 
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 
 @Slf4j
@@ -20,7 +22,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class FirebaseConfiguration {
 
-    private final FirebaseProperties firebaseProperties;
+    private final IntegrationConfigurationRepository integrationConfigurationRepository;
 
     @Bean
     public Optional<FirebaseApp> firebaseApp() {
@@ -29,47 +31,41 @@ public class FirebaseConfiguration {
         }
 
         try {
-            String path = firebaseProperties.getServiceAccountPath();
-            if (path == null || path.isBlank()) {
-                log.warn("Firebase service account path is not specified. Firebase Admin SDK will not be initialized.");
-                return Optional.empty();
+            InputStream serviceAccount = null;
+
+            // Load JSON configuration directly from Database (integration_configuration table)
+            Optional<IntegrationConfiguration> dbConfig = integrationConfigurationRepository.findByProviderAndIsActiveTrue(IntegrationProvider.FIREBASE);
+            if (dbConfig.isPresent() && dbConfig.get().getConfiguration() != null 
+                    && !dbConfig.get().getConfiguration().isBlank() 
+                    && !dbConfig.get().getConfiguration().trim().equals("{}")) {
+                log.info("Loading Firebase service account configuration directly from database (integration_configuration).");
+                serviceAccount = new ByteArrayInputStream(dbConfig.get().getConfiguration().getBytes(StandardCharsets.UTF_8));
             }
 
-            InputStream serviceAccount;
-            if (path.startsWith("classpath:")) {
-                Resource resource = new ClassPathResource(path.replace("classpath:", ""));
-                if (!resource.exists()) {
-                    log.warn("Firebase service account file not found on classpath: {}. Firebase Admin SDK will not be initialized.", path);
-                    return Optional.empty();
-                }
-                serviceAccount = resource.getInputStream();
-            } else {
-                Resource resource = new FileSystemResource(path);
-                if (!resource.exists()) {
-                    log.warn("Firebase service account file not found at path: {}. Firebase Admin SDK will not be initialized.", path);
-                    return Optional.empty();
-                }
-                serviceAccount = resource.getInputStream();
+            if (serviceAccount == null) {
+                log.warn("Firebase service account configuration not found in DB (integration_configuration). Firebase Admin SDK will not be initialized.");
+                return Optional.empty();
             }
 
             FirebaseOptions options = FirebaseOptions.builder()
                     .setCredentials(GoogleCredentials.fromStream(serviceAccount))
                     .build();
 
-            log.info("Successfully initialized FirebaseApp with service account: {}", path);
+            log.info("Successfully initialized FirebaseApp with Service Account Credentials from Database.");
             return Optional.of(FirebaseApp.initializeApp(options));
         } catch (Exception e) {
-            log.error("Failed to initialize Firebase App: {}", e.getMessage());
+            log.error("Failed to initialize Firebase App from DB configuration", e);
             return Optional.empty();
         }
     }
 
     @Bean
-    public Optional<FirebaseAuth> firebaseAuth(Optional<FirebaseApp> firebaseApp) {
-        if (firebaseApp.isEmpty()) {
-            log.warn("FirebaseApp is empty, FirebaseAuth bean will be empty.");
+    public Optional<FirebaseAuth> firebaseAuth() {
+        if (FirebaseApp.getApps().isEmpty()) {
+            log.warn("FirebaseApp is not initialized, FirebaseAuth bean will be empty.");
             return Optional.empty();
         }
-        return Optional.of(FirebaseAuth.getInstance(firebaseApp.get()));
+        log.info("Successfully created FirebaseAuth bean from active FirebaseApp.");
+        return Optional.of(FirebaseAuth.getInstance());
     }
 }

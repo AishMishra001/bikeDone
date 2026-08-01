@@ -45,26 +45,12 @@ export default function App() {
           hostname.includes('reset-password') ||
           urlStr.includes('reset-password');
 
-        const isVerifyEmail =
-          path.includes('verify-email') ||
-          hostname.includes('verify-email') ||
-          urlStr.includes('verify-email');
 
         if (isResetPassword) {
           if (token) {
             setResetToken(token);
           }
           setCurrentScreen('ResetPassword');
-        } else if (isVerifyEmail) {
-          if (token) {
-            try {
-              await api.get(`/auth/verify-email?token=${token}`, { requiresAuth: false });
-              alert('✅ Email verified successfully! You can now log in.');
-            } catch (err: any) {
-              alert(err.message || 'Email verification failed or link has expired.');
-            }
-          }
-          setCurrentScreen('Login');
         }
       } catch (err) {
         console.error('Error handling deep link:', err);
