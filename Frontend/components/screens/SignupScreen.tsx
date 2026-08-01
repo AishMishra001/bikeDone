@@ -4,8 +4,10 @@ import {
   Text,
   View,
   TouchableOpacity,
-  ScrollView
+  ScrollView,
+  Modal
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import InputField from '../ui/InputField';
 import PrimaryButton from '../ui/PrimaryButton';
 import BackButton from '../ui/BackButton';
@@ -23,6 +25,11 @@ export default function SignupScreen({ onNavigate }: SignupScreenProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  
+  // Verification modal state
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
+  const [registeredEmail, setRegisteredEmail] = useState('');
+  const [resending, setResending] = useState(false);
 
   const handleSignup = async () => {
     if (!firstName.trim()) {
@@ -53,13 +60,26 @@ export default function SignupScreen({ onNavigate }: SignupScreenProps) {
         password
       }, { requiresAuth: false });
       
-      alert("🎉 Customer registered successfully! Please log in.");
-      onNavigate('Login');
+      setRegisteredEmail(email.trim());
+      setShowVerificationModal(true);
     } catch (err: any) {
       console.error(err);
       alert(err.message || "Registration failed. Please check your details and try again.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    if (!registeredEmail) return;
+    setResending(true);
+    try {
+      await api.post('/auth/resend-email-verification', { email: registeredEmail }, { requiresAuth: false });
+      alert('✉️ Verification email resent! Please check your inbox.');
+    } catch (err: any) {
+      alert(err.message || 'Failed to resend verification email.');
+    } finally {
+      setResending(false);
     }
   };
 
@@ -140,6 +160,58 @@ export default function SignupScreen({ onNavigate }: SignupScreenProps) {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Email Verification Notice Modal */}
+      <Modal
+        visible={showVerificationModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          setShowVerificationModal(false);
+          onNavigate('Login');
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.iconCircle}>
+              <Feather name="mail" size={36} color="#f97316" />
+            </View>
+
+            <Text style={styles.modalTitle}>Check Your Email ✉️</Text>
+            <Text style={styles.modalSubtitle}>
+              We have sent a verification link to:
+            </Text>
+            <Text style={styles.modalEmailText}>{registeredEmail}</Text>
+
+            <View style={styles.warningBox}>
+              <Feather name="alert-triangle" size={18} color="#d97706" style={{ marginRight: 8, marginTop: 2 }} />
+              <Text style={styles.warningText}>
+                <Text style={{ fontWeight: 'bold' }}>Important: </Text>
+                You cannot log in until your email address is verified. Please check your inbox and verify your token first.
+              </Text>
+            </View>
+
+            <PrimaryButton
+              title="Go to Login"
+              onPress={() => {
+                setShowVerificationModal(false);
+                onNavigate('Login');
+              }}
+              style={{ width: '100%', marginTop: 8 }}
+            />
+
+            <TouchableOpacity
+              style={styles.resendButton}
+              disabled={resending}
+              onPress={handleResendVerification}
+            >
+              <Text style={styles.resendText}>
+                {resending ? 'Sending...' : "Didn't receive email? Resend link"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -193,4 +265,81 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     fontSize: 14,
   },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  modalContent: {
+    width: '100%',
+    backgroundColor: '#ffffff',
+    borderRadius: 24,
+    padding: 24,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  iconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#fff3eb',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#ffe4c6',
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#111827',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: '#6b7280',
+    textAlign: 'center',
+  },
+  modalEmailText: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: '#f97316',
+    marginTop: 4,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  warningBox: {
+    flexDirection: 'row',
+    backgroundColor: '#fffbe6',
+    borderWidth: 1,
+    borderColor: '#fef08a',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 20,
+    alignItems: 'flex-start',
+  },
+  warningText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#92400e',
+    lineHeight: 18,
+  },
+  resendButton: {
+    marginTop: 16,
+    paddingVertical: 8,
+  },
+  resendText: {
+    fontSize: 13,
+    color: '#f97316',
+    fontWeight: '600',
+    textDecorationLine: 'underline',
+  },
 });
+

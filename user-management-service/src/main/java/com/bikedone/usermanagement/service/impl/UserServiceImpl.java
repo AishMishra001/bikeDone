@@ -50,12 +50,15 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findUserWithRoleByEmail(principal.getUsername())
                 .orElseThrow(() -> new BadRequestException("User not found."));
 
+        if (request.getMobileNumber() != null && !request.getMobileNumber().equals(user.getMobileNumber())) {
+            user.setMobileVerified(false);
+        }
+
         userMapper.updateUserFromRequest(request, user);
 
         User updatedUser = userRepository.save(user);
 
         return userMapper.toProfileResponse(updatedUser);
-
     }
 
     @Override

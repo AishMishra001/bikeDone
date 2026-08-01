@@ -19,8 +19,12 @@ public class IntegrationConfigurationServiceImpl
     public IntegrationConfiguration getActiveConfiguration() {
 
         return repository.findByIsActiveTrue()
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "No active integration configuration found"));
+                .orElseGet(() -> {
+                    IntegrationConfiguration config = new IntegrationConfiguration();
+                    config.setProvider(IntegrationProvider.FIREBASE);
+                    config.setConfigurationName("DEFAULT_FIREBASE");
+                    config.setIsActive(true);
+                    return config;
+                });
     }
 }

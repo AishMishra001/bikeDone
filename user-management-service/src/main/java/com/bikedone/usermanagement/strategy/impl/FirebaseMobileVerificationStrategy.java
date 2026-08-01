@@ -9,6 +9,7 @@ import com.bikedone.usermanagement.enums.IntegrationProvider;
 import com.bikedone.usermanagement.exception.BadRequestException;
 import com.bikedone.usermanagement.repository.UserRepository;
 import com.bikedone.usermanagement.strategy.MobileVerificationStrategy;
+import com.google.firebase.FirebaseApp;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseToken;
 import lombok.RequiredArgsConstructor;
@@ -61,12 +62,13 @@ public class FirebaseMobileVerificationStrategy implements MobileVerificationStr
 
     @Override
     public void verifyFirebaseToken(User user, String firebaseIdToken) {
-        if (firebaseAuth.isEmpty()) {
+        if (FirebaseApp.getApps().isEmpty()) {
             throw new BadRequestException("Firebase Admin SDK is not initialized. Please verify Firebase service account configuration.");
         }
 
         try {
-            FirebaseToken decodedToken = firebaseAuth.get().verifyIdToken(firebaseIdToken);
+            FirebaseAuth auth = FirebaseAuth.getInstance();
+            FirebaseToken decodedToken = auth.verifyIdToken(firebaseIdToken);
 
             Logger.printLog(
                     LogLevel.INFO,

@@ -14,4 +14,5 @@ public interface IntegrationConfigurationRepository
 
     Optional<IntegrationConfiguration> findByIsActiveTrue();
 
+    Optional<IntegrationConfiguration> findByProviderAndIsActiveTrue(IntegrationProvider provider);
 }
