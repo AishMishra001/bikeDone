@@ -13,4 +13,7 @@ public interface RequestTypeRepository
     List<RequestType> findByActiveTrueOrderByDisplayNameAsc();
 
     Optional<RequestType> findByRequestTypeCode(RequestTypeCode code);
+
+    Optional<RequestType> findByIdAndActiveTrue(Long id);
+
 }
