@@ -1,5 +1,8 @@
 package com.bikedone.vehicle_management_service.service.impl;
 
+import com.bikedone.vehicle_management_service.common.logging.LogLevel;
+import com.bikedone.vehicle_management_service.common.logging.LogStep;
+import com.bikedone.vehicle_management_service.common.logging.Logger;
 import com.bikedone.vehicle_management_service.dto.request.CancelServiceRequestRequest;
 import com.bikedone.vehicle_management_service.dto.request.CreateServiceRequestRequest;
 import com.bikedone.vehicle_management_service.dto.response.CreateServiceRequestResponse;
@@ -28,14 +31,12 @@ import com.bikedone.vehicle_management_service.util.ServiceRequestTimelineFactor
 import com.bikedone.vehicle_management_service.validation.CancelServiceRequestValidator;
 import com.bikedone.vehicle_management_service.validation.CreateServiceRequestValidator;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -63,7 +64,14 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
 
         UUID customerId = authenticationFacade.getCurrentUserId();
 
-        log.info("Creating service request for customerId={}", customerId);
+        Logger.printLog(
+                LogLevel.INFO,
+                LogStep.SERVICE_REQUEST,
+                "Creating service request",
+                "customerId=" + customerId,
+                customerId.toString(),
+                null
+        );
 
         createServiceRequestValidator.validate(request);
 
@@ -85,10 +93,13 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
 
         String requestNumber = requestNumberGenerator.generate();
 
-        log.info(
-                "Generated request number={} for customerId={}",
-                requestNumber,
-                customerId
+        Logger.printLog(
+                LogLevel.INFO,
+                LogStep.SERVICE_REQUEST,
+                "Request number generated",
+                "requestNumber=" + requestNumber + " | customerId=" + customerId,
+                customerId.toString(),
+                null
         );
 
         ServiceRequest serviceRequest =
@@ -131,15 +142,17 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
 
         ServiceRequest savedRequest = serviceRequestRepository.save(serviceRequest);
 
-        log.info(
-                "Service request created successfully. requestId={}, requestNumber={}",
-                savedRequest.getId(),
-                savedRequest.getRequestNumber()
+        Logger.printLog(
+                LogLevel.INFO,
+                LogStep.SERVICE_REQUEST,
+                "Service request created successfully",
+                "requestId=" + savedRequest.getId() + " | requestNumber=" + savedRequest.getRequestNumber() + " | customerId=" + customerId,
+                customerId.toString(),
+                savedRequest.getId().toString()
         );
 
         return serviceRequestMapper.toResponse(savedRequest);
     }
-
 
     @Override
     @Transactional(readOnly = true)
@@ -147,13 +160,31 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
 
         UUID customerId = authenticationFacade.getCurrentUserId();
 
-        log.info("Fetching service requests for customerId={}", customerId);
+        Logger.printLog(
+                LogLevel.INFO,
+                LogStep.SERVICE_REQUEST,
+                "Fetching service requests for customer",
+                "customerId=" + customerId,
+                customerId.toString(),
+                null
+        );
 
-        return serviceRequestRepository
+        List<MyServiceRequestResponse> result = serviceRequestRepository
                 .findByCustomerIdAndIsActiveTrueOrderByCreatedAtDesc(customerId)
                 .stream()
                 .map(serviceRequestMapper::toMyServiceRequestResponse)
                 .toList();
+
+        Logger.printLog(
+                LogLevel.INFO,
+                LogStep.SERVICE_REQUEST,
+                "Service requests fetched successfully",
+                "Returned " + result.size() + " request(s) for customerId=" + customerId,
+                customerId.toString(),
+                null
+        );
+
+        return result;
     }
 
     @Override
@@ -163,10 +194,13 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
 
         UUID customerId = authenticationFacade.getCurrentUserId();
 
-        log.info(
-                "Cancelling service request. requestId={}, customerId={}",
-                requestId,
-                customerId
+        Logger.printLog(
+                LogLevel.INFO,
+                LogStep.SERVICE_REQUEST,
+                "Cancelling service request",
+                "requestId=" + requestId + " | customerId=" + customerId,
+                customerId.toString(),
+                requestId.toString()
         );
 
         ServiceRequest serviceRequest =
@@ -175,10 +209,17 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
                                 requestId,
                                 customerId
                         )
-                        .orElseThrow(() ->
-                                new ResourceNotFoundException(
-                                        "Service request not found."
-                                ));
+                        .orElseThrow(() -> {
+                            Logger.printLog(
+                                    LogLevel.WARN,
+                                    LogStep.SERVICE_REQUEST,
+                                    "Service request not found for cancellation",
+                                    "requestId=" + requestId + " | customerId=" + customerId,
+                                    customerId.toString(),
+                                    requestId.toString()
+                            );
+                            return new ResourceNotFoundException("Service request not found.");
+                        });
 
         cancelServiceRequestValidator.validate(serviceRequest);
 
@@ -198,13 +239,15 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
         ServiceRequest savedRequest =
                 serviceRequestRepository.save(serviceRequest);
 
-        log.info(
-                "Service request cancelled successfully. requestId={}",
-                savedRequest.getId()
+        Logger.printLog(
+                LogLevel.INFO,
+                LogStep.SERVICE_REQUEST,
+                "Service request cancelled successfully",
+                "requestId=" + savedRequest.getId() + " | customerId=" + customerId,
+                customerId.toString(),
+                savedRequest.getId().toString()
         );
 
         return serviceRequestMapper.toResponse(savedRequest);
     }
-
-
 }

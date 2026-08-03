@@ -1,6 +1,9 @@
 package com.bikedone.vehicle_management_service.controller;
 
 import com.bikedone.vehicle_management_service.common.datetime.DateTimeProvider;
+import com.bikedone.vehicle_management_service.common.logging.LogLevel;
+import com.bikedone.vehicle_management_service.common.logging.LogStep;
+import com.bikedone.vehicle_management_service.common.logging.Logger;
 import com.bikedone.vehicle_management_service.common.response.ApiResponse;
 import com.bikedone.vehicle_management_service.dto.response.VehicleBrandResponse;
 import com.bikedone.vehicle_management_service.security.authentication.AuthenticationFacade;
@@ -26,7 +29,25 @@ public class VehicleBrandController {
     @GetMapping
     public ResponseEntity<ApiResponse<List<VehicleBrandResponse>>> getAllBrands() {
 
+        Logger.printLog(
+                LogLevel.INFO,
+                LogStep.VEHICLE_BRAND,
+                "Fetch all vehicle brands request received",
+                "Fetching all active vehicle brands",
+                null,
+                null
+        );
+
         List<VehicleBrandResponse> response = vehicleBrandService.getAllBrands();
+
+        Logger.printLog(
+                LogLevel.INFO,
+                LogStep.VEHICLE_BRAND,
+                "Vehicle brands fetched successfully",
+                "Returned " + response.size() + " brand(s)",
+                null,
+                null
+        );
 
         return ResponseEntity.ok(
                 ApiResponse.<List<VehicleBrandResponse>>builder()
@@ -38,11 +59,19 @@ public class VehicleBrandController {
         );
     }
 
-
     @GetMapping("/me")
     public ApiResponse<Object> currentUser() {
 
         JwtUser user = authenticationFacade.getCurrentUser();
+
+        Logger.printLog(
+                LogLevel.INFO,
+                LogStep.VEHICLE_BRAND,
+                "Current user info fetched",
+                "userId=" + user.getUserId(),
+                user.getUserId() != null ? user.getUserId().toString() : null,
+                null
+        );
 
         return ApiResponse.builder()
                 .success(true)

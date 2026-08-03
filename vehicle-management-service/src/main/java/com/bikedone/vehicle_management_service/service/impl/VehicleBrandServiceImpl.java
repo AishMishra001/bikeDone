@@ -1,5 +1,8 @@
 package com.bikedone.vehicle_management_service.service.impl;
 
+import com.bikedone.vehicle_management_service.common.logging.LogLevel;
+import com.bikedone.vehicle_management_service.common.logging.LogStep;
+import com.bikedone.vehicle_management_service.common.logging.Logger;
 import com.bikedone.vehicle_management_service.dto.response.VehicleBrandResponse;
 import com.bikedone.vehicle_management_service.entity.VehicleBrand;
 import com.bikedone.vehicle_management_service.mapper.VehicleBrandMapper;
@@ -20,8 +23,29 @@ public class VehicleBrandServiceImpl implements VehicleBrandService {
     @Override
     public List<VehicleBrandResponse> getAllBrands() {
 
-        List<VehicleBrand> brands = vehicleBrandRepository.findAllByIsActiveTrueOrderByBrandNameAsc();
+        Logger.printLog(
+                LogLevel.INFO,
+                LogStep.VEHICLE_BRAND,
+                "Fetching all vehicle brands",
+                "Querying active brands ordered by brandName",
+                null,
+                null
+        );
 
-        return vehicleBrandMapper.toResponse(brands);
+        List<VehicleBrand> brands =
+                vehicleBrandRepository.findAllByIsActiveTrueOrderByBrandNameAsc();
+
+        List<VehicleBrandResponse> result = vehicleBrandMapper.toResponse(brands);
+
+        Logger.printLog(
+                LogLevel.INFO,
+                LogStep.VEHICLE_BRAND,
+                "Vehicle brands fetched successfully",
+                "Returned " + result.size() + " brand(s)",
+                null,
+                null
+        );
+
+        return result;
     }
 }

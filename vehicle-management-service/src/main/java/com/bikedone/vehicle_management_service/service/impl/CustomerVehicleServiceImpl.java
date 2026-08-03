@@ -1,7 +1,9 @@
 package com.bikedone.vehicle_management_service.service.impl;
 
+import com.bikedone.vehicle_management_service.common.logging.LogLevel;
+import com.bikedone.vehicle_management_service.common.logging.LogStep;
+import com.bikedone.vehicle_management_service.common.logging.Logger;
 import com.bikedone.vehicle_management_service.dto.request.UpdateCustomerVehicleRequest;
-import com.bikedone.vehicle_management_service.exception.BadRequestException;
 import com.bikedone.vehicle_management_service.exception.ResourceNotFoundException;
 import com.bikedone.vehicle_management_service.dto.request.CreateCustomerVehicleRequest;
 import com.bikedone.vehicle_management_service.dto.response.CustomerVehicleResponse;
@@ -14,13 +16,10 @@ import com.bikedone.vehicle_management_service.validation.CustomerVehicleValidat
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import lombok.extern.slf4j.Slf4j;
 
-import java.time.Year;
 import java.util.List;
 import java.util.UUID;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -36,6 +35,15 @@ public class CustomerVehicleServiceImpl implements CustomerVehicleService {
             CreateCustomerVehicleRequest request) {
 
         UUID userId = authenticationFacade.getCurrentUserId();
+
+        Logger.printLog(
+                LogLevel.INFO,
+                LogStep.CUSTOMER_VEHICLE,
+                "Creating vehicle",
+                "userId=" + userId + " | registrationNumber=" + request.getRegistrationNumber(),
+                userId.toString(),
+                null
+        );
 
         String registrationNumber = request.getRegistrationNumber()
                 .trim()
@@ -96,6 +104,15 @@ public class CustomerVehicleServiceImpl implements CustomerVehicleService {
                 .findByIdWithAssociations(savedVehicle.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Vehicle not found."));
 
+        Logger.printLog(
+                LogLevel.INFO,
+                LogStep.CUSTOMER_VEHICLE,
+                "Vehicle created successfully",
+                "vehicleId=" + savedVehicle.getId() + " | userId=" + userId,
+                userId.toString(),
+                savedVehicle.getId().toString()
+        );
+
         return customerVehicleMapper.toResponse(vehicleWithAssociations);
     }
 
@@ -105,36 +122,60 @@ public class CustomerVehicleServiceImpl implements CustomerVehicleService {
 
         UUID userId = authenticationFacade.getCurrentUserId();
 
-        log.info("Fetching vehicles for userId={}", userId);
+        Logger.printLog(
+                LogLevel.INFO,
+                LogStep.CUSTOMER_VEHICLE,
+                "Fetching vehicles for user",
+                "userId=" + userId,
+                userId.toString(),
+                null
+        );
 
         List<CustomerVehicle> customerVehicles =
                 customerVehicleRepository.findByUserIdAndIsActiveTrueOrderByIsDefaultDescCreatedAtDesc(userId);
 
-        log.info("Found {} active vehicle(s) for userId={}", customerVehicles.size(), userId);
+        Logger.printLog(
+                LogLevel.INFO,
+                LogStep.CUSTOMER_VEHICLE,
+                "Vehicles fetched successfully",
+                "Found " + customerVehicles.size() + " active vehicle(s) for userId=" + userId,
+                userId.toString(),
+                null
+        );
 
         return customerVehicles.stream()
                 .map(customerVehicleMapper::toResponse)
                 .toList();
     }
 
-    /**
-     * Returns all active vehicles of the authenticated customer.
-     */
     @Override
     @Transactional(readOnly = true)
     public CustomerVehicleResponse getVehicleById(UUID vehicleId) {
 
         UUID userId = authenticationFacade.getCurrentUserId();
 
-        log.info("Fetching vehicle details for vehicleId={} and userId={}", vehicleId, userId);
+        Logger.printLog(
+                LogLevel.INFO,
+                LogStep.CUSTOMER_VEHICLE,
+                "Fetching vehicle by ID",
+                "vehicleId=" + vehicleId + " | userId=" + userId,
+                userId.toString(),
+                vehicleId.toString()
+        );
 
         CustomerVehicle customerVehicle = getCustomerVehicle(vehicleId, userId);
 
-        log.info("Vehicle details fetched successfully. vehicleId={}, userId={}", vehicleId, userId);
+        Logger.printLog(
+                LogLevel.INFO,
+                LogStep.CUSTOMER_VEHICLE,
+                "Vehicle details fetched successfully",
+                "vehicleId=" + vehicleId + " | userId=" + userId,
+                userId.toString(),
+                vehicleId.toString()
+        );
 
         return customerVehicleMapper.toResponse(customerVehicle);
     }
-
 
     @Override
     @Transactional
@@ -144,7 +185,14 @@ public class CustomerVehicleServiceImpl implements CustomerVehicleService {
 
         UUID userId = authenticationFacade.getCurrentUserId();
 
-        log.info("Updating vehicle. vehicleId={}, userId={}", vehicleId, userId);
+        Logger.printLog(
+                LogLevel.INFO,
+                LogStep.CUSTOMER_VEHICLE,
+                "Updating vehicle",
+                "vehicleId=" + vehicleId + " | userId=" + userId,
+                userId.toString(),
+                vehicleId.toString()
+        );
 
         CustomerVehicle customerVehicle = getCustomerVehicle(vehicleId, userId);
 
@@ -164,9 +212,14 @@ public class CustomerVehicleServiceImpl implements CustomerVehicleService {
         CustomerVehicle updatedVehicle =
                 customerVehicleRepository.save(customerVehicle);
 
-        log.info("Vehicle updated successfully. vehicleId={}, userId={}",
-                vehicleId,
-                userId);
+        Logger.printLog(
+                LogLevel.INFO,
+                LogStep.CUSTOMER_VEHICLE,
+                "Vehicle updated successfully",
+                "vehicleId=" + vehicleId + " | userId=" + userId,
+                userId.toString(),
+                vehicleId.toString()
+        );
 
         return customerVehicleMapper.toResponse(updatedVehicle);
     }
@@ -178,10 +231,15 @@ public class CustomerVehicleServiceImpl implements CustomerVehicleService {
         return customerVehicleRepository
                 .findByIdAndUserIdAndIsActiveTrue(vehicleId, userId)
                 .orElseThrow(() -> {
-                    log.info("Vehicle not found. vehicleId={}, userId={}", vehicleId,userId);
-                    return new ResourceNotFoundException(
-                            "Vehicle not found."
+                    Logger.printLog(
+                            LogLevel.WARN,
+                            LogStep.CUSTOMER_VEHICLE,
+                            "Vehicle not found",
+                            "vehicleId=" + vehicleId + " | userId=" + userId,
+                            userId.toString(),
+                            vehicleId.toString()
                     );
+                    return new ResourceNotFoundException("Vehicle not found.");
                 });
     }
 
@@ -191,13 +249,27 @@ public class CustomerVehicleServiceImpl implements CustomerVehicleService {
 
         UUID userId = authenticationFacade.getCurrentUserId();
 
-        log.info("Setting default vehicle. vehicleId={}, userId={}", vehicleId, userId);
+        Logger.printLog(
+                LogLevel.INFO,
+                LogStep.CUSTOMER_VEHICLE,
+                "Setting default vehicle",
+                "vehicleId=" + vehicleId + " | userId=" + userId,
+                userId.toString(),
+                vehicleId.toString()
+        );
 
         CustomerVehicle customerVehicle = getCustomerVehicle(vehicleId, userId);
 
         if (Boolean.TRUE.equals(customerVehicle.getIsDefault())) {
 
-            log.info("Vehicle is already default. vehicleId={}, userId={}", vehicleId, userId);
+            Logger.printLog(
+                    LogLevel.INFO,
+                    LogStep.CUSTOMER_VEHICLE,
+                    "Vehicle is already set as default",
+                    "vehicleId=" + vehicleId + " | userId=" + userId,
+                    userId.toString(),
+                    vehicleId.toString()
+            );
 
             return customerVehicleMapper.toResponse(customerVehicle);
         }
@@ -208,7 +280,14 @@ public class CustomerVehicleServiceImpl implements CustomerVehicleService {
 
         CustomerVehicle updatedVehicle = customerVehicleRepository.save(customerVehicle);
 
-        log.info("Default vehicle updated successfully. vehicleId={}, userId={}", vehicleId, userId);
+        Logger.printLog(
+                LogLevel.INFO,
+                LogStep.CUSTOMER_VEHICLE,
+                "Default vehicle updated successfully",
+                "vehicleId=" + vehicleId + " | userId=" + userId,
+                userId.toString(),
+                vehicleId.toString()
+        );
 
         return customerVehicleMapper.toResponse(updatedVehicle);
     }
@@ -219,7 +298,14 @@ public class CustomerVehicleServiceImpl implements CustomerVehicleService {
 
         UUID userId = authenticationFacade.getCurrentUserId();
 
-        log.info("Deleting vehicle. vehicleId={}, userId={}", vehicleId, userId);
+        Logger.printLog(
+                LogLevel.INFO,
+                LogStep.CUSTOMER_VEHICLE,
+                "Deleting vehicle",
+                "vehicleId=" + vehicleId + " | userId=" + userId,
+                userId.toString(),
+                vehicleId.toString()
+        );
 
         CustomerVehicle customerVehicle = getCustomerVehicle(vehicleId, userId);
 
@@ -240,15 +326,24 @@ public class CustomerVehicleServiceImpl implements CustomerVehicleService {
 
                         customerVehicleRepository.save(vehicle);
 
-                        log.info(
-                                "Assigned new default vehicle. vehicleId={}, userId={}",
-                                vehicle.getId(),
-                                userId
+                        Logger.printLog(
+                                LogLevel.INFO,
+                                LogStep.CUSTOMER_VEHICLE,
+                                "Assigned new default vehicle",
+                                "newDefaultVehicleId=" + vehicle.getId() + " | userId=" + userId,
+                                userId.toString(),
+                                vehicle.getId().toString()
                         );
                     });
         }
 
-        log.info("Vehicle deleted successfully. vehicleId={}, userId={}",vehicleId, userId);
+        Logger.printLog(
+                LogLevel.INFO,
+                LogStep.CUSTOMER_VEHICLE,
+                "Vehicle deleted successfully",
+                "vehicleId=" + vehicleId + " | userId=" + userId,
+                userId.toString(),
+                vehicleId.toString()
+        );
     }
-
 }

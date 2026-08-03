@@ -1,6 +1,9 @@
 package com.bikedone.vehicle_management_service.controller;
 
 import com.bikedone.vehicle_management_service.common.datetime.DateTimeProvider;
+import com.bikedone.vehicle_management_service.common.logging.LogLevel;
+import com.bikedone.vehicle_management_service.common.logging.LogStep;
+import com.bikedone.vehicle_management_service.common.logging.Logger;
 import com.bikedone.vehicle_management_service.common.response.ApiResponse;
 import com.bikedone.vehicle_management_service.dto.response.ServiceCategoryResponse;
 import com.bikedone.vehicle_management_service.service.ServiceCategoryService;
@@ -24,8 +27,26 @@ public class ServiceCategoryController {
     @GetMapping
     public ResponseEntity<ApiResponse<List<ServiceCategoryResponse>>> getAllServiceCategories() {
 
+        Logger.printLog(
+                LogLevel.INFO,
+                LogStep.SERVICE_CATEGORY,
+                "Fetch all service categories request received",
+                "Fetching all active service categories",
+                null,
+                null
+        );
+
         List<ServiceCategoryResponse> response =
                 serviceCategoryService.getAllServiceCategories();
+
+        Logger.printLog(
+                LogLevel.INFO,
+                LogStep.SERVICE_CATEGORY,
+                "Service categories fetched successfully",
+                "Returned " + response.size() + " category(ies)",
+                null,
+                null
+        );
 
         return ResponseEntity.ok(
                 ApiResponse.<List<ServiceCategoryResponse>>builder()

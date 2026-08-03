@@ -1,6 +1,9 @@
 package com.bikedone.vehicle_management_service.controller;
 
 import com.bikedone.vehicle_management_service.common.datetime.DateTimeProvider;
+import com.bikedone.vehicle_management_service.common.logging.LogLevel;
+import com.bikedone.vehicle_management_service.common.logging.LogStep;
+import com.bikedone.vehicle_management_service.common.logging.Logger;
 import com.bikedone.vehicle_management_service.common.response.ApiResponse;
 import com.bikedone.vehicle_management_service.dto.response.VehicleModelResponse;
 import com.bikedone.vehicle_management_service.service.VehicleModelService;
@@ -28,8 +31,26 @@ public class VehicleModelController {
             @RequestParam UUID brandId
     ) {
 
+        Logger.printLog(
+                LogLevel.INFO,
+                LogStep.VEHICLE_MODEL,
+                "Fetch vehicle models request received",
+                "Fetching models for brandId=" + brandId,
+                null,
+                brandId.toString()
+        );
+
         List<VehicleModelResponse> response =
                 vehicleModelService.getVehicleModels(brandId);
+
+        Logger.printLog(
+                LogLevel.INFO,
+                LogStep.VEHICLE_MODEL,
+                "Vehicle models fetched successfully",
+                "Returned " + response.size() + " model(s) for brandId=" + brandId,
+                null,
+                brandId.toString()
+        );
 
         return ResponseEntity.ok(
                 ApiResponse.<List<VehicleModelResponse>>builder()
@@ -40,5 +61,4 @@ public class VehicleModelController {
                         .build()
         );
     }
-
 }

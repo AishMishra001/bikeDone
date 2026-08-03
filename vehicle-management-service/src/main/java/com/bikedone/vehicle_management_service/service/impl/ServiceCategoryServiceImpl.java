@@ -1,5 +1,8 @@
 package com.bikedone.vehicle_management_service.service.impl;
 
+import com.bikedone.vehicle_management_service.common.logging.LogLevel;
+import com.bikedone.vehicle_management_service.common.logging.LogStep;
+import com.bikedone.vehicle_management_service.common.logging.Logger;
 import com.bikedone.vehicle_management_service.dto.response.ServiceCategoryResponse;
 import com.bikedone.vehicle_management_service.mapper.ServiceCategoryMapper;
 import com.bikedone.vehicle_management_service.repository.ServiceCategoryRepository;
@@ -18,9 +21,30 @@ public class ServiceCategoryServiceImpl implements ServiceCategoryService {
     @Override
     public List<ServiceCategoryResponse> getAllServiceCategories() {
 
-        return serviceCategoryRepository.findByActiveTrueOrderByDisplayNameAsc()
+        Logger.printLog(
+                LogLevel.INFO,
+                LogStep.SERVICE_CATEGORY,
+                "Fetching all service categories",
+                "Querying active service categories ordered by displayName",
+                null,
+                null
+        );
+
+        List<ServiceCategoryResponse> result = serviceCategoryRepository
+                .findByActiveTrueOrderByDisplayNameAsc()
                 .stream()
                 .map(ServiceCategoryMapper::toResponse)
                 .toList();
+
+        Logger.printLog(
+                LogLevel.INFO,
+                LogStep.SERVICE_CATEGORY,
+                "Service categories fetched successfully",
+                "Returned " + result.size() + " category(ies)",
+                null,
+                null
+        );
+
+        return result;
     }
 }

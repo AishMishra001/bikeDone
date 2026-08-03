@@ -1,5 +1,8 @@
 package com.bikedone.vehicle_management_service.service.impl;
 
+import com.bikedone.vehicle_management_service.common.logging.LogLevel;
+import com.bikedone.vehicle_management_service.common.logging.LogStep;
+import com.bikedone.vehicle_management_service.common.logging.Logger;
 import com.bikedone.vehicle_management_service.dto.response.ServiceIssueResponse;
 import com.bikedone.vehicle_management_service.entity.ServiceCategory;
 import com.bikedone.vehicle_management_service.exception.ResourceNotFoundException;
@@ -22,15 +25,44 @@ public class ServiceIssueServiceImpl implements ServiceIssueService {
     @Override
     public List<ServiceIssueResponse> getServiceIssues(Long categoryId) {
 
+        Logger.printLog(
+                LogLevel.INFO,
+                LogStep.SERVICE_ISSUE,
+                "Fetching service issues",
+                "categoryId=" + categoryId,
+                null,
+                categoryId.toString()
+        );
+
         ServiceCategory serviceCategory = serviceCategoryRepository
                 .findById(categoryId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Service category not found."));
+                .orElseThrow(() -> {
+                    Logger.printLog(
+                            LogLevel.WARN,
+                            LogStep.SERVICE_ISSUE,
+                            "Service category not found",
+                            "categoryId=" + categoryId,
+                            null,
+                            categoryId.toString()
+                    );
+                    return new ResourceNotFoundException("Service category not found.");
+                });
 
-        return serviceIssueRepository
+        List<ServiceIssueResponse> result = serviceIssueRepository
                 .findByServiceCategoryIdAndActiveTrueOrderByDisplayNameAsc(serviceCategory.getId())
                 .stream()
                 .map(ServiceIssueMapper::toResponse)
                 .toList();
+
+        Logger.printLog(
+                LogLevel.INFO,
+                LogStep.SERVICE_ISSUE,
+                "Service issues fetched successfully",
+                "Returned " + result.size() + " issue(s) for categoryId=" + categoryId,
+                null,
+                categoryId.toString()
+        );
+
+        return result;
     }
 }

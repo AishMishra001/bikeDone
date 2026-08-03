@@ -1,5 +1,8 @@
 package com.bikedone.vehicle_management_service.service.impl;
 
+import com.bikedone.vehicle_management_service.common.logging.LogLevel;
+import com.bikedone.vehicle_management_service.common.logging.LogStep;
+import com.bikedone.vehicle_management_service.common.logging.Logger;
 import com.bikedone.vehicle_management_service.dto.response.VehicleModelResponse;
 import com.bikedone.vehicle_management_service.entity.VehicleBrand;
 import com.bikedone.vehicle_management_service.entity.VehicleModel;
@@ -29,14 +32,43 @@ public class VehicleModelServiceImpl implements VehicleModelService {
     @Override
     public List<VehicleModelResponse> getVehicleModels(UUID brandId) {
 
+        Logger.printLog(
+                LogLevel.INFO,
+                LogStep.VEHICLE_MODEL,
+                "Fetching vehicle models",
+                "brandId=" + brandId,
+                null,
+                brandId.toString()
+        );
+
         VehicleBrand brand = vehicleBrandRepository
                 .findByIdAndIsActiveTrue(brandId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Vehicle brand not found.")
-                );
+                .orElseThrow(() -> {
+                    Logger.printLog(
+                            LogLevel.WARN,
+                            LogStep.VEHICLE_MODEL,
+                            "Vehicle brand not found",
+                            "brandId=" + brandId,
+                            null,
+                            brandId.toString()
+                    );
+                    return new ResourceNotFoundException("Vehicle brand not found.");
+                });
 
-        List<VehicleModel> models = vehicleModelRepository.findActiveModelsByBrandId(brand.getId());
+        List<VehicleModel> models =
+                vehicleModelRepository.findActiveModelsByBrandId(brand.getId());
 
-        return vehicleModelMapper.toResponse(models);
+        List<VehicleModelResponse> result = vehicleModelMapper.toResponse(models);
+
+        Logger.printLog(
+                LogLevel.INFO,
+                LogStep.VEHICLE_MODEL,
+                "Vehicle models fetched successfully",
+                "Returned " + result.size() + " model(s) for brandId=" + brandId,
+                null,
+                brandId.toString()
+        );
+
+        return result;
     }
 }
