@@ -1,35 +1,23 @@
-import { Platform } from 'react-native';
-import Constants from 'expo-constants';
 import { tokenStorage, LoggedInUser } from './tokenStorage';
+import { SERVICE_URLS } from '../config/services';
 
-const getLocalBackendUrl = () => {
-  const hostUri = Constants.expoConfig?.hostUri || (Constants as any).manifest2?.extra?.expoGo?.developer?.manifest?.debuggerHost;
-  if (hostUri) {
-    const ip = hostUri.split(':')[0];
-    return `http://${ip}:8080/api/v1`;
-  }
-  if (Platform.OS === 'android') {
-    return 'http://10.0.2.2:8080/api/v1';
-  }
-  return 'http://localhost:8080/api/v1';
-};
-
-const BASE_URL = getLocalBackendUrl();
-
-let isRefreshing = false;
-let refreshSubscribers: ((accessToken: string) => void)[] = [];
+// ─── Auth failure callback (global) ──────────────────────────────────────────
 let onAuthFailureCallback: (() => void) | null = null;
 
 export const registerAuthFailureCallback = (callback: () => void) => {
   onAuthFailureCallback = callback;
 };
 
+// ─── Token refresh state (shared across all clients) ─────────────────────────
+let isRefreshing = false;
+let refreshSubscribers: ((accessToken: string) => void)[] = [];
+
 const subscribeTokenRefresh = (cb: (accessToken: string) => void) => {
   refreshSubscribers.push(cb);
 };
 
 const onRefreshed = (accessToken: string) => {
-  refreshSubscribers.map((cb) => cb(accessToken));
+  refreshSubscribers.forEach((cb) => cb(accessToken));
   refreshSubscribers = [];
 };
 
@@ -42,14 +30,25 @@ const handleAuthFailure = async () => {
   }
 };
 
+// ─── Types ────────────────────────────────────────────────────────────────────
 interface RequestOptions extends RequestInit {
   requiresAuth?: boolean;
 }
 
-export const api = {
+// ─── Factory: createApiClient ─────────────────────────────────────────────────
+/**
+ * Ek naya API client banao kisi bhi service ke liye.
+ *
+ * Usage:
+ *   const umsApi = createApiClient(SERVICE_URLS.UMS);
+ *   const vmsApi = createApiClient(SERVICE_URLS.VMS);
+ *
+ * Token refresh UMS ke `/auth/refresh` se hota hai (shared logic).
+ */
+export const createApiClient = (baseUrl: string) => ({
   async request<T>(path: string, options: RequestOptions = {}): Promise<T> {
     const { requiresAuth = true, headers = {}, ...restOptions } = options;
-    const url = `${BASE_URL}${path}`;
+    const url = `${baseUrl}${path}`;
 
     const requestHeaders: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -69,8 +68,8 @@ export const api = {
         ...restOptions,
       });
 
+      // ── 401: Try token refresh (UMS /auth/refresh) ────────────────────────
       if (response.status === 401 && requiresAuth) {
-        // Access token expired, attempt to refresh
         if (!isRefreshing) {
           isRefreshing = true;
           const refreshToken = await tokenStorage.getRefreshToken();
@@ -80,11 +79,9 @@ export const api = {
           }
 
           try {
-            const refreshResponse = await fetch(`${BASE_URL}/auth/refresh`, {
+            const refreshResponse = await fetch(`${SERVICE_URLS.UMS}/auth/refresh`, {
               method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
+              headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ refreshToken }),
             });
 
@@ -94,12 +91,14 @@ export const api = {
 
             const refreshData = await refreshResponse.json();
             if (refreshData.success && refreshData.data) {
-              const { accessToken: newAccessToken, refreshToken: newRefreshToken, user } = refreshData.data;
+              const {
+                accessToken: newAccessToken,
+                refreshToken: newRefreshToken,
+                user,
+              } = refreshData.data;
               await tokenStorage.setAccessToken(newAccessToken);
               await tokenStorage.setRefreshToken(newRefreshToken);
-              if (user) {
-                await tokenStorage.setUser(user);
-              }
+              if (user) await tokenStorage.setUser(user);
               isRefreshing = false;
               onRefreshed(newAccessToken);
             } else {
@@ -112,22 +111,24 @@ export const api = {
           }
         }
 
-        // Queue requests while refreshing
+        // Queue request until refresh completes
         return new Promise<T>((resolve, reject) => {
           subscribeTokenRefresh(async (newAccessToken) => {
             try {
-              const retriedHeaders = {
-                ...requestHeaders,
-                'Authorization': `Bearer ${newAccessToken}`,
-              };
               const retryResponse = await fetch(url, {
-                headers: retriedHeaders,
+                headers: {
+                  ...requestHeaders,
+                  Authorization: `Bearer ${newAccessToken}`,
+                },
                 ...restOptions,
               });
-
               if (!retryResponse.ok) {
                 const errorData = await retryResponse.json().catch(() => ({}));
-                reject(new Error(errorData.message || `Request failed with status ${retryResponse.status}`));
+                reject(
+                  new Error(
+                    errorData.message || `Request failed with status ${retryResponse.status}`
+                  )
+                );
               } else {
                 const data = await retryResponse.json();
                 resolve(data.data as T);
@@ -141,10 +142,12 @@ export const api = {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Request failed with status ${response.status}`);
+        throw new Error(
+          errorData.message || `Request failed with status ${response.status}`
+        );
       }
 
-      // Handle endpoints returning no content (Void)
+      // 204 No Content
       if (response.status === 204) {
         return {} as T;
       }
@@ -160,15 +163,31 @@ export const api = {
     return this.request<T>(path, { ...options, method: 'GET' });
   },
 
-  async post<T>(path: string, body: any, options: Omit<RequestOptions, 'method' | 'body'> = {}): Promise<T> {
+  async post<T>(
+    path: string,
+    body: any,
+    options: Omit<RequestOptions, 'method' | 'body'> = {}
+  ): Promise<T> {
     return this.request<T>(path, { ...options, method: 'POST', body: JSON.stringify(body) });
   },
 
-  async put<T>(path: string, body: any, options: Omit<RequestOptions, 'method' | 'body'> = {}): Promise<T> {
+  async put<T>(
+    path: string,
+    body: any,
+    options: Omit<RequestOptions, 'method' | 'body'> = {}
+  ): Promise<T> {
     return this.request<T>(path, { ...options, method: 'PUT', body: JSON.stringify(body) });
   },
 
   async delete<T>(path: string, options: Omit<RequestOptions, 'method'> = {}): Promise<T> {
     return this.request<T>(path, { ...options, method: 'DELETE' });
-  }
-};
+  },
+});
+
+// ─── Default clients — ready to import ───────────────────────────────────────
+
+/** UMS client — User Management Service (port 8080) */
+export const api = createApiClient(SERVICE_URLS.UMS);
+
+/** VMS client — Vehicle Management Service (port 8082) */
+export const vmsApi = createApiClient(SERVICE_URLS.VMS);

@@ -4,7 +4,9 @@ import {
   SafeAreaView,
   StatusBar,
   KeyboardAvoidingView,
-  Platform
+  Platform,
+  View,
+  ActivityIndicator,
 } from 'react-native';
 import * as Linking from 'expo-linking';
 
@@ -14,16 +16,34 @@ import HomeScreen from '../../components/screens/HomeScreen';
 import BookingScreen from '../../components/screens/BookingScreen';
 import ProfileScreen from '../../components/screens/ProfileScreen';
 import ResetPasswordScreen from '../../components/screens/ResetPasswordScreen';
-import { registerAuthFailureCallback, api } from '../../services/api';
+import AddBikeScreen from '../../components/screens/AddBikeScreen';
+import { registerAuthFailureCallback } from '../../services/api';
+import { tokenStorage } from '../../services/tokenStorage';
 
 export default function App() {
-  const [currentScreen, setCurrentScreen] = useState('Login');
+  // 'loading' — startup pe token check kar raha hai (splash ke jaise)
+  const [currentScreen, setCurrentScreen] = useState<string>('loading');
   const [resetToken, setResetToken] = useState('');
 
   useEffect(() => {
+    // Auth failure pe (dono tokens expire) → Login pe bhejo
     registerAuthFailureCallback(() => {
       setCurrentScreen('Login');
     });
+
+    // ── Startup: check karo ki user pehle se logged in hai ────────────────
+    const checkExistingSession = async () => {
+      const refreshToken = await tokenStorage.getRefreshToken();
+      if (refreshToken) {
+        // Refresh token hai matlab user logged in tha — seedha Home
+        setCurrentScreen('Home');
+      } else {
+        // Koi token nahi — Login page dikhao
+        setCurrentScreen('Login');
+      }
+    };
+
+    checkExistingSession();
 
     const processUrl = async (urlStr: string | null) => {
       if (!urlStr) return;
@@ -74,11 +94,20 @@ export default function App() {
     };
   }, []);
 
+  // Startup loading — token check ho raha hai
+  if (currentScreen === 'loading') {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#f97316" />
+      </View>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar
-        barStyle={currentScreen === 'Home' ? 'light-content' : 'dark-content'}
-        backgroundColor={currentScreen === 'Home' ? '#f97316' : '#ffffff'}
+        barStyle={currentScreen === 'Home' || currentScreen === 'AddBike' ? 'light-content' : 'dark-content'}
+        backgroundColor={currentScreen === 'Home' || currentScreen === 'AddBike' ? '#f97316' : '#ffffff'}
       />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
@@ -105,6 +134,9 @@ export default function App() {
             onNavigate={setCurrentScreen}
           />
         )}
+        {currentScreen === 'AddBike' && (
+          <AddBikeScreen onNavigate={setCurrentScreen} />
+        )}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -113,6 +145,12 @@ export default function App() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
+    backgroundColor: '#ffffff',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
     backgroundColor: '#ffffff',
   },
 });

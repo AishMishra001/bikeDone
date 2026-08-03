@@ -6,6 +6,7 @@ import com.bikedone.usermanagement.common.logging.Logger;
 import com.bikedone.usermanagement.config.JwtProperties;
 import com.bikedone.usermanagement.constants.SecurityConstants;
 import com.bikedone.usermanagement.dto.request.LoginRequest;
+import com.bikedone.usermanagement.dto.request.LogoutRequest;
 import com.bikedone.usermanagement.dto.request.RefreshTokenRequest;
 import com.bikedone.usermanagement.dto.request.SignupRequest;
 import com.bikedone.usermanagement.dto.response.LoginResponse;
@@ -205,6 +206,41 @@ public class AuthServiceImpl implements AuthService {
                 .refreshTokenExpiresIn(jwtProperties.getRefreshTokenExpiration())
                 .user(userMapper.toLoginResponse(user))
                 .build();
+    }
+
+    @Override
+    public void logout(LogoutRequest request) {
+
+        Logger.printLog(LogLevel.INFO, LogStep.AUTH, "Logout request received", null, null, null);
+
+        try {
+
+            // Validate the refresh token to identify the user
+            RefreshToken existingRefreshToken =
+                    refreshTokenService.validateRefreshToken(request.getRefreshToken());
+
+            User user = existingRefreshToken.getUser();
+
+            Logger.printLog(LogLevel.INFO, LogStep.AUTH, "Refresh token validated for logout",
+                    user.getEmail(), user.getId().toString(), existingRefreshToken.getId().toString());
+
+            // Revoke ALL active refresh tokens for this user (all devices/sessions)
+            refreshTokenService.revokeAllUserTokens(user.getId());
+
+            Logger.printLog(LogLevel.INFO, LogStep.AUTH, "All refresh tokens revoked",
+                    "User logged out from all active sessions",
+                    user.getId().toString(), null);
+
+            Logger.printLog(LogLevel.INFO, LogStep.AUTH, "Logout completed successfully",
+                    user.getEmail(), user.getId().toString(), null);
+
+        } catch (Exception ex) {
+
+            // Even if token is already expired/invalid, logout should succeed silently.
+            // Client-side tokens will be cleared regardless.
+            Logger.printLog(LogLevel.WARN, LogStep.AUTH, "Logout called with invalid or expired token",
+                    ex.getMessage(), null, null);
+        }
     }
 
 

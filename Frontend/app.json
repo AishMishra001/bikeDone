@@ -51,7 +51,8 @@
         {
           "locationAlwaysAndWhenInUsePermission": "Allow BikeDone to access your location to find nearby services and dispatch mechanics."
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true,

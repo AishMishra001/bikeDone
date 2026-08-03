@@ -6,17 +6,19 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  TextInput,
-  Alert
+  TextInput
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { api } from '../../services/api';
 import { auth } from '../../config/firebase';
 import { signInWithPhoneNumber, RecaptchaVerifier } from 'firebase/auth';
-import { tokenStorage } from '../../services/tokenStorage';
+import { authService } from '../../services/authService';
 import InputField from '../ui/InputField';
 import PrimaryButton from '../ui/PrimaryButton';
 import BackButton from '../ui/BackButton';
+import { vehicleService, CustomerVehicle } from '../../services/vehicleService';
+import BikeDetailSheet from '../ui/BikeDetailSheet';
+import ConfirmModal from '../ui/ConfirmModal';
 
 interface ProfileScreenProps {
   onNavigate: (screen: string) => void;
@@ -49,6 +51,12 @@ export default function ProfileScreen({ onNavigate }: ProfileScreenProps) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [updatingPassword, setUpdatingPassword] = useState(false);
 
+  // My Bikes
+  const [myBikes, setMyBikes] = useState<CustomerVehicle[]>([]);
+  const [loadingBikes, setLoadingBikes] = useState(false);
+  const [selectedBike, setSelectedBike] = useState<CustomerVehicle | null>(null);
+  const [sheetVisible, setSheetVisible] = useState(false);
+
   // OTP Verification states
   const [showOtpSection, setShowOtpSection] = useState(false);
   const [otpCode, setOtpCode] = useState('');
@@ -61,10 +69,23 @@ export default function ProfileScreen({ onNavigate }: ProfileScreenProps) {
 
   useEffect(() => {
     fetchProfile();
+    fetchBikes();
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, []);
+
+  const fetchBikes = async () => {
+    setLoadingBikes(true);
+    try {
+      const data = await vehicleService.getMyVehicles();
+      setMyBikes(data);
+    } catch {
+      // silent fail — bikes section shows empty state
+    } finally {
+      setLoadingBikes(false);
+    }
+  };
 
   const fetchProfile = async () => {
     setLoadingProfile(true);
@@ -319,9 +340,26 @@ export default function ProfileScreen({ onNavigate }: ProfileScreenProps) {
     }
   };
 
-  const handleLogout = async () => {
-    await tokenStorage.clear();
-    onNavigate('Login');
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [logoutConfirmVisible, setLogoutConfirmVisible] = useState(false);
+
+  const performLogout = async () => {
+    setLoggingOut(true);
+    try {
+      await authService.logout();
+    } finally {
+      setLoggingOut(false);
+      onNavigate('Login');
+    }
+  };
+
+  const handleLogout = () => {
+    setLogoutConfirmVisible(true);
+  };
+
+  const handleConfirmLogout = () => {
+    setLogoutConfirmVisible(false);
+    performLogout();
   };
 
   return (
@@ -582,11 +620,145 @@ export default function ProfileScreen({ onNavigate }: ProfileScreenProps) {
                 />
               </View>
 
+              {/* ── My Bikes Section ─────────────────────────────────────── */}
+              <View style={styles.bikesCard}>
+                {/* Header row */}
+                <View style={styles.bikesSectionHeader}>
+                  <View style={styles.bikesSectionTitleGroup}>
+                    <View style={styles.bikesIconBox}>
+                      <Feather name="zap" size={16} color="#f97316" />
+                    </View>
+                    <Text style={styles.sectionTitle}>My Bikes</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.addBikeButton}
+                    onPress={() => onNavigate('AddBike')}
+                    activeOpacity={0.8}
+                  >
+                    <Feather name="plus" size={14} color="#ffffff" />
+                    <Text style={styles.addBikeButtonText}>Add Bike</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Content */}
+                {loadingBikes ? (
+                  <View style={styles.bikesLoader}>
+                    <ActivityIndicator size="small" color="#f97316" />
+                    <Text style={styles.bikesLoaderText}>Loading your bikes...</Text>
+                  </View>
+                ) : myBikes.length === 0 ? (
+                  /* Empty state */
+                  <TouchableOpacity
+                    style={styles.bikesEmptyState}
+                    onPress={() => onNavigate('AddBike')}
+                    activeOpacity={0.8}
+                  >
+                    <View style={styles.bikesEmptyIconCircle}>
+                      <Feather name="zap-off" size={28} color="#d1d5db" />
+                    </View>
+                    <Text style={styles.bikesEmptyTitle}>No bikes added yet</Text>
+                    <Text style={styles.bikesEmptySubtitle}>
+                      Add your bike to get faster service bookings
+                    </Text>
+                    <View style={styles.bikesEmptyCta}>
+                      <Feather name="plus-circle" size={14} color="#f97316" />
+                      <Text style={styles.bikesEmptyCtaText}>Add Your First Bike</Text>
+                    </View>
+                  </TouchableOpacity>
+                ) : (
+                  /* Bike list */
+                  <View style={styles.bikesList}>
+                    {myBikes.map((bike, index) => (
+                      <TouchableOpacity
+                        key={bike.id}
+                        style={[
+                          styles.bikeItem,
+                          index < myBikes.length - 1 && styles.bikeItemBorder,
+                        ]}
+                        onPress={() => {
+                          setSelectedBike(bike);
+                          setSheetVisible(true);
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <View style={styles.bikeItemLeft}>
+                          <View style={styles.bikeItemIconCircle}>
+                            <Feather name="zap" size={16} color="#f97316" />
+                          </View>
+                          <View style={styles.bikeItemInfo}>
+                            <View style={styles.bikeNameRow}>
+                              <Text style={styles.bikeItemName}>
+                                {bike.brandName} {bike.modelName}
+                              </Text>
+                              {bike.isDefault && (
+                                <View style={styles.defaultBadge}>
+                                  <Text style={styles.defaultBadgeText}>Default</Text>
+                                </View>
+                              )}
+                            </View>
+                            <Text style={styles.bikeItemReg}>{bike.registrationNumber}</Text>
+                            <Text style={styles.bikeItemOdometer}>
+                              {bike.odometerKm.toLocaleString()} km
+                              {bike.color ? `  •  ${bike.color}` : ''}
+                              {bike.manufacturingYear ? `  •  ${bike.manufacturingYear}` : ''}
+                            </Text>
+                          </View>
+                        </View>
+                        <Feather name="chevron-right" size={16} color="#f97316" />
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              </View>
+
               {/* Logout button */}
-              <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-                <Feather name="log-out" size={18} color="#ef4444" style={{ marginRight: 8 }} />
-                <Text style={styles.logoutText}>Log Out</Text>
+              <TouchableOpacity
+                style={[styles.logoutButton, loggingOut && styles.logoutButtonDisabled]}
+                onPress={handleLogout}
+                disabled={loggingOut}
+              >
+                {loggingOut ? (
+                  <ActivityIndicator size="small" color="#ef4444" style={{ marginRight: 8 }} />
+                ) : (
+                  <Feather name="log-out" size={18} color="#ef4444" style={{ marginRight: 8 }} />
+                )}
+                <Text style={styles.logoutText}>{loggingOut ? 'Logging out...' : 'Log Out'}</Text>
               </TouchableOpacity>
+
+              <ConfirmModal
+                visible={logoutConfirmVisible}
+                title="Log out?"
+                message="You will be signed out of BikeDone on this device. You can log back in anytime."
+                confirmText="Yes, Log Out"
+                cancelText="Stay Logged In"
+                confirmDestructive
+                icon="log-out"
+                onConfirm={handleConfirmLogout}
+                onCancel={() => setLogoutConfirmVisible(false)}
+              />
+
+              {/* Bike Detail Sheet */}
+              <BikeDetailSheet
+                bike={selectedBike}
+                visible={sheetVisible}
+                onClose={() => setSheetVisible(false)}
+                onUpdated={(updated) => {
+                  setMyBikes((prev) =>
+                    prev.map((b) =>
+                      b.id === updated.id
+                        ? updated
+                        : updated.isDefault
+                        ? { ...b, isDefault: false }
+                        : b
+                    )
+                  );
+                  setSelectedBike(updated);
+                }}
+                onDeleted={(vehicleId) => {
+                  setMyBikes((prev) => prev.filter((b) => b.id !== vehicleId));
+                  setSheetVisible(false);
+                }}
+              />
             </>
           )
         )}
@@ -963,9 +1135,189 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff5f5',
     borderRadius: 12,
   },
+  logoutButtonDisabled: {
+    opacity: 0.6,
+  },
   logoutText: {
     color: '#ef4444',
     fontSize: 14,
     fontWeight: 'bold',
+  },
+
+  // ── My Bikes ──────────────────────────────────────────────────────────────
+  bikesCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  bikesSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  bikesSectionTitleGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  bikesIconBox: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#fff3eb',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  addBikeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f97316',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 5,
+    shadowColor: '#f97316',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+  addBikeButtonText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  bikesLoader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 24,
+    gap: 10,
+  },
+  bikesLoaderText: {
+    fontSize: 13,
+    color: '#9ca3af',
+  },
+  bikesEmptyState: {
+    alignItems: 'center',
+    paddingVertical: 24,
+    backgroundColor: '#fafafa',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#f3f4f6',
+    borderStyle: 'dashed',
+  },
+  bikesEmptyIconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#f3f4f6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  bikesEmptyTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#374151',
+    marginBottom: 4,
+  },
+  bikesEmptySubtitle: {
+    fontSize: 12,
+    color: '#9ca3af',
+    textAlign: 'center',
+    paddingHorizontal: 24,
+    marginBottom: 16,
+    lineHeight: 18,
+  },
+  bikesEmptyCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#fff3eb',
+    borderWidth: 1,
+    borderColor: '#fed7aa',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  bikesEmptyCtaText: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#f97316',
+  },
+  bikesList: {
+    gap: 0,
+  },
+  bikeItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+  },
+  bikeItemBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
+  },
+  bikeItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  bikeItemIconCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#fff3eb',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  bikeItemInfo: {
+    flex: 1,
+  },
+  bikeNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  bikeItemName: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#111827',
+  },
+  defaultBadge: {
+    backgroundColor: '#fff3eb',
+    borderWidth: 1,
+    borderColor: '#fed7aa',
+    borderRadius: 6,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+  },
+  defaultBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#ea580c',
+  },
+  bikeItemReg: {
+    fontSize: 13,
+    color: '#374151',
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  bikeItemOdometer: {
+    fontSize: 11,
+    color: '#9ca3af',
+    marginTop: 2,
   },
 });

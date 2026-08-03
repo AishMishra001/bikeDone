@@ -16,9 +16,15 @@ const firebaseConfig = {
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 export const auth = getAuth(app);
 
-// Set to false so Firebase sends REAL SMS to real mobile numbers
+// On localhost (web dev), disable reCAPTCHA to avoid CSP errors from browser extensions.
+// This sends real SMS but skips the invisible reCAPTCHA iframe.
+// Set to false before production build.
 try {
-  auth.settings.appVerificationDisabledForTesting = false;
+  const isLocalhost =
+    typeof window !== 'undefined' &&
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+  auth.settings.appVerificationDisabledForTesting = isLocalhost;
 } catch (e) {
   console.warn('Could not set appVerificationDisabledForTesting:', e);
 }

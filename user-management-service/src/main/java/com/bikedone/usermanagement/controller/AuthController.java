@@ -4,6 +4,7 @@ import com.bikedone.usermanagement.common.datetime.DateTimeProvider;
 import com.bikedone.usermanagement.common.response.ApiResponse;
 import com.bikedone.usermanagement.dto.request.ForgotPasswordRequest;
 import com.bikedone.usermanagement.dto.request.LoginRequest;
+import com.bikedone.usermanagement.dto.request.LogoutRequest;
 import com.bikedone.usermanagement.dto.request.ResendEmailVerificationRequest;
 import com.bikedone.usermanagement.dto.request.ResetPasswordRequest;
 import com.bikedone.usermanagement.dto.request.SignupRequest;
@@ -133,6 +134,19 @@ public class AuthController {
         return ApiResponse.<Void>builder()
                 .success(true)
                 .message("Password reset successfully.")
+                .timestamp(dateTimeProvider.now())
+                .build();
+    }
+
+    @PostMapping("/logout")
+    public ApiResponse<Void> logout(
+            @Valid @RequestBody LogoutRequest request) {
+
+        authService.logout(request);
+
+        return ApiResponse.<Void>builder()
+                .success(true)
+                .message("Logged out successfully.")
                 .timestamp(dateTimeProvider.now())
                 .build();
     }

@@ -1,9 +1,14 @@
 import { Platform } from 'react-native';
+import * as SecureStore from 'expo-secure-store';
 
-let memoryToken: string | null = null;
-let memoryRefreshToken: string | null = null;
-let memoryUser: string | null = null;
+// ─── Keys ─────────────────────────────────────────────────────────────────────
+const KEYS = {
+  ACCESS_TOKEN: 'access_token',
+  REFRESH_TOKEN: 'refresh_token',
+  USER_DETAILS: 'user_details',
+} as const;
 
+// ─── Types ────────────────────────────────────────────────────────────────────
 export interface LoggedInUser {
   id: string;
   firstName: string;
@@ -13,87 +18,87 @@ export interface LoggedInUser {
   role: string;
 }
 
-export const tokenStorage = {
-  async getAccessToken(): Promise<string | null> {
+// ─── Storage helpers ──────────────────────────────────────────────────────────
+// Web: localStorage (persists across sessions)
+// Mobile (iOS/Android): expo-secure-store (encrypted, persists across app restarts)
+
+const storage = {
+  async get(key: string): Promise<string | null> {
     if (Platform.OS === 'web') {
       try {
-        return localStorage.getItem('access_token');
+        return localStorage.getItem(key);
       } catch (e) {
-        console.warn('Error reading from localStorage:', e);
+        console.warn('localStorage read error:', e);
+        return null;
       }
     }
-    return memoryToken;
+    // iOS: Keychain | Android: Keystore — survives app restarts
+    return SecureStore.getItemAsync(key);
+  },
+
+  async set(key: string, value: string): Promise<void> {
+    if (Platform.OS === 'web') {
+      try {
+        localStorage.setItem(key, value);
+      } catch (e) {
+        console.warn('localStorage write error:', e);
+      }
+      return;
+    }
+    await SecureStore.setItemAsync(key, value);
+  },
+
+  async remove(key: string): Promise<void> {
+    if (Platform.OS === 'web') {
+      try {
+        localStorage.removeItem(key);
+      } catch (e) {
+        console.warn('localStorage remove error:', e);
+      }
+      return;
+    }
+    await SecureStore.deleteItemAsync(key);
+  },
+};
+
+// ─── Token Storage API ────────────────────────────────────────────────────────
+export const tokenStorage = {
+  async getAccessToken(): Promise<string | null> {
+    return storage.get(KEYS.ACCESS_TOKEN);
   },
 
   async setAccessToken(token: string): Promise<void> {
-    if (Platform.OS === 'web') {
-      try {
-        localStorage.setItem('access_token', token);
-      } catch (e) {
-        console.warn('Error writing to localStorage:', e);
-      }
-    }
-    memoryToken = token;
+    await storage.set(KEYS.ACCESS_TOKEN, token);
   },
 
   async getRefreshToken(): Promise<string | null> {
-    if (Platform.OS === 'web') {
-      try {
-        return localStorage.getItem('refresh_token');
-      } catch (e) {
-        console.warn('Error reading from localStorage:', e);
-      }
-    }
-    return memoryRefreshToken;
+    return storage.get(KEYS.REFRESH_TOKEN);
   },
 
   async setRefreshToken(token: string): Promise<void> {
-    if (Platform.OS === 'web') {
-      try {
-        localStorage.setItem('refresh_token', token);
-      } catch (e) {
-        console.warn('Error writing to localStorage:', e);
-      }
-    }
-    memoryRefreshToken = token;
+    await storage.set(KEYS.REFRESH_TOKEN, token);
   },
 
   async getUser(): Promise<LoggedInUser | null> {
-    if (Platform.OS === 'web') {
-      try {
-        const userStr = localStorage.getItem('user_details');
-        return userStr ? JSON.parse(userStr) : null;
-      } catch (e) {
-        console.warn('Error reading user details:', e);
-      }
+    const userStr = await storage.get(KEYS.USER_DETAILS);
+    if (!userStr) return null;
+    try {
+      return JSON.parse(userStr) as LoggedInUser;
+    } catch (e) {
+      console.warn('Failed to parse user details:', e);
+      return null;
     }
-    return memoryUser ? JSON.parse(memoryUser) : null;
   },
 
   async setUser(user: LoggedInUser): Promise<void> {
-    const userStr = JSON.stringify(user);
-    if (Platform.OS === 'web') {
-      try {
-        localStorage.setItem('user_details', userStr);
-      } catch (e) {
-        console.warn('Error writing user details:', e);
-      }
-    }
-    memoryUser = userStr;
+    await storage.set(KEYS.USER_DETAILS, JSON.stringify(user));
   },
 
   async clear(): Promise<void> {
-    if (Platform.OS === 'web') {
-      try {
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
-        localStorage.removeItem('user_details');
-      } catch (e) {
-        console.warn('Error clearing localStorage:', e);
-      }
-    }
-    memoryToken = null;
-    memoryRefreshToken = null;
-    memoryUser = null;
-  }
+    await Promise.all([
+      storage.remove(KEYS.ACCESS_TOKEN),
+      storage.remove(KEYS.REFRESH_TOKEN),
+      storage.remove(KEYS.USER_DETAILS),
+    ]);
+  },
 };
