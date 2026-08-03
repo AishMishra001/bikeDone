@@ -55,6 +55,9 @@ public class ServiceRequest extends BaseEntity {
     @Column(name = "status", nullable = false)
     private ServiceRequestStatus status;
 
+    @Column(name = "cancellation_reason")
+    private String cancellationReason;
+
     @Column(name = "is_active", nullable = false)
     @Builder.Default
     private Boolean isActive = true;

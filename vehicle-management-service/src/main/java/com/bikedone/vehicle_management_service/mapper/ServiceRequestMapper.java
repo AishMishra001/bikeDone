@@ -2,6 +2,7 @@ package com.bikedone.vehicle_management_service.mapper;
 
 import com.bikedone.vehicle_management_service.dto.request.CreateServiceRequestRequest;
 import com.bikedone.vehicle_management_service.dto.response.CreateServiceRequestResponse;
+import com.bikedone.vehicle_management_service.dto.response.MyServiceRequestResponse;
 import com.bikedone.vehicle_management_service.entity.RequestType;
 import com.bikedone.vehicle_management_service.entity.ServiceIssue;
 import com.bikedone.vehicle_management_service.entity.ServiceRequest;
@@ -52,20 +53,6 @@ public class ServiceRequestMapper {
         return requestIssue;
     }
 
-    public ServiceRequestTimeline toTimeline(
-            ServiceRequest serviceRequest,
-            UUID createdBy) {
-
-        ServiceRequestTimeline timeline = new ServiceRequestTimeline();
-
-        timeline.setServiceRequest(serviceRequest);
-        timeline.setStatus(ServiceRequestStatus.REQUEST_CREATED);
-        timeline.setRemarks("Service request created.");
-        timeline.setCreatedBy(createdBy);
-
-        return timeline;
-    }
-
     public CreateServiceRequestResponse toResponse(
             ServiceRequest serviceRequest) {
 
@@ -74,5 +61,19 @@ public class ServiceRequestMapper {
                 serviceRequest.getRequestNumber(),
                 serviceRequest.getStatus()
         );
+    }
+
+    public MyServiceRequestResponse toMyServiceRequestResponse(
+            ServiceRequest serviceRequest) {
+
+        return MyServiceRequestResponse.builder()
+                .id(serviceRequest.getId())
+                .requestNumber(serviceRequest.getRequestNumber())
+                .requestType(serviceRequest.getRequestType().getDisplayName())
+                .status(serviceRequest.getStatus())
+                .preferredServiceDate(serviceRequest.getPreferredServiceDate())
+                .serviceSlot(serviceRequest.getServiceSlot().getSlotName())
+                .customerVehicleId(serviceRequest.getCustomerVehicleId())
+                .build();
     }
 }

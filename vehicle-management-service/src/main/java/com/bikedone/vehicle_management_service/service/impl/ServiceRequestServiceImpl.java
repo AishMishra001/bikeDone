@@ -1,7 +1,9 @@
 package com.bikedone.vehicle_management_service.service.impl;
 
+import com.bikedone.vehicle_management_service.dto.request.CancelServiceRequestRequest;
 import com.bikedone.vehicle_management_service.dto.request.CreateServiceRequestRequest;
 import com.bikedone.vehicle_management_service.dto.response.CreateServiceRequestResponse;
+import com.bikedone.vehicle_management_service.dto.response.MyServiceRequestResponse;
 import com.bikedone.vehicle_management_service.entity.RequestType;
 import com.bikedone.vehicle_management_service.entity.ServiceCategory;
 import com.bikedone.vehicle_management_service.entity.ServiceIssue;
@@ -9,6 +11,8 @@ import com.bikedone.vehicle_management_service.entity.ServiceRequest;
 import com.bikedone.vehicle_management_service.entity.ServiceRequestIssue;
 import com.bikedone.vehicle_management_service.entity.ServiceRequestTimeline;
 import com.bikedone.vehicle_management_service.entity.ServiceSlot;
+import com.bikedone.vehicle_management_service.enums.ServiceRequestStatus;
+import com.bikedone.vehicle_management_service.exception.ResourceNotFoundException;
 import com.bikedone.vehicle_management_service.mapper.ServiceRequestMapper;
 import com.bikedone.vehicle_management_service.repository.RequestTypeRepository;
 import com.bikedone.vehicle_management_service.repository.ServiceCategoryRepository;
@@ -18,7 +22,10 @@ import com.bikedone.vehicle_management_service.repository.ServiceRequestReposito
 import com.bikedone.vehicle_management_service.repository.ServiceRequestTimelineRepository;
 import com.bikedone.vehicle_management_service.security.authentication.AuthenticationFacade;
 import com.bikedone.vehicle_management_service.service.ServiceRequestService;
+import com.bikedone.vehicle_management_service.util.Constants;
 import com.bikedone.vehicle_management_service.util.RequestNumberGenerator;
+import com.bikedone.vehicle_management_service.util.ServiceRequestTimelineFactory;
+import com.bikedone.vehicle_management_service.validation.CancelServiceRequestValidator;
 import com.bikedone.vehicle_management_service.validation.CreateServiceRequestValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -45,6 +52,10 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
     private final AuthenticationFacade authenticationFacade;
 
     private final ServiceRequestMapper serviceRequestMapper;
+
+    private final ServiceRequestTimelineFactory serviceRequestTimelineFactory;
+
+    private final CancelServiceRequestValidator cancelServiceRequestValidator;
 
     @Override
     public CreateServiceRequestResponse createServiceRequest(
@@ -109,8 +120,10 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
         }
 
         ServiceRequestTimeline timeline =
-                serviceRequestMapper.toTimeline(
+                serviceRequestTimelineFactory.create(
                         serviceRequest,
+                        ServiceRequestStatus.REQUEST_CREATED,
+                        Constants.REQUEST_CREATED,
                         customerId
                 );
 
@@ -126,4 +139,72 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
 
         return serviceRequestMapper.toResponse(savedRequest);
     }
+
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MyServiceRequestResponse> getMyServiceRequests() {
+
+        UUID customerId = authenticationFacade.getCurrentUserId();
+
+        log.info("Fetching service requests for customerId={}", customerId);
+
+        return serviceRequestRepository
+                .findByCustomerIdAndIsActiveTrueOrderByCreatedAtDesc(customerId)
+                .stream()
+                .map(serviceRequestMapper::toMyServiceRequestResponse)
+                .toList();
+    }
+
+    @Override
+    public CreateServiceRequestResponse cancelServiceRequest(
+            UUID requestId,
+            CancelServiceRequestRequest request) {
+
+        UUID customerId = authenticationFacade.getCurrentUserId();
+
+        log.info(
+                "Cancelling service request. requestId={}, customerId={}",
+                requestId,
+                customerId
+        );
+
+        ServiceRequest serviceRequest =
+                serviceRequestRepository
+                        .findByIdAndCustomerIdAndIsActiveTrue(
+                                requestId,
+                                customerId
+                        )
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException(
+                                        "Service request not found."
+                                ));
+
+        cancelServiceRequestValidator.validate(serviceRequest);
+
+        serviceRequest.setStatus(ServiceRequestStatus.CANCELLED);
+        serviceRequest.setCancellationReason(request.getReason());
+
+        ServiceRequestTimeline timeline =
+                serviceRequestTimelineFactory.create(
+                        serviceRequest,
+                        ServiceRequestStatus.CANCELLED,
+                        "Service request cancelled by customer.",
+                        customerId
+                );
+
+        serviceRequest.addTimeline(timeline);
+
+        ServiceRequest savedRequest =
+                serviceRequestRepository.save(serviceRequest);
+
+        log.info(
+                "Service request cancelled successfully. requestId={}",
+                savedRequest.getId()
+        );
+
+        return serviceRequestMapper.toResponse(savedRequest);
+    }
+
+
 }

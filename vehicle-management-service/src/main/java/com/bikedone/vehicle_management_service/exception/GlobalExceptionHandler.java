@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.util.List;
 
@@ -31,6 +32,26 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
 
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponse> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+
+        String message = String.format(
+                "Invalid value '%s' for parameter '%s'. Expected type: %s.",
+                ex.getValue(),
+                ex.getName(),
+                ex.getRequiredType() != null ? ex.getRequiredType().getSimpleName() : "unknown"
+        );
+
+        ErrorResponse response = ErrorResponse.builder()
+                .success(false)
+                .message(message)
+                .errors(List.of())
+                .timestamp(dateTimeProvider.now())
+                .build();
+
+        return ResponseEntity.badRequest().body(response);
     }
 
     @ExceptionHandler(BadRequestException.class)

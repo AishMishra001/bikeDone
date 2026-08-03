@@ -6,6 +6,7 @@ public enum LogStep {
     USER,
     ADDRESS,
     VEHICLE,
+    SERVICE_REQUEST,
     ORDER,
     PAYMENT,
     EMAIL,
