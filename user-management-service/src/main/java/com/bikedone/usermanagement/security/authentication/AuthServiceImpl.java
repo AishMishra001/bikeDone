@@ -6,8 +6,6 @@ import com.bikedone.usermanagement.common.logging.Logger;
 import com.bikedone.usermanagement.config.JwtProperties;
 import com.bikedone.usermanagement.constants.SecurityConstants;
 import com.bikedone.usermanagement.dto.request.LoginRequest;
-import com.bikedone.usermanagement.dto.request.LogoutRequest;
-import com.bikedone.usermanagement.dto.request.RefreshTokenRequest;
 import com.bikedone.usermanagement.dto.request.SignupRequest;
 import com.bikedone.usermanagement.dto.response.LoginResponse;
 import com.bikedone.usermanagement.dto.response.SignupResponse;
@@ -164,15 +162,18 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public LoginResponse refresh(RefreshTokenRequest request) {
+    public LoginResponse refresh(String requestToken, String cookieToken) {
 
         Logger.printLog( LogLevel.INFO, LogStep.JWT, "Refresh token request received", null, null, null );
 
+        String effectiveToken = resolveRefreshToken(requestToken, cookieToken);
+        if (effectiveToken == null || effectiveToken.isBlank()) {
+            throw new BadRequestException("Refresh token is required.");
+        }
+
         // Validate old refresh token
         RefreshToken existingRefreshToken =
-                refreshTokenService.validateRefreshToken(
-                        request.getRefreshToken()
-                );
+                refreshTokenService.validateRefreshToken(effectiveToken);
 
         User user = existingRefreshToken.getUser();
 
@@ -185,16 +186,11 @@ public class AuthServiceImpl implements AuthService {
         String accessToken =
                 jwtService.generateToken(principal);
 
-        // Revoke old refresh token
-        refreshTokenService.revokeToken(existingRefreshToken);
-
-        Logger.printLog( LogLevel.DEBUG, LogStep.JWT, "Old refresh token revoked", user.getEmail(), user.getId().toString(), existingRefreshToken.getId().toString() );
-
-        // Generate new refresh token
+        // Rotate existing refresh token without creating a new database row
         RefreshTokenResult refreshTokenResult =
-                refreshTokenService.createRefreshToken(user);
+                refreshTokenService.rotateRefreshToken(existingRefreshToken);
 
-        Logger.printLog( LogLevel.INFO, LogStep.JWT, "New refresh token generated successfully", user.getEmail(), user.getId().toString(), null );
+        Logger.printLog( LogLevel.INFO, LogStep.JWT, "Refresh token rotated successfully", user.getEmail(), user.getId().toString(), existingRefreshToken.getId().toString() );
 
         Logger.printLog( LogLevel.INFO, LogStep.AUTH, "Token refresh completed successfully", user.getEmail(), user.getId().toString(), null );
 
@@ -209,15 +205,20 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public void logout(LogoutRequest request) {
+    public void logout(String requestToken, String cookieToken) {
 
         Logger.printLog(LogLevel.INFO, LogStep.AUTH, "Logout request received", null, null, null);
 
         try {
+            String effectiveToken = resolveRefreshToken(requestToken, cookieToken);
+            if (effectiveToken == null || effectiveToken.isBlank()) {
+                Logger.printLog(LogLevel.WARN, LogStep.AUTH, "Logout called without refresh token", null, null, null);
+                return;
+            }
 
             // Validate the refresh token to identify the user
             RefreshToken existingRefreshToken =
-                    refreshTokenService.validateRefreshToken(request.getRefreshToken());
+                    refreshTokenService.validateRefreshToken(effectiveToken);
 
             User user = existingRefreshToken.getUser();
 
@@ -243,5 +244,14 @@ public class AuthServiceImpl implements AuthService {
         }
     }
 
+    private String resolveRefreshToken(String requestToken, String cookieToken) {
+        if (requestToken != null && !requestToken.isBlank()) {
+            return requestToken;
+        }
+        if (cookieToken != null && !cookieToken.isBlank()) {
+            return cookieToken;
+        }
+        return null;
+    }
 
 }

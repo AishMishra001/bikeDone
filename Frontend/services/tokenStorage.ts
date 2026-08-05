@@ -1,11 +1,11 @@
-import { Platform } from 'react-native';
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from "expo-secure-store";
+import { Platform } from "react-native";
 
 // ─── Keys ─────────────────────────────────────────────────────────────────────
 const KEYS = {
-  ACCESS_TOKEN: 'access_token',
-  REFRESH_TOKEN: 'refresh_token',
-  USER_DETAILS: 'user_details',
+  ACCESS_TOKEN: "access_token",
+  REFRESH_TOKEN: "refresh_token",
+  USER_DETAILS: "user_details",
 } as const;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -24,11 +24,11 @@ export interface LoggedInUser {
 
 const storage = {
   async get(key: string): Promise<string | null> {
-    if (Platform.OS === 'web') {
+    if (Platform.OS === "web") {
       try {
-        return localStorage.getItem(key);
+        return sessionStorage.getItem(key);
       } catch (e) {
-        console.warn('localStorage read error:', e);
+        console.warn("sessionStorage read error:", e);
         return null;
       }
     }
@@ -37,11 +37,11 @@ const storage = {
   },
 
   async set(key: string, value: string): Promise<void> {
-    if (Platform.OS === 'web') {
+    if (Platform.OS === "web") {
       try {
-        localStorage.setItem(key, value);
+        sessionStorage.setItem(key, value);
       } catch (e) {
-        console.warn('localStorage write error:', e);
+        console.warn("sessionStorage write error:", e);
       }
       return;
     }
@@ -49,11 +49,11 @@ const storage = {
   },
 
   async remove(key: string): Promise<void> {
-    if (Platform.OS === 'web') {
+    if (Platform.OS === "web") {
       try {
-        localStorage.removeItem(key);
+        sessionStorage.removeItem(key);
       } catch (e) {
-        console.warn('localStorage remove error:', e);
+        console.warn("sessionStorage remove error:", e);
       }
       return;
     }
@@ -85,7 +85,7 @@ export const tokenStorage = {
     try {
       return JSON.parse(userStr) as LoggedInUser;
     } catch (e) {
-      console.warn('Failed to parse user details:', e);
+      console.warn("Failed to parse user details:", e);
       return null;
     }
   },

@@ -11,6 +11,6 @@ public interface AuthService {
 
     SignupResponse signup(SignupRequest request);
     LoginResponse login(LoginRequest request);
-    LoginResponse refresh(RefreshTokenRequest request);
-    void logout(LogoutRequest request);
+    LoginResponse refresh(String requestToken, String cookieToken);
+    void logout(String requestToken, String cookieToken);
 }

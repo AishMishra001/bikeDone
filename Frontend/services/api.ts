@@ -1,5 +1,6 @@
-import { tokenStorage, LoggedInUser } from './tokenStorage';
-import { SERVICE_URLS } from '../config/services';
+import { Platform } from "react-native";
+import { SERVICE_URLS } from "../config/services";
+import { tokenStorage } from "./tokenStorage";
 
 // ─── Auth failure callback (global) ──────────────────────────────────────────
 let onAuthFailureCallback: (() => void) | null = null;
@@ -30,6 +31,12 @@ const handleAuthFailure = async () => {
   }
 };
 
+const getCookieValue = (name: string): string | null => {
+  if (Platform.OS !== "web" || typeof document === "undefined") return null;
+  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
+  return match ? decodeURIComponent(match[1]) : null;
+};
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface RequestOptions extends RequestInit {
   requiresAuth?: boolean;
@@ -51,20 +58,28 @@ export const createApiClient = (baseUrl: string) => ({
     const url = `${baseUrl}${path}`;
 
     const requestHeaders: Record<string, string> = {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       ...((headers as Record<string, string>) || {}),
     };
 
     if (requiresAuth) {
       const token = await tokenStorage.getAccessToken();
       if (token) {
-        requestHeaders['Authorization'] = `Bearer ${token}`;
+        requestHeaders["Authorization"] = `Bearer ${token}`;
       }
     }
-
+    if (Platform.OS === "web") {
+      const refreshCookie = getCookieValue("refresh_token");
+      if (refreshCookie && !requestHeaders["Authorization"]) {
+        requestHeaders["X-Refresh-Token"] = refreshCookie;
+      }
+    }
     try {
       const response = await fetch(url, {
         headers: requestHeaders,
+        ...(Platform.OS === "web"
+          ? { credentials: "include" as RequestCredentials }
+          : {}),
         ...restOptions,
       });
 
@@ -73,20 +88,32 @@ export const createApiClient = (baseUrl: string) => ({
         if (!isRefreshing) {
           isRefreshing = true;
           const refreshToken = await tokenStorage.getRefreshToken();
-          if (!refreshToken) {
+          const cookieRefreshToken =
+            Platform.OS === "web" ? getCookieValue("refresh_token") : null;
+          const tokenToRefresh = refreshToken || cookieRefreshToken;
+
+          if (!tokenToRefresh) {
             await handleAuthFailure();
-            throw new Error('No refresh token available');
+            throw new Error("No refresh token available");
           }
 
           try {
-            const refreshResponse = await fetch(`${SERVICE_URLS.UMS}/auth/refresh`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ refreshToken }),
-            });
+            const refreshResponse = await fetch(
+              `${SERVICE_URLS.UMS}/auth/refresh`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                ...(Platform.OS === "web"
+                  ? { credentials: "include" as RequestCredentials }
+                  : {}),
+                ...(tokenToRefresh
+                  ? { body: JSON.stringify({ refreshToken: tokenToRefresh }) }
+                  : {}),
+              },
+            );
 
             if (!refreshResponse.ok) {
-              throw new Error('Refresh token request failed');
+              throw new Error("Refresh token request failed");
             }
 
             const refreshData = await refreshResponse.json();
@@ -102,12 +129,12 @@ export const createApiClient = (baseUrl: string) => ({
               isRefreshing = false;
               onRefreshed(newAccessToken);
             } else {
-              throw new Error('Invalid refresh response data');
+              throw new Error("Invalid refresh response data");
             }
           } catch (refreshErr) {
-            console.error('Token refresh failed:', refreshErr);
+            console.error("Token refresh failed:", refreshErr);
             await handleAuthFailure();
-            throw new Error('Session expired');
+            throw new Error("Session expired");
           }
         }
 
@@ -120,14 +147,18 @@ export const createApiClient = (baseUrl: string) => ({
                   ...requestHeaders,
                   Authorization: `Bearer ${newAccessToken}`,
                 },
+                ...(Platform.OS === "web"
+                  ? { credentials: "include" as RequestCredentials }
+                  : {}),
                 ...restOptions,
               });
               if (!retryResponse.ok) {
                 const errorData = await retryResponse.json().catch(() => ({}));
                 reject(
                   new Error(
-                    errorData.message || `Request failed with status ${retryResponse.status}`
-                  )
+                    errorData.message ||
+                      `Request failed with status ${retryResponse.status}`,
+                  ),
                 );
               } else {
                 const data = await retryResponse.json();
@@ -143,7 +174,7 @@ export const createApiClient = (baseUrl: string) => ({
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(
-          errorData.message || `Request failed with status ${response.status}`
+          errorData.message || `Request failed with status ${response.status}`,
         );
       }
 
@@ -159,28 +190,42 @@ export const createApiClient = (baseUrl: string) => ({
     }
   },
 
-  async get<T>(path: string, options: Omit<RequestOptions, 'method'> = {}): Promise<T> {
-    return this.request<T>(path, { ...options, method: 'GET' });
+  async get<T>(
+    path: string,
+    options: Omit<RequestOptions, "method"> = {},
+  ): Promise<T> {
+    return this.request<T>(path, { ...options, method: "GET" });
   },
 
   async post<T>(
     path: string,
     body: any,
-    options: Omit<RequestOptions, 'method' | 'body'> = {}
+    options: Omit<RequestOptions, "method" | "body"> = {},
   ): Promise<T> {
-    return this.request<T>(path, { ...options, method: 'POST', body: JSON.stringify(body) });
+    return this.request<T>(path, {
+      ...options,
+      method: "POST",
+      body: JSON.stringify(body),
+    });
   },
 
   async put<T>(
     path: string,
     body: any,
-    options: Omit<RequestOptions, 'method' | 'body'> = {}
+    options: Omit<RequestOptions, "method" | "body"> = {},
   ): Promise<T> {
-    return this.request<T>(path, { ...options, method: 'PUT', body: JSON.stringify(body) });
+    return this.request<T>(path, {
+      ...options,
+      method: "PUT",
+      body: JSON.stringify(body),
+    });
   },
 
-  async delete<T>(path: string, options: Omit<RequestOptions, 'method'> = {}): Promise<T> {
-    return this.request<T>(path, { ...options, method: 'DELETE' });
+  async delete<T>(
+    path: string,
+    options: Omit<RequestOptions, "method"> = {},
+  ): Promise<T> {
+    return this.request<T>(path, { ...options, method: "DELETE" });
   },
 });
 

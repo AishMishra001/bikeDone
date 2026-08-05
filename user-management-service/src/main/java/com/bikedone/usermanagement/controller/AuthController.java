@@ -5,6 +5,9 @@ import com.bikedone.usermanagement.common.response.ApiResponse;
 import com.bikedone.usermanagement.dto.request.ForgotPasswordRequest;
 import com.bikedone.usermanagement.dto.request.LoginRequest;
 import com.bikedone.usermanagement.dto.request.LogoutRequest;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import com.bikedone.usermanagement.dto.request.ResendEmailVerificationRequest;
 import com.bikedone.usermanagement.dto.request.ResetPasswordRequest;
 import com.bikedone.usermanagement.dto.request.SignupRequest;
@@ -48,28 +51,36 @@ public class AuthController {
 
     @PostMapping("/login")
     public ApiResponse<LoginResponse> login(
-            @Valid @RequestBody LoginRequest request) {
+            @Valid @RequestBody LoginRequest request,
+            HttpServletResponse response) {
 
-        LoginResponse response = authService.login(request);
+        LoginResponse loginResponse = authService.login(request);
+        addRefreshTokenCookie(response, loginResponse.getRefreshToken());
 
         return ApiResponse.<LoginResponse>builder()
                 .success(true)
                 .message("Login successful.")
-                .data(response)
+                .data(loginResponse)
                 .timestamp(dateTimeProvider.now())
                 .build();
     }
 
     @PostMapping("/refresh")
     public ApiResponse<LoginResponse> refresh(
-            @Valid @RequestBody RefreshTokenRequest request) {
+            @Valid @RequestBody(required = false) RefreshTokenRequest request,
+            HttpServletRequest httpRequest,
+            HttpServletResponse response) {
 
-        LoginResponse response = authService.refresh(request);
+        String cookieToken = extractRefreshTokenCookie(httpRequest);
+        String requestToken = request != null ? request.getRefreshToken() : null;
+
+        LoginResponse loginResponse = authService.refresh(requestToken, cookieToken);
+        addRefreshTokenCookie(response, loginResponse.getRefreshToken());
 
         return ApiResponse.<LoginResponse>builder()
                 .success(true)
                 .message("Token refreshed successfully.")
-                .data(response)
+                .data(loginResponse)
                 .timestamp(dateTimeProvider.now())
                 .build();
     }
@@ -140,15 +151,59 @@ public class AuthController {
 
     @PostMapping("/logout")
     public ApiResponse<Void> logout(
-            @Valid @RequestBody LogoutRequest request) {
+            @Valid @RequestBody(required = false) LogoutRequest request,
+            HttpServletRequest httpRequest,
+            HttpServletResponse response) {
 
-        authService.logout(request);
+        String cookieToken = extractRefreshTokenCookie(httpRequest);
+        String requestToken = request != null ? request.getRefreshToken() : null;
+
+        authService.logout(requestToken, cookieToken);
+        clearRefreshTokenCookie(response);
 
         return ApiResponse.<Void>builder()
                 .success(true)
                 .message("Logged out successfully.")
                 .timestamp(dateTimeProvider.now())
                 .build();
+    }
+
+    private void addRefreshTokenCookie(HttpServletResponse response, String refreshToken) {
+        if (refreshToken == null || refreshToken.isBlank()) {
+            return;
+        }
+
+        Cookie cookie = new Cookie("refresh_token", refreshToken);
+        cookie.setHttpOnly(true);
+        cookie.setSecure(true);
+        cookie.setPath("/");
+        cookie.setMaxAge(7 * 24 * 60 * 60);
+        cookie.setAttribute("SameSite", "Lax");
+        response.addCookie(cookie);
+    }
+
+    private void clearRefreshTokenCookie(HttpServletResponse response) {
+        Cookie cookie = new Cookie("refresh_token", "");
+        cookie.setHttpOnly(true);
+        cookie.setSecure(true);
+        cookie.setPath("/");
+        cookie.setMaxAge(0);
+        cookie.setAttribute("SameSite", "Lax");
+        response.addCookie(cookie);
+    }
+
+    private String extractRefreshTokenCookie(HttpServletRequest request) {
+        if (request.getCookies() == null) {
+            return null;
+        }
+
+        for (Cookie cookie : request.getCookies()) {
+            if ("refresh_token".equals(cookie.getName())) {
+                return cookie.getValue();
+            }
+        }
+
+        return null;
     }
 
 }
