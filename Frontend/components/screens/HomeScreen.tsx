@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   StyleSheet,
   Text,
   View,
-  TextInput,
   TouchableOpacity,
   ScrollView,
   ActivityIndicator
@@ -30,7 +29,6 @@ interface FullUserProfile {
 }
 
 export default function HomeScreen({ onNavigate }: HomeScreenProps) {
-  const [searchText, setSearchText] = useState('');
   const [user, setUser] = useState<LoggedInUser | null>(null);
   const [fullProfile, setFullProfile] = useState<FullUserProfile | null>(null);
   const { loading: locationLoading, location, errorType, refreshLocation } = useUserLocation();
@@ -64,13 +62,6 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
   };
 
   const completionPercentage = calculateCompletion();
-
-  const services = [
-    { id: 1, title: 'General Service', icon: 'tool', color: '#f97316', bg: '#fff3eb' },
-    { id: 2, title: 'Tyre Issue', icon: 'disc', color: '#ea580c', bg: '#fff7ed' },
-    { id: 3, title: 'Brake & Clutch', icon: 'sliders', color: '#ef4444', bg: '#fef2f2' },
-    { id: 4, title: 'Emergency Tow', icon: 'truck', color: '#a855f7', bg: '#faf5ff' },
-  ] as const;
 
   const renderLocationText = () => {
     if (locationLoading) {
@@ -123,18 +114,6 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
         contentContainerStyle={styles.homeContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Search Bar */}
-        <View style={styles.searchBar}>
-          <Feather name="search" size={20} color="#9ca3af" />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search services (e.g., Puncture)"
-            placeholderTextColor="#9ca3af"
-            value={searchText}
-            onChangeText={setSearchText}
-          />
-        </View>
-
         {/* Complete Your Profile Progress Card */}
         {completionPercentage < 100 ? (
           <View style={styles.completionCard}>
@@ -208,36 +187,44 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
           </View>
         )}
 
-        {/* Active Ticket */}
-        <View style={styles.alertBox}>
+        {/* Booking management */}
+        <TouchableOpacity
+          style={styles.bookingStatusCard}
+          onPress={() => onNavigate('MyRequests')}
+          activeOpacity={0.8}
+        >
           <View style={styles.alertIconBox}>
-            <Feather name="info" size={18} color="#2563eb" />
+            <Feather name="clipboard" size={19} color="#2563eb" />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.alertTitle}>No active bookings</Text>
+            <Text style={styles.alertTitle}>Manage your bookings</Text>
             <Text style={styles.alertSub}>
-              Your bike is running smoothly. Book a service if needed!
+              Track service requests and their latest status.
             </Text>
           </View>
-        </View>
+          <Feather name="chevron-right" size={20} color="#2563eb" />
+        </TouchableOpacity>
 
-        <Text style={styles.sectionTitle}>Quick Services</Text>
+        <Text style={styles.sectionTitle}>Bike care, made simple</Text>
 
-        {/* Service Grid */}
-        <View style={styles.gridContainer}>
-          {services.map((item) => (
-            <TouchableOpacity
-              key={item.id}
-              style={styles.gridItem}
-              onPress={() => onNavigate('Booking')}
-            >
-              <View style={[styles.gridIconBox, { backgroundColor: item.bg }]}>
-                <Feather name={item.icon} size={24} color={item.color} />
-              </View>
-              <Text style={styles.gridText}>{item.title}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        <TouchableOpacity
+          style={styles.bookServiceCard}
+          onPress={() => onNavigate('Booking')}
+          activeOpacity={0.85}
+        >
+          <View style={styles.bookServiceIcon}>
+            <Feather name="tool" size={25} color="#f97316" />
+          </View>
+          <View style={styles.bookServiceContent}>
+            <Text style={styles.bookServiceTitle}>Book a Service</Text>
+            <Text style={styles.bookServiceSubtext}>
+              Service, repair or emergency assistance
+            </Text>
+          </View>
+          <View style={styles.bookServiceArrow}>
+            <Feather name="arrow-right" size={18} color="#ffffff" />
+          </View>
+        </TouchableOpacity>
       </ScrollView>
 
       {/* Bottom Nav */}
@@ -246,9 +233,9 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
           <Feather name="home" size={24} color="#f97316" />
           <Text style={[styles.navText, { color: '#f97316' }]}>Home</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={() => onNavigate('Booking')}>
-          <Feather name="file-text" size={24} color="#9ca3af" />
-          <Text style={styles.navText}>Bookings</Text>
+        <TouchableOpacity style={styles.navItem} onPress={() => onNavigate('MyRequests')}>
+          <Feather name="clipboard" size={24} color="#9ca3af" />
+          <Text style={styles.navText}>My Bookings</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={() => onNavigate('Profile')}>
           <Feather name="user" size={24} color="#9ca3af" />
@@ -323,30 +310,9 @@ const styles = StyleSheet.create({
     padding: 24,
     paddingBottom: 100,
   },
-  searchBar: {
+  bookingStatusCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#f3f4f6',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    height: 50,
-    marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  searchInput: {
-    flex: 1,
-    marginLeft: 12,
-    fontSize: 14,
-    color: '#111827',
-  },
-  alertBox: {
-    flexDirection: 'row',
     backgroundColor: '#eff6ff',
     borderWidth: 1,
     borderColor: '#dbeafe',
@@ -377,38 +343,50 @@ const styles = StyleSheet.create({
     color: '#111827',
     marginBottom: 16,
   },
-  gridContainer: {
+  bookServiceCard: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  gridItem: {
-    width: '48%',
+    alignItems: 'center',
     backgroundColor: '#ffffff',
     borderRadius: 16,
-    padding: 16,
-    alignItems: 'center',
-    marginBottom: 16,
+    padding: 18,
     borderWidth: 1,
-    borderColor: '#f3f4f6',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
-    elevation: 1,
+    borderColor: '#fed7aa',
+    shadowColor: '#f97316',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 3,
   },
-  gridIconBox: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  bookServiceIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    backgroundColor: '#fff3eb',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
   },
-  gridText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#374151',
+  bookServiceContent: {
+    flex: 1,
+    marginLeft: 14,
+  },
+  bookServiceTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  bookServiceSubtext: {
+    fontSize: 12,
+    color: '#6b7280',
+    marginTop: 4,
+    lineHeight: 18,
+  },
+  bookServiceArrow: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#f97316',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   bottomNav: {
     position: 'absolute',

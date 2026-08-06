@@ -61,14 +61,22 @@ export interface ServiceIssue {
 
 export interface CreateServiceRequestPayload {
   customerVehicleId: string;
-  addressId: string;
+  // Either set an existing addressId, or omit and provide currentLocation
+  addressId?: string;
   requestTypeId: number;
-  preferredServiceDate: string;
-  serviceSlotId: string;
+  preferredServiceDate?: string;
+  serviceSlotId?: string;
   isIssueIdentified: boolean;
   serviceCategoryId?: number;
   serviceIssueIds?: number[];
   description?: string;
+  // Optional current location when user chooses to use live location
+  currentLocation?: {
+    latitude: number;
+    longitude: number;
+    // optional freeform address or note
+    note?: string;
+  };
 }
 
 export interface CreateServiceRequestResponse {

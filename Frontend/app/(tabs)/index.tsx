@@ -17,6 +17,8 @@ import BookingScreen from '../../components/screens/BookingScreen';
 import ProfileScreen from '../../components/screens/ProfileScreen';
 import ResetPasswordScreen from '../../components/screens/ResetPasswordScreen';
 import AddBikeScreen from '../../components/screens/AddBikeScreen';
+import RequestSuccessScreen from '../../components/screens/RequestSuccessScreen';
+import MyRequestsScreen from '../../components/screens/MyRequestsScreen';
 import { registerAuthFailureCallback } from '../../services/api';
 import { tokenStorage } from '../../services/tokenStorage';
 
@@ -24,6 +26,7 @@ export default function App() {
   // 'loading' — startup pe token check kar raha hai (splash ke jaise)
   const [currentScreen, setCurrentScreen] = useState<string>('loading');
   const [resetToken, setResetToken] = useState('');
+  const [lastRequestNumber, setLastRequestNumber] = useState('');
 
   useEffect(() => {
     // Auth failure pe (dono tokens expire) → Login pe bhejo
@@ -94,6 +97,11 @@ export default function App() {
     };
   }, []);
 
+  // Callback for booking success — stores the request number before navigating
+  const handleRequestSuccess = (requestNumber: string) => {
+    setLastRequestNumber(requestNumber);
+  };
+
   // Startup loading — token check ho raha hai
   if (currentScreen === 'loading') {
     return (
@@ -123,7 +131,10 @@ export default function App() {
           <HomeScreen onNavigate={setCurrentScreen} />
         )}
         {currentScreen === 'Booking' && (
-          <BookingScreen onNavigate={setCurrentScreen} />
+          <BookingScreen
+            onNavigate={setCurrentScreen}
+            onRequestSuccess={handleRequestSuccess}
+          />
         )}
         {currentScreen === 'Profile' && (
           <ProfileScreen onNavigate={setCurrentScreen} />
@@ -136,6 +147,15 @@ export default function App() {
         )}
         {currentScreen === 'AddBike' && (
           <AddBikeScreen onNavigate={setCurrentScreen} />
+        )}
+        {currentScreen === 'RequestSuccess' && (
+          <RequestSuccessScreen
+            onNavigate={setCurrentScreen}
+            requestNumber={lastRequestNumber}
+          />
+        )}
+        {currentScreen === 'MyRequests' && (
+          <MyRequestsScreen onNavigate={setCurrentScreen} />
         )}
       </KeyboardAvoidingView>
     </SafeAreaView>

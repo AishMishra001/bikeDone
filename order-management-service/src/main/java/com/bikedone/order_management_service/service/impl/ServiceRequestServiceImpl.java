@@ -13,6 +13,7 @@ import com.bikedone.order_management_service.entity.ServiceRequest;
 import com.bikedone.order_management_service.entity.ServiceRequestIssue;
 import com.bikedone.order_management_service.entity.ServiceRequestTimeline;
 import com.bikedone.order_management_service.entity.ServiceSlot;
+import com.bikedone.order_management_service.enums.RequestTypeCode;
 import com.bikedone.order_management_service.enums.ServiceRequestStatus;
 import com.bikedone.order_management_service.exception.ResourceNotFoundException;
 import com.bikedone.order_management_service.mapper.ServiceRequestMapper;
@@ -68,17 +69,19 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
                 null
         );
 
-        createServiceRequestValidator.validate(request);
-
         RequestType requestType =
                 createServiceRequestValidator.validateRequestType(
                         request.getRequestTypeId()
                 );
 
-        ServiceSlot serviceSlot =
-                createServiceRequestValidator.validateServiceSlot(
-                        request.getServiceSlotId()
-                );
+        createServiceRequestValidator.validate(request, requestType);
+
+        ServiceSlot serviceSlot = null;
+        if (!RequestTypeCode.BREAKDOWN.equals(requestType.getRequestTypeCode())) {
+            serviceSlot = createServiceRequestValidator.validateServiceSlot(
+                    request.getServiceSlotId()
+            );
+        }
 
         if (Boolean.TRUE.equals(request.getIsIssueIdentified())) {
             createServiceRequestValidator.validateServiceCategory(

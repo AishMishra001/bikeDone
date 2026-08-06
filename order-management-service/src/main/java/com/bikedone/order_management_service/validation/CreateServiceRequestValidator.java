@@ -4,6 +4,7 @@ import com.bikedone.order_management_service.dto.request.CreateServiceRequestReq
 import com.bikedone.order_management_service.entity.RequestType;
 import com.bikedone.order_management_service.entity.ServiceCategory;
 import com.bikedone.order_management_service.entity.ServiceSlot;
+import com.bikedone.order_management_service.enums.RequestTypeCode;
 import com.bikedone.order_management_service.exception.BadRequestException;
 import com.bikedone.order_management_service.exception.ResourceNotFoundException;
 import com.bikedone.order_management_service.repository.RequestTypeRepository;
@@ -60,7 +61,34 @@ public class CreateServiceRequestValidator {
     /**
      * Validate Business Rules
      */
-    public void validate(CreateServiceRequestRequest request) {
+    public void validate(CreateServiceRequestRequest request, RequestType requestType) {
+
+        validateLocation(request);
+
+        boolean isBreakdown = RequestTypeCode.BREAKDOWN.equals(
+                requestType.getRequestTypeCode()
+        );
+
+        if (isBreakdown) {
+            if (request.getPreferredServiceDate() != null
+                    || request.getServiceSlotId() != null) {
+                throw new BadRequestException(
+                        "Preferred service date and service slot must not be provided for breakdown assistance."
+                );
+            }
+        } else {
+            if (request.getPreferredServiceDate() == null) {
+                throw new BadRequestException("Preferred service date is required.");
+            }
+
+            if (request.getPreferredServiceDate().isBefore(java.time.LocalDate.now())) {
+                throw new BadRequestException("Preferred service date cannot be in the past.");
+            }
+
+            if (request.getServiceSlotId() == null) {
+                throw new BadRequestException("Service slot is required.");
+            }
+        }
 
         // Customer doesn't know the issue.
         if (!Boolean.TRUE.equals(request.getIsIssueIdentified())) {
@@ -90,6 +118,19 @@ public class CreateServiceRequestValidator {
             throw new BadRequestException(
                     "One or more selected service issues are invalid."
             );
+        }
+    }
+
+    private void validateLocation(CreateServiceRequestRequest request) {
+        boolean hasSavedAddress = request.getAddressId() != null;
+        boolean hasCurrentLocation = request.getCurrentLocation() != null;
+
+        if (!hasSavedAddress && !hasCurrentLocation) {
+            throw new BadRequestException("Either address or current location is required.");
+        }
+
+        if (hasSavedAddress && hasCurrentLocation) {
+            throw new BadRequestException("Provide either address or current location, not both.");
         }
     }
 }

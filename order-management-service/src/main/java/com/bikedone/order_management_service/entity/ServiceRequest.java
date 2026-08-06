@@ -8,6 +8,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -31,18 +32,27 @@ public class ServiceRequest extends BaseEntity {
     @Column(name = "customer_vehicle_id", nullable = false)
     private UUID customerVehicleId;
 
-    @Column(name = "address_id", nullable = false)
+    @Column(name = "address_id")
     private UUID addressId;
+
+    @Column(name = "current_location_latitude", precision = 10, scale = 8)
+    private BigDecimal currentLocationLatitude;
+
+    @Column(name = "current_location_longitude", precision = 11, scale = 8)
+    private BigDecimal currentLocationLongitude;
+
+    @Column(name = "current_location_note", length = 1000)
+    private String currentLocationNote;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "request_type_id", nullable = false)
     private RequestType requestType;
 
-    @Column(name = "preferred_service_date", nullable = false)
+    @Column(name = "preferred_service_date")
     private LocalDate preferredServiceDate;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "service_slot_id", nullable = false)
+    @JoinColumn(name = "service_slot_id")
     private ServiceSlot serviceSlot;
 
     @Column(name = "is_issue_identified", nullable = false)

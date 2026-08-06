@@ -1,6 +1,6 @@
 package com.bikedone.order_management_service.dto.request;
 
-import jakarta.validation.constraints.FutureOrPresent;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
@@ -17,18 +17,17 @@ public class CreateServiceRequestRequest {
     @NotNull(message = "Customer vehicle is required.")
     private UUID customerVehicleId;
 
-    @NotNull(message = "Address is required.")
     private UUID addressId;
 
     @NotNull(message = "Request type is required.")
     private Long requestTypeId;
 
-    @NotNull(message = "Preferred service date is required.")
-    @FutureOrPresent(message = "Preferred service date cannot be in the past.")
     private LocalDate preferredServiceDate;
 
-    @NotNull(message = "Service slot is required.")
     private UUID serviceSlotId;
+
+    @Valid
+    private CurrentLocationRequest currentLocation;
 
     @NotNull(message = "Issue identified flag is required.")
     private Boolean isIssueIdentified;

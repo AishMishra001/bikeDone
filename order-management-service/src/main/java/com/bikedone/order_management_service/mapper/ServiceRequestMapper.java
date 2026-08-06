@@ -29,6 +29,11 @@ public class ServiceRequestMapper {
         serviceRequest.setCustomerId(customerId);
         serviceRequest.setCustomerVehicleId(request.getCustomerVehicleId());
         serviceRequest.setAddressId(request.getAddressId());
+        if (request.getCurrentLocation() != null) {
+            serviceRequest.setCurrentLocationLatitude(request.getCurrentLocation().getLatitude());
+            serviceRequest.setCurrentLocationLongitude(request.getCurrentLocation().getLongitude());
+            serviceRequest.setCurrentLocationNote(request.getCurrentLocation().getNote());
+        }
         serviceRequest.setRequestType(requestType);
         serviceRequest.setPreferredServiceDate(request.getPreferredServiceDate());
         serviceRequest.setServiceSlot(serviceSlot);
@@ -71,7 +76,9 @@ public class ServiceRequestMapper {
                 .requestType(serviceRequest.getRequestType().getDisplayName())
                 .status(serviceRequest.getStatus())
                 .preferredServiceDate(serviceRequest.getPreferredServiceDate())
-                .serviceSlot(serviceRequest.getServiceSlot().getSlotName())
+                .serviceSlot(serviceRequest.getServiceSlot() == null
+                        ? null
+                        : serviceRequest.getServiceSlot().getSlotName())
                 .customerVehicleId(serviceRequest.getCustomerVehicleId())
                 .build();
     }
