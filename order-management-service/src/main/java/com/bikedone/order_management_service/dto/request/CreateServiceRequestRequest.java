@@ -53,4 +53,16 @@ public class CreateServiceRequestRequest {
      */
     @Size(max = 5, message = "Maximum 5 images are allowed.")
     private List<String> imageUrls;
+
+    /**
+     * When the user selects a saved address (addressId is set), these fields carry
+     * the address's coordinates and formatted text so they can be stored in the
+     * current_location_* columns for easy access by field mechanics.
+     * These are optional — only populated when addressId is present.
+     */
+    private java.math.BigDecimal addressLatitude;
+    private java.math.BigDecimal addressLongitude;
+
+    @Size(max = 1000)
+    private String addressNote;
 }

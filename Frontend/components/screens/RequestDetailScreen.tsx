@@ -282,6 +282,15 @@ export default function RequestDetailScreen({
           </View>
           <Text style={styles.reqNumber}>{request.requestNumber}</Text>
           <Text style={styles.reqType}>{request.requestType}</Text>
+          {request.vehicleName ? (
+            <View style={styles.vehicleChip}>
+              <Feather name="truck" size={13} color="#f97316" />
+              <Text style={styles.vehicleChipText}>
+                {request.vehicleName}
+                {request.vehicleRegistrationNumber ? ` (${request.vehicleRegistrationNumber})` : ""}
+              </Text>
+            </View>
+          ) : null}
         </View>
 
         {/* ── Details Card ───────────────────────────────────────────── */}
@@ -297,7 +306,21 @@ export default function RequestDetailScreen({
             <View style={styles.rowDivider} />
             <DetailRow icon="layers" label="Slot" value={request.serviceSlot} />
           </>)}
+          {request.serviceAddress ? (<>
+            <View style={styles.rowDivider} />
+            <DetailRow icon="map-pin" label="Service Address" value={request.serviceAddress} />
+          </>) : null}
         </View>
+
+        {/* ── Issue Description ──────────────────────────────────────── */}
+        {request.description ? (
+          <View style={styles.card}>
+            <Text style={styles.cardSectionTitle}>
+              <Feather name="file-text" size={13} color="#9ca3af" />{"  "}ISSUE DESCRIPTION
+            </Text>
+            <Text style={styles.descriptionText}>{request.description}</Text>
+          </View>
+        ) : null}
 
         {/* ── Photos ─────────────────────────────────────────────────── */}
         {request.imageUrls && request.imageUrls.length > 0 && (

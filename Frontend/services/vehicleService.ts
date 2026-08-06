@@ -60,8 +60,11 @@ export interface ServiceIssue {
 
 export interface CreateServiceRequestPayload {
   customerVehicleId: string;
-  // Either set an existing addressId, or omit and provide currentLocation
   addressId?: string;
+  /** When addressId is set, also send the address coordinates + formatted text */
+  addressLatitude?: number | null;
+  addressLongitude?: number | null;
+  addressNote?: string;
   requestTypeId: number;
   isImmediate: boolean;
   preferredServiceDate?: string;
@@ -70,14 +73,11 @@ export interface CreateServiceRequestPayload {
   serviceCategoryId?: number;
   serviceIssueIds?: number[];
   description?: string;
-  // Optional current location when user chooses to use live location
   currentLocation?: {
     latitude: number;
     longitude: number;
-    // optional freeform address or note
     note?: string;
   };
-  // Cloudinary URLs uploaded before submitting (max 5)
   imageUrls?: string[];
 }
 
@@ -97,6 +97,10 @@ export interface MyServiceRequest {
   isImmediate: boolean;
   serviceSlot: string | null;
   customerVehicleId: string;
+  vehicleName: string | null;
+  vehicleRegistrationNumber: string | null;
+  serviceAddress: string | null;
+  description: string | null;
   imageUrls: string[];
 }
 

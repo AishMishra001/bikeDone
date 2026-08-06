@@ -457,6 +457,23 @@ export default function BookingScreen({
       };
     } else {
       payload.addressId = selectedAddressId;
+      // Also fill address location columns from the saved address details
+      const addr = addresses.find((a) => a.id === selectedAddressId);
+      if (addr) {
+        payload.addressLatitude = addr.latitude ?? undefined;
+        payload.addressLongitude = addr.longitude ?? undefined;
+        // Build formatted address: "123, Building, Street, Landmark, City, State - Pincode"
+        const parts = [
+          addr.houseNumber,
+          addr.buildingName,
+          addr.street,
+          addr.landmark,
+          addr.city,
+          addr.state,
+          addr.pincode ? `- ${addr.pincode}` : null,
+        ].filter(Boolean);
+        payload.addressNote = parts.join(", ");
+      }
     }
 
     if (showDateAndTime) {
