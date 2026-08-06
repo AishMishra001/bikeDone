@@ -10,6 +10,7 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -51,6 +52,13 @@ public class ServiceRequest extends BaseEntity {
     @Column(name = "preferred_service_date")
     private LocalDate preferredServiceDate;
 
+    @Column(name = "preferred_service_time")
+    private LocalTime preferredServiceTime;
+
+    @Column(name = "is_immediate", nullable = false)
+    @Builder.Default
+    private Boolean isImmediate = false;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "service_slot_id")
     private ServiceSlot serviceSlot;
@@ -67,6 +75,13 @@ public class ServiceRequest extends BaseEntity {
 
     @Column(name = "cancellation_reason")
     private String cancellationReason;
+
+    /**
+     * Comma-separated Cloudinary URLs of images uploaded by the customer.
+     * Null if no images were uploaded.
+     */
+    @Column(name = "image_urls", columnDefinition = "TEXT")
+    private String imageUrls;
 
     @Column(name = "is_active", nullable = false)
     @Builder.Default

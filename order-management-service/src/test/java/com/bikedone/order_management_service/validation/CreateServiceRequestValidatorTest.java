@@ -2,6 +2,7 @@ package com.bikedone.order_management_service.validation;
 
 import com.bikedone.order_management_service.dto.request.CreateServiceRequestRequest;
 import com.bikedone.order_management_service.dto.request.CurrentLocationRequest;
+import com.bikedone.order_management_service.common.datetime.DateTimeProvider;
 import com.bikedone.order_management_service.entity.RequestType;
 import com.bikedone.order_management_service.enums.RequestTypeCode;
 import com.bikedone.order_management_service.exception.BadRequestException;
@@ -12,6 +13,11 @@ import com.bikedone.order_management_service.repository.ServiceSlotRepository;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneOffset;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -24,13 +30,15 @@ class CreateServiceRequestValidatorTest {
             mock(RequestTypeRepository.class),
             mock(ServiceCategoryRepository.class),
             mock(ServiceSlotRepository.class),
-            mock(ServiceIssueRepository.class)
+            mock(ServiceIssueRepository.class),
+            new DateTimeProvider(Clock.fixed(Instant.parse("2026-08-06T08:00:00Z"), ZoneOffset.UTC))
     );
 
     @Test
-    void permitsBreakdownWithCurrentLocationAndNoDateOrSlot() {
+    void permitsImmediateRequestWithCurrentLocation() {
         CreateServiceRequestRequest request = baseRequest();
         request.setCurrentLocation(currentLocation());
+        request.setIsImmediate(true);
 
         assertDoesNotThrow(() -> validator.validate(request, requestType(RequestTypeCode.BREAKDOWN)));
     }
@@ -39,6 +47,29 @@ class CreateServiceRequestValidatorTest {
     void requiresDateAndSlotForScheduledRequests() {
         CreateServiceRequestRequest request = baseRequest();
         request.setCurrentLocation(currentLocation());
+
+        assertThrows(
+                BadRequestException.class,
+                () -> validator.validate(request, requestType(RequestTypeCode.REPAIR))
+        );
+    }
+
+    @Test
+    void permitsScheduledRequestAtLeastThirtyMinutesInTheFuture() {
+        CreateServiceRequestRequest request = baseRequest();
+        request.setCurrentLocation(currentLocation());
+        request.setPreferredServiceDate(LocalDate.of(2026, 8, 6));
+        request.setPreferredServiceTime(LocalTime.of(8, 30));
+
+        assertDoesNotThrow(() -> validator.validate(request, requestType(RequestTypeCode.REPAIR)));
+    }
+
+    @Test
+    void rejectsScheduledRequestLessThanThirtyMinutesInTheFuture() {
+        CreateServiceRequestRequest request = baseRequest();
+        request.setCurrentLocation(currentLocation());
+        request.setPreferredServiceDate(LocalDate.of(2026, 8, 6));
+        request.setPreferredServiceTime(LocalTime.of(8, 29));
 
         assertThrows(
                 BadRequestException.class,

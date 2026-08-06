@@ -4,6 +4,8 @@ import com.bikedone.order_management_service.enums.ServiceRequestStatus;
 import lombok.Builder;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.List;
 import java.util.UUID;
 
 @Builder
@@ -19,9 +21,16 @@ public record MyServiceRequestResponse(
 
         LocalDate preferredServiceDate,
 
+        LocalTime preferredServiceTime,
+
+        Boolean isImmediate,
+
         String serviceSlot,
 
-        UUID customerVehicleId
+        UUID customerVehicleId,
+
+        /** Cloudinary image URLs uploaded by the customer. Empty list if none. */
+        List<String> imageUrls
 
 ) {
 }

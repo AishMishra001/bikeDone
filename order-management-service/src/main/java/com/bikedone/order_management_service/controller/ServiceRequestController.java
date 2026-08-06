@@ -6,9 +6,9 @@ import com.bikedone.order_management_service.common.logging.Logger;
 import com.bikedone.order_management_service.common.response.ApiResponse;
 import com.bikedone.order_management_service.dto.request.CancelServiceRequestRequest;
 import com.bikedone.order_management_service.dto.request.CreateServiceRequestRequest;
+import com.bikedone.order_management_service.dto.request.RescheduleServiceRequestRequest;
 import com.bikedone.order_management_service.dto.response.CreateServiceRequestResponse;
 import com.bikedone.order_management_service.dto.response.MyServiceRequestResponse;
-import com.bikedone.order_management_service.exception.BadRequestException;
 import com.bikedone.order_management_service.service.ServiceRequestService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -52,33 +52,45 @@ public class ServiceRequestController {
         );
     }
 
+    @GetMapping("/{requestId}")
+    public ResponseEntity<ApiResponse<MyServiceRequestResponse>> getServiceRequestById(
+            @PathVariable UUID requestId) {
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        serviceRequestService.getServiceRequestById(requestId),
+                        "Service request fetched successfully."
+                )
+        );
+    }
+
     @PatchMapping("/{requestId}/cancel")
     public ResponseEntity<ApiResponse<CreateServiceRequestResponse>> cancelServiceRequest(
             @PathVariable UUID requestId,
             @Valid @RequestBody CancelServiceRequestRequest request) {
 
-        Logger.printLog( LogLevel.INFO, LogStep.SERVICE_REQUEST, "Cancel service request initiated", "Received cancel request for requestId=" + requestId, null, requestId.toString() );
+        Logger.printLog(LogLevel.INFO, LogStep.SERVICE_REQUEST, "Cancel service request initiated", "requestId=" + requestId, null, requestId.toString());
 
-        try {
-            CreateServiceRequestResponse response =
-                    serviceRequestService.cancelServiceRequest(
-                            requestId,
-                            request
-                    );
+        CreateServiceRequestResponse response =
+                serviceRequestService.cancelServiceRequest(requestId, request);
 
-            Logger.printLog( LogLevel.INFO, LogStep.SERVICE_REQUEST, "Cancel service request successful", "Service request cancelled successfully for requestId=" + requestId, null, requestId.toString() );
+        return ResponseEntity.ok(
+                ApiResponse.success(response, "Service request cancelled successfully.")
+        );
+    }
 
-            return ResponseEntity.ok(
-                    ApiResponse.success(
-                            response,
-                            "Service request cancelled successfully."
-                    )
-            );
+    @PatchMapping("/{requestId}/reschedule")
+    public ResponseEntity<ApiResponse<CreateServiceRequestResponse>> rescheduleServiceRequest(
+            @PathVariable UUID requestId,
+            @Valid @RequestBody RescheduleServiceRequestRequest request) {
 
-        } catch (Exception e) {
-            Logger.printLog( LogLevel.ERROR, LogStep.SERVICE_REQUEST, "Cancel service request failed", e.getMessage(), null, requestId.toString() );
-            throw new BadRequestException(e.getMessage());
-        }
+        Logger.printLog(LogLevel.INFO, LogStep.SERVICE_REQUEST, "Reschedule service request initiated", "requestId=" + requestId, null, requestId.toString());
 
+        CreateServiceRequestResponse response =
+                serviceRequestService.rescheduleServiceRequest(requestId, request);
+
+        return ResponseEntity.ok(
+                ApiResponse.success(response, "Service request rescheduled successfully.")
+        );
     }
 }

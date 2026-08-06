@@ -21,7 +21,7 @@ public class ServiceSlotServiceImpl implements ServiceSlotService {
     @Override
     public List<ServiceSlotResponse> getAllServiceSlots() {
         return serviceSlotRepository
-                .findByIsActiveTrueOrderByStartTimeAsc()
+                .findByIsActiveTrueOrderBySlotTimeAsc()
                 .stream()
                 .map(ServiceSlotMapper::toResponse)
                 .toList();

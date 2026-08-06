@@ -19,14 +19,9 @@ public class ServiceSlot extends BaseEntity {
     @Column(name = "slot_name", nullable = false)
     private String slotName;
 
-    @Column(name = "start_time", nullable = false)
-    private LocalTime startTime;
-
-    @Column(name = "end_time", nullable = false)
-    private LocalTime endTime;
-
-    @Column(name = "max_capacity", nullable = false)
-    private Integer maxCapacity;
+    /** The exact time this slot represents, e.g. 09:00, 09:30, … 23:30 */
+    @Column(name = "slot_time", nullable = false, unique = true)
+    private LocalTime slotTime;
 
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;

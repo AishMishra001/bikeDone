@@ -227,6 +227,83 @@ export const createApiClient = (baseUrl: string) => ({
   ): Promise<T> {
     return this.request<T>(path, { ...options, method: "DELETE" });
   },
+
+  /**
+   * Multipart/form-data upload.
+   * Do NOT set Content-Type manually — fetch sets it automatically with
+   * the correct boundary when body is FormData.
+   * Includes the same 401 → token-refresh → retry logic as request().
+   */
+  async upload<T>(path: string, formData: FormData): Promise<T> {
+    const url = `${baseUrl}${path}`;
+
+    const buildHeaders = async (): Promise<Record<string, string>> => {
+      const token = await tokenStorage.getAccessToken();
+      return token ? { Authorization: `Bearer ${token}` } : {};
+    };
+
+    const doFetch = async (headers: Record<string, string>) =>
+      fetch(url, {
+        method: "POST",
+        headers,
+        body: formData,
+        ...(Platform.OS === "web" ? { credentials: "include" as RequestCredentials } : {}),
+      });
+
+    let response = await doFetch(await buildHeaders());
+
+    // 401 → try refresh once, then retry
+    if (response.status === 401) {
+      if (!isRefreshing) {
+        isRefreshing = true;
+        const refreshToken = await tokenStorage.getRefreshToken();
+        if (!refreshToken) {
+          await handleAuthFailure();
+          throw new Error("Session expired. Please log in again.");
+        }
+        try {
+          const refreshResponse = await fetch(`${SERVICE_URLS.UMS}/auth/refresh`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ refreshToken }),
+          });
+          if (!refreshResponse.ok) throw new Error("Token refresh failed");
+          const refreshData = await refreshResponse.json();
+          if (refreshData.success && refreshData.data) {
+            const { accessToken: newAccess, refreshToken: newRefresh, user } = refreshData.data;
+            await tokenStorage.setAccessToken(newAccess);
+            await tokenStorage.setRefreshToken(newRefresh);
+            if (user) await tokenStorage.setUser(user);
+            isRefreshing = false;
+            onRefreshed(newAccess);
+          } else {
+            throw new Error("Invalid refresh response");
+          }
+        } catch {
+          await handleAuthFailure();
+          throw new Error("Session expired. Please log in again.");
+        }
+      } else {
+        // Another refresh already in progress — wait for it
+        await new Promise<void>((resolve) =>
+          subscribeTokenRefresh((_newToken: string) => resolve()),
+        );
+      }
+
+      // Retry with fresh token
+      response = await doFetch(await buildHeaders());
+    }
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(
+        errorData.message || `Upload failed with status ${response.status}`,
+      );
+    }
+
+    const resJson = await response.json();
+    return resJson.data as T;
+  },
 });
 
 // ─── Default clients — ready to import ───────────────────────────────────────

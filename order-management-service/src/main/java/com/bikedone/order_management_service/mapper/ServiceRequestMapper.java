@@ -12,6 +12,9 @@ import com.bikedone.order_management_service.enums.ServiceRequestStatus;
 import org.springframework.stereotype.Component;
 
 import java.util.UUID;
+import java.util.List;
+import java.time.LocalDate;
+import java.time.LocalTime;
 
 @Component
 public class ServiceRequestMapper {
@@ -21,7 +24,9 @@ public class ServiceRequestMapper {
             UUID customerId,
             String requestNumber,
             RequestType requestType,
-            ServiceSlot serviceSlot) {
+            ServiceSlot serviceSlot,
+            LocalDate preferredServiceDate,
+            LocalTime preferredServiceTime) {
 
         ServiceRequest serviceRequest = new ServiceRequest();
 
@@ -35,10 +40,18 @@ public class ServiceRequestMapper {
             serviceRequest.setCurrentLocationNote(request.getCurrentLocation().getNote());
         }
         serviceRequest.setRequestType(requestType);
-        serviceRequest.setPreferredServiceDate(request.getPreferredServiceDate());
+        serviceRequest.setPreferredServiceDate(preferredServiceDate);
+        serviceRequest.setPreferredServiceTime(preferredServiceTime);
+        serviceRequest.setIsImmediate(request.getIsImmediate());
         serviceRequest.setServiceSlot(serviceSlot);
         serviceRequest.setIssueIdentified(request.getIsIssueIdentified());
         serviceRequest.setDescription(request.getDescription());
+
+        // Convert list of URLs to comma-separated string for storage
+        if (request.getImageUrls() != null && !request.getImageUrls().isEmpty()) {
+            serviceRequest.setImageUrls(String.join(",", request.getImageUrls()));
+        }
+
         serviceRequest.setStatus(ServiceRequestStatus.REQUEST_CREATED);
         serviceRequest.setIsActive(true);
 
@@ -70,16 +83,25 @@ public class ServiceRequestMapper {
     public MyServiceRequestResponse toMyServiceRequestResponse(
             ServiceRequest serviceRequest) {
 
+        // Parse comma-separated image URLs back to a list
+        List<String> imageUrls = (serviceRequest.getImageUrls() != null
+                && !serviceRequest.getImageUrls().isBlank())
+                ? List.of(serviceRequest.getImageUrls().split(","))
+                : List.of();
+
         return MyServiceRequestResponse.builder()
                 .id(serviceRequest.getId())
                 .requestNumber(serviceRequest.getRequestNumber())
                 .requestType(serviceRequest.getRequestType().getDisplayName())
                 .status(serviceRequest.getStatus())
                 .preferredServiceDate(serviceRequest.getPreferredServiceDate())
+                .preferredServiceTime(serviceRequest.getPreferredServiceTime())
+                .isImmediate(serviceRequest.getIsImmediate())
                 .serviceSlot(serviceRequest.getServiceSlot() == null
                         ? null
                         : serviceRequest.getServiceSlot().getSlotName())
                 .customerVehicleId(serviceRequest.getCustomerVehicleId())
+                .imageUrls(imageUrls)
                 .build();
     }
 }

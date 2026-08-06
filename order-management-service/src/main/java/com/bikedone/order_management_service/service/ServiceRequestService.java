@@ -2,6 +2,7 @@ package com.bikedone.order_management_service.service;
 
 import com.bikedone.order_management_service.dto.request.CancelServiceRequestRequest;
 import com.bikedone.order_management_service.dto.request.CreateServiceRequestRequest;
+import com.bikedone.order_management_service.dto.request.RescheduleServiceRequestRequest;
 import com.bikedone.order_management_service.dto.response.CreateServiceRequestResponse;
 import com.bikedone.order_management_service.dto.response.MyServiceRequestResponse;
 
@@ -16,9 +17,15 @@ public interface ServiceRequestService {
 
     List<MyServiceRequestResponse> getMyServiceRequests();
 
+    MyServiceRequestResponse getServiceRequestById(UUID requestId);
+
     CreateServiceRequestResponse cancelServiceRequest(
             UUID requestId,
             CancelServiceRequestRequest request
     );
 
+    CreateServiceRequestResponse rescheduleServiceRequest(
+            UUID requestId,
+            RescheduleServiceRequestRequest request
+    );
 }

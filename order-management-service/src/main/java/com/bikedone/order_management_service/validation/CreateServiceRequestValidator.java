@@ -1,10 +1,10 @@
 package com.bikedone.order_management_service.validation;
 
+import com.bikedone.order_management_service.common.datetime.DateTimeProvider;
 import com.bikedone.order_management_service.dto.request.CreateServiceRequestRequest;
 import com.bikedone.order_management_service.entity.RequestType;
 import com.bikedone.order_management_service.entity.ServiceCategory;
 import com.bikedone.order_management_service.entity.ServiceSlot;
-import com.bikedone.order_management_service.enums.RequestTypeCode;
 import com.bikedone.order_management_service.exception.BadRequestException;
 import com.bikedone.order_management_service.exception.ResourceNotFoundException;
 import com.bikedone.order_management_service.repository.RequestTypeRepository;
@@ -14,7 +14,8 @@ import com.bikedone.order_management_service.repository.ServiceSlotRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
-import java.util.UUID;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 @Component
 @RequiredArgsConstructor
@@ -24,6 +25,7 @@ public class CreateServiceRequestValidator {
     private final ServiceCategoryRepository serviceCategoryRepository;
     private final ServiceSlotRepository serviceSlotRepository;
     private final ServiceIssueRepository serviceIssueRepository;
+    private final DateTimeProvider dateTimeProvider;
 
     /**
      * Validate Request Type
@@ -37,14 +39,15 @@ public class CreateServiceRequestValidator {
     }
 
     /**
-     * Validate Service Slot
+     * Validate Service Slot — exact slot_time match.
+     * The client must pick a time that corresponds to one of the 48 seeded slots.
      */
-    public ServiceSlot validateServiceSlot(UUID serviceSlotId) {
+    public ServiceSlot validateServiceSlotForTime(LocalTime preferredServiceTime) {
 
         return serviceSlotRepository
-                .findByIdAndIsActiveTrue(serviceSlotId)
+                .findFirstByIsActiveTrueAndSlotTime(preferredServiceTime)
                 .orElseThrow(() ->
-                        new ResourceNotFoundException("Service slot not found."));
+                        new BadRequestException("Selected service time does not match any available slot."));
     }
 
     /**
@@ -65,28 +68,23 @@ public class CreateServiceRequestValidator {
 
         validateLocation(request);
 
-        boolean isBreakdown = RequestTypeCode.BREAKDOWN.equals(
-                requestType.getRequestTypeCode()
-        );
-
-        if (isBreakdown) {
-            if (request.getPreferredServiceDate() != null
-                    || request.getServiceSlotId() != null) {
-                throw new BadRequestException(
-                        "Preferred service date and service slot must not be provided for breakdown assistance."
-                );
-            }
-        } else {
+        if (!Boolean.TRUE.equals(request.getIsImmediate())) {
             if (request.getPreferredServiceDate() == null) {
                 throw new BadRequestException("Preferred service date is required.");
             }
 
-            if (request.getPreferredServiceDate().isBefore(java.time.LocalDate.now())) {
-                throw new BadRequestException("Preferred service date cannot be in the past.");
+            if (request.getPreferredServiceTime() == null) {
+                throw new BadRequestException("Preferred service time is required.");
             }
 
-            if (request.getServiceSlotId() == null) {
-                throw new BadRequestException("Service slot is required.");
+            LocalDateTime requestedDateTime = LocalDateTime.of(
+                    request.getPreferredServiceDate(),
+                    request.getPreferredServiceTime()
+            );
+            LocalDateTime earliestAllowedTime = dateTimeProvider.now().plusMinutes(30);
+
+            if (requestedDateTime.isBefore(earliestAllowedTime)) {
+                throw new BadRequestException("Scheduled service time must be at least 30 minutes in the future.");
             }
         }
 

@@ -5,5 +5,5 @@ public final class LogConstants {
     private LogConstants() {
     }
 
-    public static final String SERVICE_NAME = "user-management-service";
+    public static final String SERVICE_NAME = "order-management-service";
 }

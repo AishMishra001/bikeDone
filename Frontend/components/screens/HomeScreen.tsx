@@ -175,17 +175,7 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
               </TouchableOpacity>
             )}
           </View>
-        ) : (
-          <View style={styles.completedCard}>
-            <View style={styles.completedHeaderRow}>
-              <Feather name="check-circle" size={20} color="#16a34a" />
-              <Text style={styles.completedTitle}>Profile 100% Complete</Text>
-            </View>
-            <Text style={styles.completedSubtext}>
-              Your email and mobile number are verified!
-            </Text>
-          </View>
-        )}
+        ) : null}
 
         {/* Booking management */}
         <TouchableOpacity
@@ -227,21 +217,6 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
         </TouchableOpacity>
       </ScrollView>
 
-      {/* Bottom Nav */}
-      <View style={styles.bottomNav}>
-        <TouchableOpacity style={styles.navItem}>
-          <Feather name="home" size={24} color="#f97316" />
-          <Text style={[styles.navText, { color: '#f97316' }]}>Home</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={() => onNavigate('MyRequests')}>
-          <Feather name="clipboard" size={24} color="#9ca3af" />
-          <Text style={styles.navText}>My Bookings</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={() => onNavigate('Profile')}>
-          <Feather name="user" size={24} color="#9ca3af" />
-          <Text style={styles.navText}>Profile</Text>
-        </TouchableOpacity>
-      </View>
     </View>
   );
 }
@@ -388,27 +363,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  bottomNav: {
-    position: 'absolute',
-    bottom: 0,
-    width: '100%',
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    backgroundColor: '#ffffff',
-    paddingVertical: 12,
-    paddingBottom: 24,
-    borderTopWidth: 1,
-    borderColor: '#f3f4f6',
-  },
-  navItem: {
-    alignItems: 'center',
-  },
-  navText: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    marginTop: 4,
-    color: '#9ca3af',
-  },
   locationLoadingRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -502,28 +456,5 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontWeight: 'bold',
     fontSize: 13,
-  },
-  completedCard: {
-    backgroundColor: '#f0fdf4',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: '#bbf7d0',
-  },
-  completedHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  completedTitle: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    color: '#166534',
-    marginLeft: 8,
-  },
-  completedSubtext: {
-    fontSize: 12,
-    color: '#15803d',
   },
 });

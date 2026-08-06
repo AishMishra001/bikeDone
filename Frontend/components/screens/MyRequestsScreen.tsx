@@ -16,6 +16,7 @@ import BackButton from "../ui/BackButton";
 
 interface MyRequestsScreenProps {
   onNavigate: (screen: string) => void;
+  onViewDetails: (id: string) => void;
 }
 
 // ─── Status Config ────────────────────────────────────────────────────────────
@@ -30,13 +31,6 @@ const STATUS_CONFIG: Record<string, { bg: string; color: string; icon: keyof typ
 
 const getStatusConfig = (status: string) => {
   return STATUS_CONFIG[status] || { bg: "#f3f4f6", color: "#6b7280", icon: "circle" as keyof typeof Feather.glyphMap };
-};
-
-const formatStatus = (status: string) => {
-  return status
-    .replace(/_/g, " ")
-    .toLowerCase()
-    .replace(/\b\w/g, (c) => c.toUpperCase());
 };
 
 const getRequestTypeIcon = (type: string): keyof typeof Feather.glyphMap => {
@@ -89,7 +83,7 @@ function SkeletonCard() {
 
 // ─── Request Card Component ───────────────────────────────────────────────────
 
-function RequestCard({ item }: { item: MyServiceRequest }) {
+function RequestCard({ item, onViewDetails }: { item: MyServiceRequest; onViewDetails: (id: string) => void }) {
   const statusConfig = getStatusConfig(item.status);
   const typeIcon = getRequestTypeIcon(item.requestType);
   const typeColor = getRequestTypeColor(item.requestType);
@@ -97,16 +91,16 @@ function RequestCard({ item }: { item: MyServiceRequest }) {
   const formatDate = (dateStr: string) => {
     if (!dateStr) return "—";
     try {
-      const date = new Date(dateStr);
-      if (isNaN(date.getTime())) return dateStr;
-      return date.toLocaleDateString("en-IN", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      });
-    } catch {
-      return dateStr;
-    }
+      const [y, mo, d] = dateStr.split("-").map(Number);
+      const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+      return `${d} ${months[mo - 1]} ${y}`;
+    } catch { return dateStr; }
+  };
+
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const formatTime = (hhmm: string) => {
+    const [h, m] = hhmm.split(":").map(Number);
+    return `${h % 12 || 12}:${pad(m)} ${h >= 12 ? "PM" : "AM"}`;
   };
 
   return (
@@ -124,46 +118,51 @@ function RequestCard({ item }: { item: MyServiceRequest }) {
         </View>
         <View style={[styles.statusBadge, { backgroundColor: statusConfig.bg }]}>
           <Feather name={statusConfig.icon} size={12} color={statusConfig.color} />
-          <Text style={[styles.statusText, { color: statusConfig.color }]}>{formatStatus(item.status)}</Text>
+          <Text style={[styles.statusText, { color: statusConfig.color }]}>
+            {item.status.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, c => c.toUpperCase())}
+          </Text>
         </View>
       </View>
 
-      {/* Details Row */}
+      {/* Date / Time row */}
       <View style={styles.cardDetails}>
-        {item.preferredServiceDate ? (
+        {item.isImmediate ? (
+          <View style={styles.detailItem}>
+            <Feather name="zap" size={13} color="#f97316" />
+            <Text style={[styles.detailText, { color: "#ea580c", fontWeight: "700" }]}>Immediate</Text>
+          </View>
+        ) : item.preferredServiceDate ? (
           <View style={styles.detailItem}>
             <Feather name="calendar" size={13} color="#9ca3af" />
             <Text style={styles.detailText}>{formatDate(item.preferredServiceDate)}</Text>
           </View>
         ) : null}
 
-        {item.serviceSlot ? (
+        {!item.isImmediate && item.preferredServiceTime ? (
           <View style={styles.detailItem}>
             <Feather name="clock" size={13} color="#9ca3af" />
-            <Text style={styles.detailText}>{item.serviceSlot}</Text>
+            <Text style={styles.detailText}>{formatTime(item.preferredServiceTime.slice(0, 5))}</Text>
           </View>
         ) : null}
       </View>
 
-      {/* Divider */}
+      {/* Footer: View Details */}
       <View style={styles.cardDivider} />
-
-      {/* Footer */}
-      <View style={styles.cardFooter}>
-        <View style={styles.detailItem}>
-          <Feather name="truck" size={13} color="#9ca3af" />
-          <Text style={styles.footerText}>
-            {item.customerVehicleId ? `Vehicle: ${item.customerVehicleId.substring(0, 8)}...` : "—"}
-          </Text>
-        </View>
-      </View>
+      <TouchableOpacity
+        style={styles.viewDetailsBtn}
+        onPress={() => onViewDetails(item.id)}
+        activeOpacity={0.7}
+      >
+        <Text style={styles.viewDetailsText}>View Details</Text>
+        <Feather name="chevron-right" size={15} color="#f97316" />
+      </TouchableOpacity>
     </View>
   );
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function MyRequestsScreen({ onNavigate }: MyRequestsScreenProps) {
+export default function MyRequestsScreen({ onNavigate, onViewDetails }: MyRequestsScreenProps) {
   const [requests, setRequests] = useState<MyServiceRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -290,7 +289,7 @@ export default function MyRequestsScreen({ onNavigate }: MyRequestsScreenProps) 
         <FlatList
           data={requests}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <RequestCard item={item} />}
+          renderItem={({ item }) => <RequestCard item={item} onViewDetails={onViewDetails} />}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           refreshControl={
@@ -373,7 +372,7 @@ const styles = StyleSheet.create({
   // ── List ────────────────────────────────────────────────────────────────
   listContent: {
     padding: 20,
-    paddingBottom: 40,
+    paddingBottom: 110,
   },
 
   // ── Request Card ────────────────────────────────────────────────────────
@@ -460,9 +459,16 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
-  footerText: {
-    fontSize: 12,
-    color: "#9ca3af",
+  viewDetailsBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: 4,
+  },
+  viewDetailsText: {
+    fontSize: 13,
+    color: "#f97316",
+    fontWeight: "700",
   },
 
   // ── Skeleton ────────────────────────────────────────────────────────────

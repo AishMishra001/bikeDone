@@ -1,8 +1,10 @@
 import { Feather } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
     ActivityIndicator,
     Animated,
+    Image,
     ScrollView,
     StyleSheet,
     Switch,
@@ -24,14 +26,17 @@ import {
 } from "../../services/vehicleService";
 import BackButton from "../ui/BackButton";
 import DatePickerField from "../ui/DatePickerField";
+import DigitalTimePickerField from "../ui/DigitalTimePickerField";
 import PrimaryButton from "../ui/PrimaryButton";
 import Toast, { ToastType } from "../ui/Toast";
+import { ReviewData } from "./BookingReviewScreen";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 interface BookingScreenProps {
   onNavigate: (screen: string) => void;
   onRequestSuccess?: (requestNumber: string) => void;
+  onReview?: (data: ReviewData) => void;
 }
 
 // ─── Skeleton Loader ──────────────────────────────────────────────────────────
@@ -153,6 +158,7 @@ function SectionHeader({
 export default function BookingScreen({
   onNavigate,
   onRequestSuccess,
+  onReview,
 }: BookingScreenProps) {
   // ── API Data ────────────────────────────────────────────────────────────────
   const [vehicles, setVehicles] = useState<CustomerVehicle[]>([]);
@@ -171,7 +177,8 @@ export default function BookingScreen({
   const [selectedRequestTypeId, setSelectedRequestTypeId] = useState<
     number | null
   >(null);
-  const [selectedServiceSlotId, setSelectedServiceSlotId] = useState("");
+  const [preferredServiceTime, setPreferredServiceTime] = useState("");
+  const [isImmediate, setIsImmediate] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(
     null,
   );
@@ -183,11 +190,15 @@ export default function BookingScreen({
   // ── UI State ────────────────────────────────────────────────────────────────
   const [loading, setLoading] = useState(true);
   const [issuesLoading, setIssuesLoading] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState<ToastType>("success");
+
+  // ── Photos ──────────────────────────────────────────────────────────────────
+  const [selectedPhotos, setSelectedPhotos] = useState<
+    Array<{ uri: string; fileName?: string; mimeType?: string }>
+  >([]);
 
   // ── Location ────────────────────────────────────────────────────────────────
   const {
@@ -207,7 +218,7 @@ export default function BookingScreen({
   const isBreakdown = selectedRequestType?.code === "BREAKDOWN";
   const showIssueToggle = !!selectedRequestTypeId && !isRoutine; // Routine does not show the issue toggle
   const showCategorySection = issueIdentified && !isRoutine; // Routine never shows categories/issues
-  const showDateAndSlot = !isBreakdown; // Breakdown does not show date/time slot
+  const showDateAndTime = !isImmediate;
 
   // ── Set default date to today ───────────────────────────────────────────────
   useEffect(() => {
@@ -254,8 +265,7 @@ export default function BookingScreen({
           addressesRes.find((a) => a.defaultAddress) || addressesRes[0];
         if (defaultAddress) setSelectedAddressId(defaultAddress.id);
 
-        // Don't auto-select request type - let user choose
-        if (slotsRes.length) setSelectedServiceSlotId(slotsRes[0].id);
+        // Service ranges are used to populate the exact-time picker.
       } catch (err) {
         console.warn("Booking data load failed", err);
         setError("Unable to load booking data. Please try again.");
@@ -295,6 +305,7 @@ export default function BookingScreen({
 
   // ── Reset issue-related state when request type changes ────────────────────
   useEffect(() => {
+    setIsImmediate(isBreakdown);
     if (isRoutine) {
       setIssueIdentified(false);
       setSelectedCategoryId(null);
@@ -307,7 +318,7 @@ export default function BookingScreen({
       setServiceIssues([]);
       setSelectedIssueIds([]);
     }
-  }, [selectedRequestTypeId]);
+  }, [selectedRequestTypeId, isRoutine, isBreakdown]);
 
   // ── Validation ─────────────────────────────────────────────────────────────
   const canSubmit = useMemo(() => {
@@ -316,9 +327,9 @@ export default function BookingScreen({
     if (!selectedVehicleId || !hasAddress || !selectedRequestTypeId)
       return false;
 
-    // Date and slot required for non-breakdown
-    if (showDateAndSlot) {
-      if (!preferredServiceDate.trim() || !selectedServiceSlotId) return false;
+    // Scheduled requests need a future date and an exact time.
+    if (showDateAndTime) {
+      if (!preferredServiceDate.trim() || !preferredServiceTime) return false;
     }
 
     if (showCategorySection) {
@@ -339,17 +350,16 @@ export default function BookingScreen({
     selectedVehicleId,
     selectedAddressId,
     selectedRequestTypeId,
-    selectedServiceSlotId,
+    preferredServiceTime,
     preferredServiceDate,
-    issueIdentified,
     selectedCategoryId,
     selectedIssueIds,
     useCurrentLocation,
     location,
     description,
     serviceIssues,
-    showDateAndSlot,
-    showIssueToggle,
+    showCategorySection,
+    showDateAndTime,
   ]);
 
   // Check if description is required (Other issue selected)
@@ -387,61 +397,121 @@ export default function BookingScreen({
     );
   };
 
-  const handleSubmit = async () => {
-    if (!canSubmit) {
-      showToast("Please fill all required fields before booking.", "warning");
+  // ── Photo picker handlers ──────────────────────────────────────────────────
+
+  const handlePickPhotos = async () => {
+    if (selectedPhotos.length >= 5) {
+      showToast("Maximum 5 photos allowed.", "warning");
       return;
     }
 
-    setSubmitting(true);
-    setError(null);
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      showToast("Gallery permission is required to pick photos.", "error");
+      return;
+    }
 
-    try {
-      const payload: CreateServiceRequestPayload = {
-        customerVehicleId: selectedVehicleId,
-        requestTypeId: selectedRequestTypeId!,
-        isIssueIdentified: isRoutine ? false : issueIdentified,
-        description: description.trim() || undefined,
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsMultipleSelection: true,
+      quality: 0.8,
+      selectionLimit: 5 - selectedPhotos.length,
+    });
+
+    if (!result.canceled && result.assets.length > 0) {
+      const newPhotos = result.assets.map((a) => ({
+        uri: a.uri,
+        fileName: a.fileName ?? undefined,
+        mimeType: a.mimeType ?? "image/jpeg",
+      }));
+      setSelectedPhotos((prev) => [...prev, ...newPhotos].slice(0, 5));
+    }
+  };
+
+  const handleRemovePhoto = (index: number) => {
+    setSelectedPhotos((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // ── Review handler (replaces direct submit) ────────────────────────────────
+
+  const handleReview = () => {
+    if (!canSubmit) {
+      showToast("Please fill all required fields before reviewing.", "warning");
+      return;
+    }
+
+    // Build the payload
+    const payload: CreateServiceRequestPayload = {
+      customerVehicleId: selectedVehicleId,
+      requestTypeId: selectedRequestTypeId!,
+      isIssueIdentified: isRoutine ? false : issueIdentified,
+      isImmediate,
+      description: description.trim() || undefined,
+    };
+
+    if (useCurrentLocation && location) {
+      payload.currentLocation = {
+        latitude: location.latitude,
+        longitude: location.longitude,
+        note: location.fullAddress || location.shortAddress || undefined,
       };
+    } else {
+      payload.addressId = selectedAddressId;
+    }
 
-      // Address or current location
-      if (useCurrentLocation && location) {
-        payload.currentLocation = {
-          latitude: location.latitude,
-          longitude: location.longitude,
-          note: location.fullAddress || location.shortAddress || undefined,
-        };
-      } else {
-        payload.addressId = selectedAddressId;
+    if (showDateAndTime) {
+      payload.preferredServiceDate = preferredServiceDate.trim();
+      payload.preferredServiceTime = preferredServiceTime;
+    }
+
+    if (!isRoutine && issueIdentified) {
+      payload.serviceCategoryId = selectedCategoryId ?? undefined;
+      payload.serviceIssueIds =
+        selectedIssueIds.length > 0 ? selectedIssueIds : undefined;
+    }
+
+    // Build human-readable labels for review screen
+    const vehicle = vehicles.find((v) => v.id === selectedVehicleId);
+    const vehicleLabel = vehicle
+      ? `${vehicle.brandName} ${vehicle.modelName} (${vehicle.registrationNumber})`
+      : selectedVehicleId;
+
+    let locationLabel = "";
+    if (useCurrentLocation && location) {
+      locationLabel = `Current Location — ${location.shortAddress || location.fullAddress || "Detected"}`;
+    } else {
+      const addr = addresses.find((a) => a.id === selectedAddressId);
+      if (addr) {
+        locationLabel = `${addr.label} — ${[addr.houseNumber, addr.street, addr.city].filter(Boolean).join(", ")}`;
       }
+    }
 
-      // Date and slot for Routine, Repair, Inspection
-      if (showDateAndSlot) {
-        payload.preferredServiceDate = preferredServiceDate.trim();
-        payload.serviceSlotId = selectedServiceSlotId;
-      }
+    const requestType = requestTypes.find((r) => r.id === selectedRequestTypeId);
+    const requestTypeLabel = requestType?.displayName ?? "";
 
-      // Category and issues (only when identified)
-      if (!isRoutine && issueIdentified) {
-        payload.serviceCategoryId = selectedCategoryId ?? undefined;
-        payload.serviceIssueIds =
-          selectedIssueIds.length > 0 ? selectedIssueIds : undefined;
-      }
+    const category = serviceCategories.find((c) => c.id === selectedCategoryId);
+    const categoryLabel = category?.displayName ?? "";
 
-      const result = await vehicleService.createServiceRequest(payload);
+    const issueLabels = serviceIssues
+      .filter((i) => selectedIssueIds.includes(i.id))
+      .map((i) => i.displayName);
 
-      // Navigate to success screen
-      if (onRequestSuccess && result.requestNumber) {
-        onRequestSuccess(result.requestNumber);
-      }
-      onNavigate("RequestSuccess");
-    } catch (err: any) {
-      console.warn("Create service request failed", err);
-      const message =
-        err?.message || "Unable to place service request. Please try again.";
-      showToast(message, "error");
-    } finally {
-      setSubmitting(false);
+    const reviewData: ReviewData = {
+      vehicleLabel,
+      locationLabel,
+      requestTypeLabel,
+      serviceDate: preferredServiceDate,
+      serviceTime: preferredServiceTime,
+      isImmediate,
+      categoryLabel,
+      issueLabels,
+      description,
+      photoUris: selectedPhotos,
+      payload,
+    };
+
+    if (onReview) {
+      onReview(reviewData);
     }
   };
 
@@ -985,13 +1055,55 @@ export default function BookingScreen({
               />
             </View>
 
+            {/* Breakdown assistance is always dispatched immediately. */}
+            {!isBreakdown && (
+              <>
+                <SectionHeader icon="zap" title="WHEN DO YOU NEED SERVICE?" step={showCategorySection ? 5 : 4} />
+                <View style={styles.dispatchModeCard}>
+              <TouchableOpacity
+                style={[styles.dispatchModeButton, isImmediate && styles.dispatchModeButtonActive]}
+                onPress={() => setIsImmediate(true)}
+                activeOpacity={0.7}
+              >
+                <Feather name="zap" size={17} color={isImmediate ? "#ffffff" : "#f97316"} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.dispatchModeTitle, isImmediate && styles.dispatchModeTitleActive]}>Immediately</Text>
+                  <Text style={[styles.dispatchModeHint, isImmediate && styles.dispatchModeHintActive]}>Send a mechanic as soon as possible</Text>
+                </View>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.dispatchModeButton, !isImmediate && styles.dispatchModeButtonActive]}
+                onPress={() => setIsImmediate(false)}
+                activeOpacity={0.7}
+              >
+                <Feather name="calendar" size={17} color={!isImmediate ? "#ffffff" : "#f97316"} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.dispatchModeTitle, !isImmediate && styles.dispatchModeTitleActive]}>Schedule a time</Text>
+                  <Text style={[styles.dispatchModeHint, !isImmediate && styles.dispatchModeHintActive]}>Choose the date and exact time</Text>
+                </View>
+              </TouchableOpacity>
+                </View>
+              </>
+            )}
+
+            {isImmediate && (
+              <View style={styles.immediateNotice}>
+                <Feather name="info" size={16} color="#c2410c" />
+                <Text style={styles.immediateNoticeText}>
+                  {isBreakdown
+                    ? "Breakdown assistance is sent immediately with the current date and time."
+                    : "This request will be marked urgent and sent with the current date and time."}
+                </Text>
+              </View>
+            )}
+
             {/* Date Picker */}
-            {showDateAndSlot && (
+            {showDateAndTime && (
               <>
                 <SectionHeader
                   icon="calendar"
                   title="PREFERRED DATE"
-                  step={showCategorySection ? 5 : 4}
+                  step={showCategorySection ? 6 : 5}
                 />
                 <DatePickerField
                   value={preferredServiceDate}
@@ -1001,61 +1113,76 @@ export default function BookingScreen({
               </>
             )}
 
-            {/* Time Slot */}
-            {showDateAndSlot && (
+            {/* Exact digital time */}
+            {showDateAndTime && (
               <>
                 <SectionHeader
                   icon="clock"
-                  title="PREFERRED TIME SLOT"
-                  step={showIssueToggle && issueIdentified ? 6 : 5}
+                  title="PREFERRED TIME"
+                  step={showCategorySection ? 7 : 6}
                 />
-                <View style={styles.slotGrid}>
-                  {serviceSlots.map((slot) => {
-                    const isSelected = selectedServiceSlotId === slot.id;
-                    return (
-                      <TouchableOpacity
-                        key={slot.id}
-                        style={[
-                          styles.slotCard,
-                          isSelected && styles.slotCardActive,
-                        ]}
-                        onPress={() => setSelectedServiceSlotId(slot.id)}
-                        activeOpacity={0.7}
-                      >
-                        <Feather
-                          name="clock"
-                          size={14}
-                          color={isSelected ? "#f97316" : "#9ca3af"}
-                          style={{ marginBottom: 4 }}
-                        />
-                        <Text
-                          style={[
-                            styles.slotText,
-                            isSelected && styles.slotTextActive,
-                          ]}
-                        >
-                          {slot.slotName}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
+                <DigitalTimePickerField
+                  value={preferredServiceTime}
+                  onChange={setPreferredServiceTime}
+                  date={preferredServiceDate}
+                  slots={serviceSlots}
+                />
               </>
             )}
 
-            {/* Submit Button */}
+            {/* ─── Add Photos (Optional) ───────────────────────────────── */}
+            <SectionHeader
+              icon="camera"
+              title="ADD PHOTOS (OPTIONAL)"
+              step={showCategorySection ? (showDateAndTime ? 8 : 7) : (showDateAndTime ? 6 : 5)}
+            />
+            <View style={styles.photoPicker}>
+              {/* Existing photo thumbnails */}
+              {selectedPhotos.map((photo, idx) => (
+                <View key={idx} style={styles.photoThumbWrap}>
+                  <Image
+                    source={{ uri: photo.uri }}
+                    style={styles.photoThumb}
+                    resizeMode="cover"
+                  />
+                  <TouchableOpacity
+                    style={styles.photoRemoveBtn}
+                    onPress={() => handleRemovePhoto(idx)}
+                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                  >
+                    <Feather name="x" size={12} color="#ffffff" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+
+              {/* Add more button (shown if < 5 photos) */}
+              {selectedPhotos.length < 5 && (
+                <TouchableOpacity
+                  style={styles.photoAddBtn}
+                  onPress={handlePickPhotos}
+                  activeOpacity={0.7}
+                >
+                  <Feather name="plus" size={24} color="#9ca3af" />
+                </TouchableOpacity>
+              )}
+            </View>
+            {selectedPhotos.length > 0 && (
+              <Text style={styles.photoHint}>
+                {selectedPhotos.length}/5 photo{selectedPhotos.length > 1 ? "s" : ""} added · Tap × to remove
+              </Text>
+            )}
+            {selectedPhotos.length === 0 && (
+              <Text style={styles.photoHint}>
+                Add up to 5 photos to help the mechanic understand the issue
+              </Text>
+            )}
+
+            {/* Submit → Review Button */}
             <View style={styles.submitSection}>
               <PrimaryButton
-                title={
-                  submitting
-                    ? "Submitting..."
-                    : isBreakdown
-                      ? "Request Breakdown Assistance"
-                      : "Book Service Now"
-                }
-                onPress={handleSubmit}
-                disabled={!canSubmit || submitting}
-                loading={submitting}
+                title="Review Request"
+                onPress={handleReview}
+                disabled={!canSubmit}
               />
               {!canSubmit && selectedRequestTypeId !== null && (
                 <Text style={styles.validationHint}>
@@ -1075,10 +1202,10 @@ export default function BookingScreen({
                             ? "Please select at least one issue"
                             : isDescriptionRequired && !description.trim()
                               ? "Description is required for 'Other' issue"
-                              : showDateAndSlot && !preferredServiceDate
+                              : showDateAndTime && !preferredServiceDate
                                 ? "Please select a date"
-                                : showDateAndSlot && !selectedServiceSlotId
-                                  ? "Please select a time slot"
+                                : showDateAndTime && !preferredServiceTime
+                                  ? "Please select a time"
                                   : ""}
                 </Text>
               )}
@@ -1499,6 +1626,58 @@ const styles = StyleSheet.create({
     backgroundColor: "#fef2f2",
   },
 
+  // ── Dispatch mode ───────────────────────────────────────────────────────
+  dispatchModeCard: {
+    gap: 10,
+  },
+  dispatchModeButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: "#ffffff",
+    borderWidth: 1.5,
+    borderColor: "#fed7aa",
+    borderRadius: 14,
+    padding: 14,
+  },
+  dispatchModeButtonActive: {
+    backgroundColor: "#f97316",
+    borderColor: "#f97316",
+  },
+  dispatchModeTitle: {
+    color: "#111827",
+    fontSize: 14,
+    fontWeight: "800",
+  },
+  dispatchModeTitleActive: {
+    color: "#ffffff",
+  },
+  dispatchModeHint: {
+    color: "#6b7280",
+    fontSize: 11,
+    marginTop: 2,
+  },
+  dispatchModeHintActive: {
+    color: "#ffedd5",
+  },
+  immediateNotice: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 9,
+    marginTop: 12,
+    backgroundColor: "#fff7ed",
+    borderColor: "#fed7aa",
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+  },
+  immediateNoticeText: {
+    flex: 1,
+    color: "#9a3412",
+    fontSize: 12,
+    lineHeight: 17,
+  },
+
   // ── Slot Grid ───────────────────────────────────────────────────────────
   slotGrid: {
     flexDirection: "row",
@@ -1540,6 +1719,57 @@ const styles = StyleSheet.create({
     color: "#ef4444",
     textAlign: "center",
     marginTop: 10,
+  },
+
+  // ── Photo picker ────────────────────────────────────────────────────────
+  photoPicker: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    marginBottom: 8,
+  },
+  photoThumbWrap: {
+    position: "relative",
+    width: 80,
+    height: 80,
+  },
+  photoThumb: {
+    width: 80,
+    height: 80,
+    borderRadius: 12,
+    backgroundColor: "#f3f4f6",
+  },
+  photoRemoveBtn: {
+    position: "absolute",
+    top: -6,
+    right: -6,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: "#ef4444",
+    justifyContent: "center",
+    alignItems: "center",
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+  },
+  photoAddBtn: {
+    width: 80,
+    height: 80,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "#e5e7eb",
+    borderStyle: "dashed",
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f9fafb",
+  },
+  photoHint: {
+    fontSize: 11,
+    color: "#9ca3af",
+    marginBottom: 8,
   },
 
   // ── Error State ─────────────────────────────────────────────────────────

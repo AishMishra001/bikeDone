@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -24,7 +25,14 @@ public class CreateServiceRequestRequest {
 
     private LocalDate preferredServiceDate;
 
-    private UUID serviceSlotId;
+    private LocalTime preferredServiceTime;
+
+    /**
+     * When true, the request is dispatched as soon as possible. The server sets
+     * the requested date and time to its current time and does not assign a slot.
+     */
+    @NotNull(message = "Immediate request flag is required.")
+    private Boolean isImmediate = false;
 
     @Valid
     private CurrentLocationRequest currentLocation;
@@ -38,4 +46,11 @@ public class CreateServiceRequestRequest {
 
     @Size(max = 1000, message = "Description cannot exceed 1000 characters.")
     private String description;
+
+    /**
+     * Optional list of Cloudinary image URLs uploaded before submitting.
+     * Max 5 URLs, each max 2000 chars.
+     */
+    @Size(max = 5, message = "Maximum 5 images are allowed.")
+    private List<String> imageUrls;
 }

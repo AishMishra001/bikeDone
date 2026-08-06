@@ -12,9 +12,8 @@ public class ServiceSlotMapper {
         return ServiceSlotResponse.builder()
                 .id(entity.getId())
                 .slotName(entity.getSlotName())
-                .startTime(entity.getStartTime().toString())
-                .endTime(entity.getEndTime().toString())
-                .maxCapacity(entity.getMaxCapacity())
+                // "HH:mm" 24-hour format, e.g. "09:00", "13:30"
+                .slotTime(entity.getSlotTime().toString())
                 .build();
     }
 }

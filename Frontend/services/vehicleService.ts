@@ -48,9 +48,8 @@ export interface ServiceCategory {
 export interface ServiceSlot {
   id: string;
   slotName: string;
-  startTime: string;
-  endTime: string;
-  maxCapacity: number;
+  /** 24-hour time string, e.g. "09:00" or "13:30" */
+  slotTime: string;
 }
 
 export interface ServiceIssue {
@@ -64,8 +63,9 @@ export interface CreateServiceRequestPayload {
   // Either set an existing addressId, or omit and provide currentLocation
   addressId?: string;
   requestTypeId: number;
+  isImmediate: boolean;
   preferredServiceDate?: string;
-  serviceSlotId?: string;
+  preferredServiceTime?: string;
   isIssueIdentified: boolean;
   serviceCategoryId?: number;
   serviceIssueIds?: number[];
@@ -77,6 +77,8 @@ export interface CreateServiceRequestPayload {
     // optional freeform address or note
     note?: string;
   };
+  // Cloudinary URLs uploaded before submitting (max 5)
+  imageUrls?: string[];
 }
 
 export interface CreateServiceRequestResponse {
@@ -90,9 +92,12 @@ export interface MyServiceRequest {
   requestNumber: string;
   requestType: string;
   status: string;
-  preferredServiceDate: string;
-  serviceSlot: string;
+  preferredServiceDate: string | null;
+  preferredServiceTime: string | null;
+  isImmediate: boolean;
+  serviceSlot: string | null;
   customerVehicleId: string;
+  imageUrls: string[];
 }
 
 // ─── Request Types ────────────────────────────────────────────────────────────
@@ -181,6 +186,10 @@ export const vehicleService = {
   getMyServiceRequests: (): Promise<MyServiceRequest[]> =>
     vmsApi.get<MyServiceRequest[]>("/service-requests"),
 
+  /** Get a single service request by ID */
+  getServiceRequestById: (requestId: string): Promise<MyServiceRequest> =>
+    vmsApi.get<MyServiceRequest>(`/service-requests/${requestId}`),
+
   /** Cancel an existing service request */
   cancelServiceRequest: (
     requestId: string,
@@ -192,6 +201,21 @@ export const vehicleService = {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ reason }),
+      },
+    ),
+
+  /** Reschedule an existing service request */
+  rescheduleServiceRequest: (
+    requestId: string,
+    preferredServiceDate: string,
+    preferredServiceTime: string,
+  ): Promise<CreateServiceRequestResponse> =>
+    vmsApi.request<CreateServiceRequestResponse>(
+      `/service-requests/${requestId}/reschedule`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ preferredServiceDate, preferredServiceTime }),
       },
     ),
 };

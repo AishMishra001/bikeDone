@@ -14,34 +14,34 @@ import LoginScreen from '../../components/screens/LoginScreen';
 import SignupScreen from '../../components/screens/SignupScreen';
 import HomeScreen from '../../components/screens/HomeScreen';
 import BookingScreen from '../../components/screens/BookingScreen';
+import BookingReviewScreen, { ReviewData } from '../../components/screens/BookingReviewScreen';
 import ProfileScreen from '../../components/screens/ProfileScreen';
 import ResetPasswordScreen from '../../components/screens/ResetPasswordScreen';
 import AddBikeScreen from '../../components/screens/AddBikeScreen';
 import RequestSuccessScreen from '../../components/screens/RequestSuccessScreen';
 import MyRequestsScreen from '../../components/screens/MyRequestsScreen';
+import RequestDetailScreen from '../../components/screens/RequestDetailScreen';
+import AppBottomNavigation from '../../components/ui/AppBottomNavigation';
 import { registerAuthFailureCallback } from '../../services/api';
 import { tokenStorage } from '../../services/tokenStorage';
 
 export default function App() {
-  // 'loading' — startup pe token check kar raha hai (splash ke jaise)
   const [currentScreen, setCurrentScreen] = useState<string>('loading');
   const [resetToken, setResetToken] = useState('');
   const [lastRequestNumber, setLastRequestNumber] = useState('');
+  const [reviewData, setReviewData] = useState<ReviewData | null>(null);
+  const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
 
   useEffect(() => {
-    // Auth failure pe (dono tokens expire) → Login pe bhejo
     registerAuthFailureCallback(() => {
       setCurrentScreen('Login');
     });
 
-    // ── Startup: check karo ki user pehle se logged in hai ────────────────
     const checkExistingSession = async () => {
       const refreshToken = await tokenStorage.getRefreshToken();
       if (refreshToken) {
-        // Refresh token hai matlab user logged in tha — seedha Home
         setCurrentScreen('Home');
       } else {
-        // Koi token nahi — Login page dikhao
         setCurrentScreen('Login');
       }
     };
@@ -57,7 +57,6 @@ export default function App() {
         const path = parsed.path || '';
         const hostname = parsed.hostname || '';
 
-        // Web browser URL parsing fallback
         if (Platform.OS === 'web' && typeof window !== 'undefined' && !token) {
           const searchParams = new URLSearchParams(window.location.search);
           token = searchParams.get('token') || '';
@@ -67,7 +66,6 @@ export default function App() {
           path.includes('reset-password') ||
           hostname.includes('reset-password') ||
           urlStr.includes('reset-password');
-
 
         if (isResetPassword) {
           if (token) {
@@ -80,14 +78,12 @@ export default function App() {
       }
     };
 
-    // Check initial URL on startup
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
       processUrl(window.location.href);
     } else {
       Linking.getInitialURL().then(processUrl);
     }
 
-    // Listen for incoming deep link events
     const subscription = Linking.addEventListener('url', (event) => {
       processUrl(event.url);
     });
@@ -97,12 +93,20 @@ export default function App() {
     };
   }, []);
 
-  // Callback for booking success — stores the request number before navigating
   const handleRequestSuccess = (requestNumber: string) => {
     setLastRequestNumber(requestNumber);
   };
 
-  // Startup loading — token check ho raha hai
+  const handleReview = (data: ReviewData) => {
+    setReviewData(data);
+    setCurrentScreen('BookingReview');
+  };
+
+  const handleViewDetails = (id: string) => {
+    setSelectedRequestId(id);
+    setCurrentScreen('RequestDetail');
+  };
+
   if (currentScreen === 'loading') {
     return (
       <View style={styles.loadingContainer}>
@@ -134,6 +138,17 @@ export default function App() {
           <BookingScreen
             onNavigate={setCurrentScreen}
             onRequestSuccess={handleRequestSuccess}
+            onReview={handleReview}
+          />
+        )}
+        {currentScreen === 'BookingReview' && reviewData && (
+          <BookingReviewScreen
+            reviewData={reviewData}
+            onConfirm={(requestNumber) => {
+              handleRequestSuccess(requestNumber);
+            }}
+            onBack={() => setCurrentScreen('Booking')}
+            onNavigate={setCurrentScreen}
           />
         )}
         {currentScreen === 'Profile' && (
@@ -155,9 +170,25 @@ export default function App() {
           />
         )}
         {currentScreen === 'MyRequests' && (
-          <MyRequestsScreen onNavigate={setCurrentScreen} />
+          <MyRequestsScreen
+            onNavigate={setCurrentScreen}
+            onViewDetails={handleViewDetails}
+          />
+        )}
+        {currentScreen === 'RequestDetail' && selectedRequestId && (
+          <RequestDetailScreen
+            requestId={selectedRequestId}
+            onBack={() => setCurrentScreen('MyRequests')}
+            onNavigate={setCurrentScreen}
+          />
         )}
       </KeyboardAvoidingView>
+      {(['Home', 'MyRequests', 'Profile'] as const).includes(currentScreen as 'Home' | 'MyRequests' | 'Profile') && (
+        <AppBottomNavigation
+          activeScreen={currentScreen as 'Home' | 'MyRequests' | 'Profile'}
+          onNavigate={setCurrentScreen}
+        />
+      )}
     </SafeAreaView>
   );
 }
