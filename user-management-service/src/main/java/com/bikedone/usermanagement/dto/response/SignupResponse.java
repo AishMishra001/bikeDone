@@ -15,4 +15,6 @@ public class SignupResponse {
 
     private String email;
 
+    private Boolean emailVerified;
+
 }

@@ -36,16 +36,19 @@ public class User extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private UserStatus status;
 
+    @Builder.Default
     @Column(name = "email_verified")
-    private Boolean emailVerified;
+    private Boolean emailVerified = false;
 
+    @Builder.Default
     @Column(name = "mobile_verified")
-    private Boolean mobileVerified;
+    private Boolean mobileVerified = false;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "role_id")
     private Role role;
 
+    @Builder.Default
     @Column(name = "is_deleted", nullable = false)
     private Boolean deleted = false;
 

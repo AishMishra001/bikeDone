@@ -17,6 +17,13 @@ spring:
   config:
     import: optional:file:./config/${spring.profiles.active}/secrets.properties
 
+  datasource:
+    hikari:
+      connection-timeout: 30000
+
+  flyway:
+    connect-retries: 10
+
 server:
   port: ${PORT:5000}
 
@@ -42,3 +49,22 @@ email:
   from-email: ${BREVO_FROM_EMAIL}
   from-name: ${BREVO_FROM_NAME}
   frontend-url: ${FRONTEND_URL}
+
+security:
+  mobile-verification:
+    otp:
+      length: 6
+      expiration-in-minutes: 5
+      max-attempts: 5
+      resend-cooldown-in-seconds: 60
+
+aws:
+  region: ${AWS_REGION}
+  access-key: ${AWS_ACCESS_KEY}
+  secret-key: ${AWS_SECRET_KEY}
+
+firebase:
+  service-account-path: ${FIREBASE_SERVICE_ACCOUNT_PATH}
+
+encryption:
+  secret-key: ${ENCRYPTION_SECRET_KEY}

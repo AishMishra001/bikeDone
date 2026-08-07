@@ -1,6 +1,7 @@
 package com.bikedone.usermanagement.exception;
 
 import com.bikedone.usermanagement.common.datetime.DateTimeProvider;
+import com.bikedone.usermanagement.common.response.ApiResponse;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -95,6 +96,20 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(response);
 
+    }
+
+    @ExceptionHandler(EmailNotVerifiedException.class)
+    public ResponseEntity<ErrorResponse> handleEmailNotVerified(
+            EmailNotVerifiedException ex) {
+
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(
+                        ErrorResponse.builder()
+                                .success(false)
+                                .message(ex.getMessage())
+                                .timestamp(dateTimeProvider.now())
+                                .build()
+                );
     }
 
 }

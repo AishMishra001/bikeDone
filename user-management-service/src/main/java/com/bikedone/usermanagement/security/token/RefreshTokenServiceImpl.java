@@ -53,6 +53,26 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
     }
 
     @Override
+    public RefreshTokenResult rotateRefreshToken(RefreshToken existingRefreshToken) {
+
+        String rawToken = refreshTokenGenerator.generate();
+        String tokenHash = tokenHasher.hash(rawToken);
+
+        existingRefreshToken.setTokenHash(tokenHash);
+        existingRefreshToken.setExpiresAt(
+                dateTimeProvider.now()
+                        .plusSeconds(jwtProperties.getRefreshTokenExpiration() / 1000)
+        );
+        existingRefreshToken.setLastUsedAt(dateTimeProvider.now());
+        existingRefreshToken.setRevoked(false);
+        existingRefreshToken.setRevokedAt(null);
+
+        RefreshToken savedToken = refreshTokenRepository.save(existingRefreshToken);
+
+        return new RefreshTokenResult(rawToken, savedToken);
+    }
+
+    @Override
     public RefreshToken validateRefreshToken(String rawToken) {
 
         String tokenHash = tokenHasher.hash(rawToken);

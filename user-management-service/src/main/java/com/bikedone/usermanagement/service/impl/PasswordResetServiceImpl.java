@@ -82,13 +82,13 @@ public class PasswordResetServiceImpl implements PasswordResetService {
         // log.debug("Password Reset Token : {}", rawToken);
 
         String resetUrl =
-                emailProperties.getFrontendUrl()
-                        + "/reset-password?token=" + rawToken;
+                emailProperties.buildUrl("reset-password?token=" + rawToken);
 
         emailService.sendPasswordResetEmail(
                 user.getEmail(),
                 user.getFirstName(),
-                resetUrl
+                resetUrl,
+                rawToken
         );
 
         log.info("Password reset token generated successfully for user: {}", user.getEmail());

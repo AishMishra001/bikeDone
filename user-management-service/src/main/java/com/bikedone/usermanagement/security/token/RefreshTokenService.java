@@ -9,6 +9,8 @@ public interface RefreshTokenService {
 
     RefreshTokenResult createRefreshToken(User user);
 
+    RefreshTokenResult rotateRefreshToken(RefreshToken existingRefreshToken);
+
     RefreshToken validateRefreshToken(String rawToken);
 
     void revokeToken(RefreshToken refreshToken);
