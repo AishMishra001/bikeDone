@@ -16,10 +16,6 @@ CREATE TABLE mechanic_onboarding_journeys (
 
     last_modified_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT fk_journey_mechanic
-      FOREIGN KEY(mechanic_id)
-          REFERENCES users(id),
-
     CONSTRAINT fk_journey_step
       FOREIGN KEY(onboarding_step_id)
           REFERENCES master_onboarding_steps(id)

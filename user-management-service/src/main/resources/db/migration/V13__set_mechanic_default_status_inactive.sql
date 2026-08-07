@@ -1,0 +1,2 @@
+ALTER TABLE mechanics 
+    ALTER COLUMN status SET DEFAULT 'INACTIVE';

@@ -1,6 +1,7 @@
 package com.bikedone.usermanagement.security.user;
 
 import com.bikedone.usermanagement.entity.User;
+import com.bikedone.usermanagement.mechanic.entity.MechanicUser;
 import lombok.Getter;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -21,22 +22,29 @@ public class UserPrincipal implements UserDetails {
 
     private final boolean enabled;
 
+    private final MechanicUser mechanicUser;
     private final Collection<? extends GrantedAuthority> authorities;
 
     public UserPrincipal(User user) {
-
         this.id = user.getId();
-
         this.email = user.getEmail();
-
         this.password = user.getPassword();
-
-        this.enabled = user.getStatus().name().equals("ACTIVE");
-
+        this.enabled = "ACTIVE".equals(user.getStatus().name());
+        this.mechanicUser = null;
         this.authorities = List.of(
                 new SimpleGrantedAuthority("ROLE_" + user.getRole().getRoleCode().name())
         );
+    }
 
+    public UserPrincipal(MechanicUser mechanic) {
+        this.id = mechanic.getId();
+        this.email = mechanic.getMobileNumber();
+        this.password = "";
+        this.enabled = true;
+        this.mechanicUser = mechanic;
+        this.authorities = List.of(
+                new SimpleGrantedAuthority("ROLE_MECHANIC")
+        );
     }
 
     @Override
@@ -49,10 +57,6 @@ public class UserPrincipal implements UserDetails {
         return password;
     }
 
-    /**
-     * Spring Security uses username internally.
-     * We are using email as username.
-     */
     @Override
     public String getUsername() {
         return email;

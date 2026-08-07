@@ -1,22 +1,86 @@
-import React from 'react';
-import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { InputField } from '@/components/ui/InputField';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { useOnboarding } from '@/context/OnboardingContext';
 import { Ionicons } from '@expo/vector-icons';
+import { api } from '@/services/api';
+import { auth } from '@/config/firebase';
+import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
 
 export default function MobileScreen() {
   const router = useRouter();
-  const { data, updateData, prefillDummyData } = useOnboarding();
+  const { data, updateData, prefillDummyData, setConfirmationResult } = useOnboarding();
+  const [loading, setLoading] = useState(false);
 
-  const handleSendOTP = () => {
+  const handleSendOTP = async () => {
     if (!data.mobileNumber || data.mobileNumber.length < 10) {
-      alert('Please enter a valid 10-digit mobile number');
+      Alert.alert('Invalid Mobile', 'Please enter a valid 10-digit mobile number');
       return;
     }
-    router.push('/onboarding/otp' as any);
+
+    try {
+      setLoading(true);
+      const res: any = await api.post('/auth/mechanic/send-otp', {
+        mobileNumber: data.mobileNumber,
+      });
+
+      if (res.clientShouldInitiateFirebase || res.provider === 'FIREBASE') {
+        const formattedPhone = `+91${data.mobileNumber}`;
+        const isWeb = Platform.OS === 'web' || typeof window !== 'undefined';
+        const isLocalhost =
+          isWeb &&
+          (window.location.hostname === 'localhost' ||
+            window.location.hostname === '127.0.0.1' ||
+            window.location.hostname.startsWith('192.168.'));
+
+        let recaptchaVerifier: any = null;
+
+        if (isWeb && !isLocalhost && typeof document !== 'undefined' && document.body) {
+          try {
+            let container = document.getElementById('recaptcha-container');
+            if (!container) {
+              container = document.createElement('div');
+              container.id = 'recaptcha-container';
+              document.body.appendChild(container);
+            }
+            recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+              size: 'invisible',
+            });
+          } catch (err) {
+            console.warn('RecaptchaVerifier init warning:', err);
+          }
+        }
+
+        if (!recaptchaVerifier) {
+          recaptchaVerifier = {
+            type: 'recaptcha',
+            verify: async () => 'fake-recaptcha-token',
+            _reset: () => {},
+            _resetRecaptchaToken: () => {},
+            clear: () => {},
+          };
+        }
+
+        try {
+          const confirmation = await signInWithPhoneNumber(auth, formattedPhone, recaptchaVerifier);
+          setConfirmationResult(confirmation);
+        } catch (fbErr: any) {
+          console.warn('Firebase signInWithPhoneNumber fallback:', fbErr);
+        }
+      }
+
+      router.push({
+        pathname: '/onboarding/otp' as any,
+        params: { provider: res.provider, clientShouldInitiateFirebase: String(res.clientShouldInitiateFirebase) }
+      });
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to send OTP.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -48,7 +112,7 @@ export default function MobileScreen() {
             icon="call-outline"
           />
 
-          <PrimaryButton title="Send OTP" onPress={handleSendOTP} style={{ marginTop: 12 }} />
+          <PrimaryButton title={loading ? "Sending..." : "Send OTP"} onPress={handleSendOTP} style={{ marginTop: 12 }} />
         </View>
 
         <View style={styles.footerBox}>

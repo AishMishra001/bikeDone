@@ -7,7 +7,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-
 @Getter
 @Setter
 @NoArgsConstructor
@@ -17,7 +16,7 @@ public class MechanicOnboardingJourney extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "mechanic_id", nullable = false)
-    private User mechanic;
+    private MechanicUser mechanic;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "onboarding_step_id", nullable = false)

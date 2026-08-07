@@ -1,38 +1,78 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { Header } from '@/components/ui/Header';
 import { ChipTag } from '@/components/ui/ChipTag';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { useOnboarding } from '@/context/OnboardingContext';
+import { api } from '@/services/api';
+import { Ionicons } from '@expo/vector-icons';
 
 const ALL_SERVICES = [
-  'Routine Service',
-  'Repair',
-  'Inspection',
-  'Breakdown Assistance',
-  'Customization',
+  'General Service',
+  'Engine Repair',
+  'Brake Repair',
+  'Electrical & Battery',
+  'Tyre & Wheel',
+  'Oil Change',
+  'Washing & Polishing',
+  'Breakdown Support',
 ];
 
 export default function ServicesScreen() {
   const router = useRouter();
-  const { data, toggleService } = useOnboarding();
+  const { data, updateData, toggleService } = useOnboarding();
+  const [loading, setLoading] = useState(false);
 
-  const handleContinue = () => {
+  const isAllSelected = ALL_SERVICES.every((s) => data.services.includes(s));
+
+  const handleSelectAll = () => {
+    if (isAllSelected) {
+      updateData({ services: [] });
+    } else {
+      updateData({ services: [...ALL_SERVICES] });
+    }
+  };
+
+  const handleContinue = async () => {
     if (data.services.length === 0) {
-      alert('Please select at least one service offered');
+      Alert.alert('Compulsory Selection', 'Please select at least one service offered');
       return;
     }
-    router.push('/onboarding/expertise' as any);
+
+    try {
+      setLoading(true);
+      await api.post('/mechanics/onboarding/service-categories', {
+        selectAll: isAllSelected,
+        services: data.services,
+      });
+
+      // Skip expertise (as per requirement), jump straight to radius
+      router.push('/onboarding/radius' as any);
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to save service categories');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <View style={styles.container}>
-      <Header title="Services Offered" showBack step={4} totalSteps={9} />
+      <Header title="Services Offered" showBack step={4} totalSteps={7} />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.subtitle}>Select services you provide</Text>
+        <View style={styles.headerRow}>
+          <Text style={styles.subtitle}>Select services you provide</Text>
+          <TouchableOpacity style={styles.selectAllBtn} onPress={handleSelectAll}>
+            <Ionicons
+              name={isAllSelected ? 'checkbox' : 'square-outline'}
+              size={18}
+              color={Colors.primary}
+            />
+            <Text style={styles.selectAllText}>Select All</Text>
+          </TouchableOpacity>
+        </View>
 
         <View style={styles.list}>
           {ALL_SERVICES.map((srv) => (
@@ -48,7 +88,7 @@ export default function ServicesScreen() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <PrimaryButton title="Continue" onPress={handleContinue} />
+        <PrimaryButton title={loading ? "Saving..." : "Continue"} onPress={handleContinue} />
       </View>
     </View>
   );
@@ -64,10 +104,25 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 24,
   },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
   subtitle: {
     fontSize: 14,
     color: Colors.gray500,
-    marginBottom: 20,
+  },
+  selectAllBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  selectAllText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.primary,
   },
   list: {
     marginTop: 4,

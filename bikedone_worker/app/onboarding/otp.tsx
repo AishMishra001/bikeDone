@@ -8,18 +8,22 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Alert,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { Header } from '@/components/ui/Header';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { useOnboarding } from '@/context/OnboardingContext';
+import { api, tokenStorage } from '@/services/api';
 
 export default function OtpScreen() {
   const router = useRouter();
-  const { data, updateData } = useOnboarding();
+  const params = useLocalSearchParams();
+  const { data, updateData, confirmationResult } = useOnboarding();
   const [timer, setTimer] = useState(30);
-  const [digits, setDigits] = useState<string[]>(['1', '2', '3', '4', '5', '6']);
+  const [digits, setDigits] = useState<string[]>(['', '', '', '', '', '']);
+  const [loading, setLoading] = useState(false);
   const inputRefs = useRef<Array<TextInput | null>>([]);
 
   useEffect(() => {
@@ -35,7 +39,6 @@ export default function OtpScreen() {
     setDigits(newDigits);
     updateData({ otp: newDigits.join('') });
 
-    // Focus next box if text entered
     if (text && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
@@ -47,16 +50,61 @@ export default function OtpScreen() {
     }
   };
 
-  const handleResend = () => {
+  const handleResend = async () => {
     if (timer === 0) {
-      setTimer(30);
-      setDigits(['1', '2', '3', '4', '5', '6']);
-      updateData({ otp: '123456' });
+      try {
+        await api.post('/auth/mechanic/send-otp', { mobileNumber: data.mobileNumber });
+        setTimer(30);
+        setDigits(['', '', '', '', '', '']);
+        Alert.alert('Success', 'OTP resent successfully');
+      } catch (err: any) {
+        Alert.alert('Error', err.message || 'Failed to resend OTP');
+      }
     }
   };
 
-  const handleVerify = () => {
-    router.push('/onboarding/welcome' as any);
+  const handleVerify = async () => {
+    const enteredOtp = digits.join('');
+    if (enteredOtp.length < 6) {
+      Alert.alert('Invalid OTP', 'Please enter complete 6-digit OTP');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const isFirebase = params.clientShouldInitiateFirebase === 'true' || params.provider === 'FIREBASE';
+
+      let loginRes: any;
+      if (isFirebase && confirmationResult && typeof confirmationResult.confirm === 'function') {
+        // Firebase Client Verification -> Get ID Token
+        const userCredential = await confirmationResult.confirm(enteredOtp);
+        const firebaseIdToken = await userCredential.user.getIdToken();
+
+        // Submit real Firebase ID Token to Backend
+        loginRes = await api.post('/auth/mechanic/verify-firebase-token', {
+          mobileNumber: data.mobileNumber,
+          firebaseIdToken: firebaseIdToken,
+        });
+      } else {
+        loginRes = await api.post('/auth/mechanic/verify-otp', {
+          mobileNumber: data.mobileNumber,
+          otp: enteredOtp,
+        });
+      }
+
+      if (loginRes.accessToken) {
+        await tokenStorage.setAccessToken(loginRes.accessToken);
+        if (loginRes.mechanic) {
+          await tokenStorage.setMechanic(loginRes.mechanic);
+        }
+      }
+
+      router.push('/onboarding/welcome' as any);
+    } catch (error: any) {
+      Alert.alert('Verification Failed', error.message || 'Invalid Firebase OTP or token verification failed.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -103,7 +151,7 @@ export default function OtpScreen() {
             </Text>
           </TouchableOpacity>
 
-          <PrimaryButton title="Verify OTP" onPress={handleVerify} style={{ marginTop: 24 }} />
+          <PrimaryButton title={loading ? "Verifying..." : "Verify OTP"} onPress={handleVerify} style={{ marginTop: 24 }} />
         </ScrollView>
       </KeyboardAvoidingView>
     </View>

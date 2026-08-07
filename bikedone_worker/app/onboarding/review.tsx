@@ -1,24 +1,33 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Colors, Shadows } from '@/constants/theme';
 import { Header } from '@/components/ui/Header';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { useOnboarding } from '@/context/OnboardingContext';
-import { Ionicons } from '@expo/vector-icons';
+import { api } from '@/services/api';
 
 export default function ReviewScreen() {
   const router = useRouter();
   const { data, updateData } = useOnboarding();
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = () => {
-    updateData({ status: 'under_review' });
-    router.push('/onboarding/approval' as any);
+  const handleSubmit = async () => {
+    try {
+      setLoading(true);
+      await api.post('/mechanics/onboarding/submit-verification', {});
+      updateData({ status: 'under_review' });
+      router.push('/onboarding/approval' as any);
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to submit onboarding application');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <View style={styles.container}>
-      <Header title="Review & Submit" showBack step={9} totalSteps={9} />
+      <Header title="Review & Submit" showBack step={7} totalSteps={7} />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Text style={styles.subtitle}>Please review your details before submitting</Text>
@@ -77,7 +86,7 @@ export default function ReviewScreen() {
               <Text style={styles.editBtn}>Edit</Text>
             </TouchableOpacity>
           </View>
-          <Text style={styles.primaryVal}>{data.serviceRadius || '5 KM'}</Text>
+          <Text style={styles.primaryVal}>{data.serviceRadius || '10 KM'}</Text>
         </View>
 
         {/* Section 5: Bank Details */}
@@ -96,7 +105,7 @@ export default function ReviewScreen() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <PrimaryButton title="Submit for Review" onPress={handleSubmit} />
+        <PrimaryButton title={loading ? "Submitting..." : "Submit for Review"} onPress={handleSubmit} />
       </View>
     </View>
   );

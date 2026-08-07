@@ -1,15 +1,47 @@
-import React from 'react';
-import { View, Text, StyleSheet, Image } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Colors, Shadows } from '@/constants/theme';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { Ionicons } from '@expo/vector-icons';
+import { api } from '@/services/api';
+import { useOnboarding } from '@/context/OnboardingContext';
 
 export default function WelcomeScreen() {
   const router = useRouter();
+  const { updateData } = useOnboarding();
+  const [loading, setLoading] = useState(true);
+  const [nextStepPath, setNextStepPath] = useState('/onboarding/basic-details');
+
+  useEffect(() => {
+    fetchJourneyProgress();
+  }, []);
+
+  const fetchJourneyProgress = async () => {
+    try {
+      setLoading(true);
+      const res: any = await api.get('/mechanics/onboarding');
+      if (res && res.currentStepCode) {
+        const stepMap: Record<string, string> = {
+          BASIC_DETAILS: '/onboarding/basic-details',
+          SHOP_DETAILS: '/onboarding/shop-type',
+          SERVICE_CATEGORIES: '/onboarding/services',
+          DOCUMENTS: '/onboarding/documents',
+          BANK_DETAILS: '/onboarding/bank-details',
+          MANUAL_VERIFICATION: '/onboarding/approval',
+        };
+        const targetPath = stepMap[res.currentStepCode] || '/onboarding/basic-details';
+        setNextStepPath(targetPath);
+      }
+    } catch (err: any) {
+      console.warn('Failed to fetch journey progress:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleGetStarted = () => {
-    router.push('/onboarding/basic-details' as any);
+    router.push(nextStepPath as any);
   };
 
   return (
@@ -33,7 +65,11 @@ export default function WelcomeScreen() {
       </View>
 
       <View style={styles.footer}>
-        <PrimaryButton title="Get Started" onPress={handleGetStarted} />
+        {loading ? (
+          <ActivityIndicator size="large" color={Colors.primary} />
+        ) : (
+          <PrimaryButton title="Get Started" onPress={handleGetStarted} />
+        )}
       </View>
     </View>
   );

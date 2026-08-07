@@ -1,30 +1,44 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { Header } from '@/components/ui/Header';
 import { SelectionCard } from '@/components/ui/SelectionCard';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { useOnboarding } from '@/context/OnboardingContext';
+import { api } from '@/services/api';
 
 const RADIUS_OPTIONS = ['3 KM', '5 KM', '10 KM', '15 KM', '20 KM'];
 
 export default function ServiceRadiusScreen() {
   const router = useRouter();
   const { data, updateData } = useOnboarding();
+  const [loading, setLoading] = useState(false);
 
-  const handleContinue = () => {
-    router.push('/onboarding/documents' as any);
+  const handleContinue = async () => {
+    try {
+      setLoading(true);
+      const numericRadius = parseInt(data.serviceRadius.replace(/[^0-9]/g, ''), 10) || 10;
+      await api.post('/mechanics/onboarding/service-radius', {
+        radiusKm: Math.min(numericRadius, 20),
+      });
+
+      router.push('/onboarding/documents' as any);
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to save service radius');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <View style={styles.container}>
-      <Header title="Service Radius" showBack step={6} totalSteps={9} />
+      <Header title="Service Radius" showBack step={5} totalSteps={7} />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Text style={styles.heading}>How far are you willing to travel?</Text>
         <Text style={styles.subtitle}>
-          You will receive service requests within this radius.
+          You will receive service requests within this radius (Max 20 KM).
         </Text>
 
         <View style={styles.optionsList}>
@@ -40,7 +54,7 @@ export default function ServiceRadiusScreen() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <PrimaryButton title="Continue" onPress={handleContinue} />
+        <PrimaryButton title={loading ? "Saving..." : "Continue"} onPress={handleContinue} />
       </View>
     </View>
   );

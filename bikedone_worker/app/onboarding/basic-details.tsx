@@ -7,6 +7,7 @@ import {
   Image,
   TouchableOpacity,
   Modal,
+  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Colors, Shadows } from '@/constants/theme';
@@ -15,6 +16,8 @@ import { InputField } from '@/components/ui/InputField';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { useOnboarding } from '@/context/OnboardingContext';
 import { Ionicons } from '@expo/vector-icons';
+import { api } from '@/services/api';
+import * as ImagePicker from 'expo-image-picker';
 
 const EXPERIENCE_OPTIONS = ['1 Year', '2 Years', '3 Years', '5 Years', '5+ Years', '10+ Years'];
 
@@ -22,24 +25,84 @@ export default function BasicDetailsScreen() {
   const router = useRouter();
   const { data, updateData } = useOnboarding();
   const [showExpModal, setShowExpModal] = useState(false);
+  const [showPhotoOptionsModal, setShowPhotoOptionsModal] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleContinue = () => {
-    if (!data.fullName) {
-      alert('Please enter your full name');
+  const handlePickImage = async (useCamera: boolean) => {
+    try {
+      setShowPhotoOptionsModal(false);
+      let result;
+      if (useCamera) {
+        const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+        if (!permissionResult.granted) {
+          Alert.alert('Permission Denied', 'Camera access permission is required.');
+          return;
+        }
+        result = await ImagePicker.launchCameraAsync({
+          allowsEditing: true,
+          aspect: [1, 1],
+          quality: 0.7,
+        });
+      } else {
+        const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!permissionResult.granted) {
+          Alert.alert('Permission Denied', 'Gallery access permission is required.');
+          return;
+        }
+        result = await ImagePicker.launchImageLibraryAsync({
+          allowsEditing: true,
+          aspect: [1, 1],
+          quality: 0.7,
+        });
+      }
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        updateData({ profilePhoto: result.assets[0].uri });
+      }
+    } catch (error: any) {
+      Alert.alert('Image Error', error.message || 'Failed to select image');
+    }
+  };
+
+  const handleContinue = async () => {
+    if (!data.fullName || data.fullName.trim() === '') {
+      Alert.alert('Compulsory Field', 'Please enter your full name');
       return;
     }
-    router.push('/onboarding/shop-type' as any);
+    if (!data.experience) {
+      Alert.alert('Compulsory Field', 'Please select your experience');
+      return;
+    }
+    if (!data.profilePhoto) {
+      Alert.alert('Compulsory Field', 'Please upload/select your profile photo');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await api.post('/mechanics/onboarding/basic-details', {
+        fullName: data.fullName,
+        experience: data.experience,
+        profilePhotoUrl: data.profilePhoto,
+      });
+
+      router.push('/onboarding/shop-type' as any);
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to save basic details');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <View style={styles.container}>
-      <Header title="Basic Details" showBack step={1} totalSteps={9} />
+      <Header title="Basic Details" showBack={false} step={1} totalSteps={7} />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.subtitle}>Please provide your basic information</Text>
+        <Text style={styles.subtitle}>Please provide your basic information (All fields compulsory)</Text>
 
         <InputField
-          label="Full Name"
+          label="Full Name *"
           placeholder="Rahul Kumar"
           value={data.fullName}
           onChangeText={(val) => updateData({ fullName: val })}
@@ -48,7 +111,7 @@ export default function BasicDetailsScreen() {
 
         {/* Experience Selector */}
         <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Experience</Text>
+          <Text style={styles.label}>Experience *</Text>
           <TouchableOpacity
             activeOpacity={0.7}
             onPress={() => setShowExpModal(true)}
@@ -62,16 +125,11 @@ export default function BasicDetailsScreen() {
 
         {/* Profile Photo Picker */}
         <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Profile Photo</Text>
+          <Text style={styles.label}>Profile Photo *</Text>
           <View style={styles.avatarRow}>
             <TouchableOpacity
               activeOpacity={0.8}
-              onPress={() =>
-                updateData({
-                  profilePhoto:
-                    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=250&auto=format&fit=crop',
-                })
-              }
+              onPress={() => setShowPhotoOptionsModal(true)}
               style={[styles.avatarBox, Shadows.small]}
             >
               {data.profilePhoto ? (
@@ -85,14 +143,14 @@ export default function BasicDetailsScreen() {
             </TouchableOpacity>
             <View style={styles.photoInfo}>
               <Text style={styles.photoTitle}>Upload clear headshot</Text>
-              <Text style={styles.photoDesc}>JPEG or PNG. Max size 5MB.</Text>
+              <Text style={styles.photoDesc}>Tap icon to open Camera or Gallery</Text>
             </View>
           </View>
         </View>
       </ScrollView>
 
       <View style={styles.footer}>
-        <PrimaryButton title="Continue" onPress={handleContinue} />
+        <PrimaryButton title={loading ? "Saving..." : "Continue"} onPress={handleContinue} />
       </View>
 
       {/* Experience Selector Modal */}
@@ -129,6 +187,34 @@ export default function BasicDetailsScreen() {
                 ) : null}
               </TouchableOpacity>
             ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Photo Picker Modal (Camera vs Gallery) */}
+      <Modal visible={showPhotoOptionsModal} transparent animationType="fade">
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => setShowPhotoOptionsModal(false)}
+          style={styles.modalOverlay}
+        >
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Upload Profile Photo</Text>
+            <TouchableOpacity
+              style={styles.optionRow}
+              onPress={() => handlePickImage(true)}
+            >
+              <Ionicons name="camera-outline" size={22} color={Colors.primary} style={{ marginRight: 12 }} />
+              <Text style={styles.optionText}>Take Photo with Camera</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.optionRow}
+              onPress={() => handlePickImage(false)}
+            >
+              <Ionicons name="images-outline" size={22} color={Colors.primary} style={{ marginRight: 12 }} />
+              <Text style={styles.optionText}>Choose from Gallery</Text>
+            </TouchableOpacity>
           </View>
         </TouchableOpacity>
       </Modal>
@@ -249,7 +335,6 @@ const styles = StyleSheet.create({
   optionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: Colors.gray100,

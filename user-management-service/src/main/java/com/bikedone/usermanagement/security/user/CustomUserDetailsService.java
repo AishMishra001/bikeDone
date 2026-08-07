@@ -14,17 +14,24 @@ import org.springframework.stereotype.Service;
 public class CustomUserDetailsService implements UserDetailsService {
 
     private final UserRepository userRepository;
+    private final com.bikedone.usermanagement.mechanic.repository.MechanicUserRepository mechanicUserRepository;
 
     @Override
-    public UserDetails loadUserByUsername(String email)
+    public UserDetails loadUserByUsername(String identifier)
             throws UsernameNotFoundException {
 
-        User user = userRepository.findUserWithRoleByEmail(email)
-                .orElseThrow(() ->
-                        new UsernameNotFoundException("User not found with email : " + email));
+        // 1. Try finding regular user by email
+        var optionalUser = userRepository.findUserWithRoleByEmail(identifier);
+        if (optionalUser.isPresent()) {
+            return new UserPrincipal(optionalUser.get());
+        }
 
-        return new UserPrincipal(user);
+        // 2. Try finding mechanic user by mobile number
+        var optionalMechanic = mechanicUserRepository.findByMobileNumber(identifier);
+        if (optionalMechanic.isPresent()) {
+            return new UserPrincipal(optionalMechanic.get());
+        }
 
+        throw new UsernameNotFoundException("User/Mechanic not found with identifier : " + identifier);
     }
-
 }

@@ -1,38 +1,68 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Colors, Shadows } from '@/constants/theme';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { Ionicons } from '@expo/vector-icons';
+import { api } from '@/services/api';
 
 export default function WaitingForApprovalScreen() {
   const router = useRouter();
+  const [checking, setChecking] = useState(false);
 
-  const handleGoToHome = () => {
-    router.replace('/(tabs)');
+  useEffect(() => {
+    // Poll status every 8 seconds to auto-redirect when Admin approves
+    const interval = setInterval(() => {
+      checkStatus(true);
+    }, 8000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const checkStatus = async (silent = false) => {
+    try {
+      if (!silent) setChecking(true);
+      const res: any = await api.get('/mechanics/onboarding');
+
+      if (res && res.overallStatus === 'ACTIVE') {
+        router.replace('/(tabs)' as any);
+      }
+    } catch (err) {
+      console.warn('Status check failed:', err);
+    } finally {
+      if (!silent) setChecking(false);
+    }
   };
 
   return (
     <View style={styles.container}>
       <View style={styles.content}>
-        {/* Under Review Illustration Badge */}
+        {/* Under Review Badge */}
         <View style={styles.badgeOuter}>
           <View style={[styles.badgeInner, Shadows.medium]}>
-            <Ionicons name="clipboard-outline" size={64} color={Colors.accentBlue} />
+            <Ionicons name="clipboard-outline" size={64} color={Colors.primary} />
             <View style={styles.clockIconBadge}>
-              <Ionicons name="time" size={24} color={Colors.warning} />
+              <Ionicons name="time" size={26} color="#E65100" />
             </View>
           </View>
         </View>
 
         <Text style={styles.title}>Your profile is under review</Text>
         <Text style={styles.subtitle}>
-          We will notify you once your profile is approved.
+          Our team is verifying your documents and details. You will automatically be granted access to the Dashboard once approved.
         </Text>
+
+        <TouchableOpacity style={styles.refreshBtn} onPress={() => checkStatus(false)}>
+          <Ionicons name="refresh-outline" size={18} color={Colors.primary} />
+          <Text style={styles.refreshBtnText}>Check Approval Status</Text>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.footer}>
-        <PrimaryButton title="Go to Home" onPress={handleGoToHome} />
+        <PrimaryButton
+          title={checking ? "Checking..." : "Refresh Status"}
+          onPress={() => checkStatus(false)}
+        />
       </View>
     </View>
   );
@@ -56,7 +86,7 @@ const styles = StyleSheet.create({
     width: 160,
     height: 160,
     borderRadius: 80,
-    backgroundColor: Colors.accentBlueLight,
+    backgroundColor: 'rgba(242, 86, 29, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 36,
@@ -75,7 +105,7 @@ const styles = StyleSheet.create({
     bottom: -4,
     right: -4,
     backgroundColor: Colors.cardBackground,
-    borderRadius: 12,
+    borderRadius: 13,
   },
   title: {
     fontSize: 24,
@@ -90,6 +120,21 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 22,
     paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  refreshBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    backgroundColor: Colors.primaryLight,
+  },
+  refreshBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.primary,
   },
   footer: {
     width: '100%',

@@ -51,10 +51,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         System.out.println(jwt);
 
-        String username =
-                jwtService.extractUsername(jwt);
-
-        System.out.println(username);
+        String username = null;
+        try {
+            username = jwtService.extractUsername(jwt);
+        } catch (Exception ex) {
+            System.out.println("JWT extraction failed or expired: " + ex.getMessage());
+            filterChain.doFilter(request, response);
+            return;
+        }
 
         if (username != null &&
                 SecurityContextHolder.getContext().getAuthentication() == null) {

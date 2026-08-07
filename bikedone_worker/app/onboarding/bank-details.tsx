@@ -1,33 +1,50 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { Header } from '@/components/ui/Header';
 import { InputField } from '@/components/ui/InputField';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { useOnboarding } from '@/context/OnboardingContext';
+import { api } from '@/services/api';
 
 export default function BankDetailsScreen() {
   const router = useRouter();
   const { data, updateBankDetails } = useOnboarding();
+  const [loading, setLoading] = useState(false);
 
-  const handleContinue = () => {
-    if (!data.bankDetails.accountNumber || !data.bankDetails.ifscCode) {
-      alert('Please fill in bank account number and IFSC code');
+  const handleContinue = async () => {
+    if (!data.bankDetails.accountHolderName || !data.bankDetails.accountNumber || !data.bankDetails.ifscCode || !data.bankDetails.bankName) {
+      Alert.alert('Compulsory Fields', 'Please fill in all bank details');
       return;
     }
-    router.push('/onboarding/review' as any);
+
+    try {
+      setLoading(true);
+      await api.post('/mechanics/onboarding/bank-details', {
+        accountHolderName: data.bankDetails.accountHolderName,
+        accountNumber: data.bankDetails.accountNumber,
+        ifscCode: data.bankDetails.ifscCode,
+        bankName: data.bankDetails.bankName,
+      });
+
+      router.push('/onboarding/review' as any);
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to save bank details');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <View style={styles.container}>
-      <Header title="Bank Details" showBack step={8} totalSteps={9} />
+      <Header title="Bank Details" showBack step={7} totalSteps={7} />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.subtitle}>Add bank details for payments</Text>
+        <Text style={styles.subtitle}>Add bank details for payout (All compulsory)</Text>
 
         <InputField
-          label="Account Holder Name"
+          label="Account Holder Name *"
           placeholder="Rahul Kumar"
           value={data.bankDetails.accountHolderName}
           onChangeText={(val) => updateBankDetails({ accountHolderName: val })}
@@ -35,7 +52,7 @@ export default function BankDetailsScreen() {
         />
 
         <InputField
-          label="Account Number"
+          label="Account Number *"
           placeholder="123456789012"
           keyboardType="number-pad"
           value={data.bankDetails.accountNumber}
@@ -44,7 +61,7 @@ export default function BankDetailsScreen() {
         />
 
         <InputField
-          label="IFSC Code"
+          label="IFSC Code *"
           placeholder="PUNB0123456"
           autoCapitalize="characters"
           value={data.bankDetails.ifscCode}
@@ -53,7 +70,7 @@ export default function BankDetailsScreen() {
         />
 
         <InputField
-          label="Bank Name"
+          label="Bank Name *"
           placeholder="Punjab National Bank"
           value={data.bankDetails.bankName}
           onChangeText={(val) => updateBankDetails({ bankName: val })}
@@ -62,7 +79,7 @@ export default function BankDetailsScreen() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <PrimaryButton title="Continue" onPress={handleContinue} />
+        <PrimaryButton title={loading ? "Saving..." : "Continue"} onPress={handleContinue} />
       </View>
     </View>
   );

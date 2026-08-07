@@ -63,6 +63,8 @@ interface OnboardingContextType {
   updateDocuments: (docKey: keyof OnboardingData['documents'], status: boolean) => void;
   toggleService: (service: string) => void;
   toggleExpertise: (item: string) => void;
+  confirmationResult: any;
+  setConfirmationResult: (res: any) => void;
   resetData: () => void;
   prefillDummyData: () => void;
 }
@@ -148,6 +150,8 @@ export const OnboardingProvider = ({ children }: { children: ReactNode }) => {
     setData(DEFAULT_DATA);
   };
 
+  const [confirmationResult, setConfirmationResult] = useState<any>(null);
+
   return (
     <OnboardingContext.Provider
       value={{
@@ -157,6 +161,8 @@ export const OnboardingProvider = ({ children }: { children: ReactNode }) => {
         updateDocuments,
         toggleService,
         toggleExpertise,
+        confirmationResult,
+        setConfirmationResult,
         resetData,
         prefillDummyData,
       }}

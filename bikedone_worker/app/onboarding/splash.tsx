@@ -1,23 +1,50 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
+import { api, tokenStorage } from '@/services/api';
 
 export default function SplashScreen() {
   const router = useRouter();
 
   useEffect(() => {
-    const timer = setTimeout(() => {
+    checkAppSession();
+  }, []);
+
+  const checkAppSession = async () => {
+    try {
+      const token = await tokenStorage.getAccessToken();
+      if (!token) {
+        // No token -> go to mobile screen for login
+        router.replace('/onboarding/mobile' as any);
+        return;
+      }
+
+      // Token exists -> Fetch mechanic onboarding status
+      const res: any = await api.get('/mechanics/onboarding');
+
+      if (res && res.overallStatus === 'ACTIVE') {
+        // Fully approved mechanic -> Go to Dashboard (Tabs)
+        router.replace('/(tabs)' as any);
+      } else if (res && res.overallStatus === 'MANUAL_VERIFICATION') {
+        // Submitted & Waiting for Admin Approval
+        router.replace('/onboarding/approval' as any);
+      } else {
+        // In Progress -> Navigate to Welcome / resume target step
+        router.replace('/onboarding/welcome' as any);
+      }
+    } catch (err) {
+      console.warn('Session check failed or token expired:', err);
+      await tokenStorage.clear();
       router.replace('/onboarding/mobile' as any);
-    }, 3000);
-    return () => clearTimeout(timer);
-  }, [router]);
+    }
+  };
 
   return (
     <TouchableOpacity
       activeOpacity={1}
-      onPress={() => router.replace('/onboarding/mobile' as any)}
+      onPress={checkAppSession}
       style={styles.container}
     >
       <View style={styles.centerContent}>
