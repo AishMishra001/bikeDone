@@ -1,0 +1,65 @@
+spring:
+  application:
+    name: order-management-service
+
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:${SPRING_PROFILE:dev}}
+
+  config:
+    import: optional:file:./config/${spring.profiles.active}/secrets.properties
+
+  jackson:
+    time-zone: Asia/Kolkata
+
+  jpa:
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: Asia/Kolkata
+
+  datasource:
+    hikari:
+      connection-timeout: 30000
+      maximum-pool-size: ${SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE:10}
+      minimum-idle: ${SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE:2}
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  flyway:
+    connect-retries: 10
+    table: vehicle_flyway_schema_history
+    baseline-on-migrate: true
+    baseline-version: 0
+
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 10MB
+      max-request-size: 50MB
+
+server:
+  port: ${PORT:8082}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    root: INFO
+    com.bikedone.vehicle_management_service: INFO
+
+jwt:
+  secret: ${JWT_SECRET}
+  access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION}
+
+cloudinary:
+  cloud-name: ${CLOUDINARY_CLOUD_NAME}
+  api-key: ${CLOUDINARY_API_KEY}
+  api-secret: ${CLOUDINARY_API_SECRET}
+  folder: ${CLOUDINARY_FOLDER:bike-done/service-requests}
