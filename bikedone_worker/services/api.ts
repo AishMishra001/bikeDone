@@ -14,6 +14,7 @@ export interface LoggedInMechanic {
 
 const KEYS = {
   ACCESS_TOKEN: "mechanic_access_token",
+  REFRESH_TOKEN: "mechanic_refresh_token",
   MECHANIC_DETAILS: "mechanic_details",
 } as const;
 
@@ -70,6 +71,14 @@ export const tokenStorage = {
     await storage.set(KEYS.ACCESS_TOKEN, token);
   },
 
+  async getRefreshToken(): Promise<string | null> {
+    return storage.get(KEYS.REFRESH_TOKEN);
+  },
+
+  async setRefreshToken(token: string): Promise<void> {
+    await storage.set(KEYS.REFRESH_TOKEN, token);
+  },
+
   async getMechanic(): Promise<LoggedInMechanic | null> {
     const dataStr = await storage.get(KEYS.MECHANIC_DETAILS);
     if (!dataStr) return null;
@@ -87,15 +96,25 @@ export const tokenStorage = {
   async clear(): Promise<void> {
     await Promise.all([
       storage.remove(KEYS.ACCESS_TOKEN),
+      storage.remove(KEYS.REFRESH_TOKEN),
       storage.remove(KEYS.MECHANIC_DETAILS),
     ]);
   },
 };
 
+let isRefreshing = false;
+let refreshSubscribers: ((token: string) => void)[] = [];
+
+const onRefreshed = (token: string) => {
+  refreshSubscribers.forEach((cb) => cb(token));
+  refreshSubscribers = [];
+};
+
 export const api = {
   async request<T>(path: string, options: any = {}): Promise<T> {
-    const { requiresAuth = true, headers = {}, ...restOptions } = options;
-    const url = `${SERVICE_URLS.UMS}${path}`;
+    const { requiresAuth = true, targetService = "UMS", headers = {}, ...restOptions } = options;
+    const baseUrl = targetService === "OMS" ? SERVICE_URLS.OMS : SERVICE_URLS.UMS;
+    const url = `${baseUrl}${path}`;
 
     const requestHeaders: Record<string, string> = {
       "Content-Type": "application/json",
@@ -109,12 +128,66 @@ export const api = {
       }
     }
 
-    const response = await fetch(url, {
+    let response = await fetch(url, {
       headers: requestHeaders,
       ...restOptions,
     });
 
-    const resJson = await response.json();
+    // Handle 401 Unauthorized → Try Refresh Token
+    if (response.status === 401 && requiresAuth) {
+      let freshToken: string | null = null;
+
+      if (!isRefreshing) {
+        isRefreshing = true;
+        const refreshToken = await tokenStorage.getRefreshToken();
+
+        if (refreshToken) {
+          try {
+            const refreshRes = await fetch(`${SERVICE_URLS.UMS}/auth/refresh`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ refreshToken }),
+            });
+
+            if (refreshRes.ok) {
+              const refreshData = await refreshRes.json();
+              if (refreshData.success && refreshData.data?.accessToken) {
+                freshToken = refreshData.data.accessToken;
+                await tokenStorage.setAccessToken(freshToken!);
+                if (refreshData.data.refreshToken) {
+                  await tokenStorage.setRefreshToken(refreshData.data.refreshToken);
+                }
+                isRefreshing = false;
+                onRefreshed(freshToken!);
+              }
+            }
+          } catch (e) {
+            console.warn("Mechanic token refresh failed:", e);
+          }
+        }
+
+        if (!freshToken) {
+          isRefreshing = false;
+          await tokenStorage.clear();
+          throw new Error("Session expired. Please log in again.");
+        }
+      } else {
+        freshToken = await new Promise<string>((resolve) => {
+          refreshSubscribers.push((newToken) => resolve(newToken));
+        });
+      }
+
+      // Retry original request with fresh access token
+      response = await fetch(url, {
+        headers: {
+          ...requestHeaders,
+          Authorization: `Bearer ${freshToken}`,
+        },
+        ...restOptions,
+      });
+    }
+
+    const resJson = await response.json().catch(() => ({}));
     if (!response.ok || resJson.success === false) {
       throw new Error(resJson.message || `Request failed with status ${response.status}`);
     }
@@ -122,11 +195,11 @@ export const api = {
     return resJson.data as T;
   },
 
-  async post<T>(path: string, body: any, options: any = {}): Promise<T> {
+  async post<T>(path: string, body?: any, options: any = {}): Promise<T> {
     return this.request<T>(path, {
       ...options,
       method: "POST",
-      body: JSON.stringify(body),
+      body: body !== undefined ? JSON.stringify(body) : undefined,
     });
   },
 

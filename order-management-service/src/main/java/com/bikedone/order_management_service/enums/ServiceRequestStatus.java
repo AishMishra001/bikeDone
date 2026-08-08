@@ -4,7 +4,11 @@ public enum ServiceRequestStatus {
 
     REQUEST_CREATED,
 
+    SEARCHING_MECHANIC,
+
     MECHANIC_ASSIGNED,
+
+    NO_MECHANIC_AVAILABLE,
 
     ON_THE_WAY,
 

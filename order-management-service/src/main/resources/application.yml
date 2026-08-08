@@ -5,6 +5,20 @@ spring:
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:${SPRING_PROFILE:dev}}
 
+  cloud:
+    aws:
+      region:
+        static: ${AWS_REGION:ap-south-1}
+      credentials:
+        access-key: ${AWS_ACCESS_KEY:mock-access-key}
+        secret-key: ${AWS_SECRET_KEY:mock-secret-key}
+      sqs:
+        enabled: ${AWS_SQS_ENABLED:true}
+        dispatch-queue-name: ${AWS_SQS_DISPATCH_QUEUE_NAME:${spring.profiles.active:dev}_bike_done_dispatch_queue}
+        notification-queue-name: ${AWS_SQS_NOTIFICATION_QUEUE_NAME:${spring.profiles.active:dev}_bike_done_notification_queue}
+        listener:
+          queue-not-found-strategy: FAIL
+
   config:
     import: optional:file:./config/${spring.profiles.active}/secrets.properties
 
@@ -63,3 +77,7 @@ cloudinary:
   api-key: ${CLOUDINARY_API_KEY}
   api-secret: ${CLOUDINARY_API_SECRET}
   folder: ${CLOUDINARY_FOLDER:bike-done/service-requests}
+
+services:
+  ums:
+    base-url: ${UMS_BASE_URL:http://localhost:8080}

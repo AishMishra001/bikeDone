@@ -116,6 +116,13 @@
 			<artifactId>cloudinary-http5</artifactId>
 			<version>2.2.0</version>
 		</dependency>
+
+		<!-- AWS SQS Starter -->
+		<dependency>
+			<groupId>io.awspring.cloud</groupId>
+			<artifactId>spring-cloud-aws-starter-sqs</artifactId>
+			<version>3.2.1</version>
+		</dependency>
 	</dependencies>
 
 	<build>

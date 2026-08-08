@@ -24,8 +24,10 @@ const buildBaseUrl = (port: number, basePath: string = '/api/v1'): string => {
 
 const SERVICE_PORTS = {
   UMS: 8080,
+  OMS: 8082,
 } as const;
 
 export const SERVICE_URLS = {
   UMS: buildBaseUrl(SERVICE_PORTS.UMS),
+  OMS: buildBaseUrl(SERVICE_PORTS.OMS),
 } as const;

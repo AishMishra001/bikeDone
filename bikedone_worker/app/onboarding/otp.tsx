@@ -94,6 +94,9 @@ export default function OtpScreen() {
 
       if (loginRes.accessToken) {
         await tokenStorage.setAccessToken(loginRes.accessToken);
+        if (loginRes.refreshToken) {
+          await tokenStorage.setRefreshToken(loginRes.refreshToken);
+        }
         if (loginRes.mechanic) {
           await tokenStorage.setMechanic(loginRes.mechanic);
         }

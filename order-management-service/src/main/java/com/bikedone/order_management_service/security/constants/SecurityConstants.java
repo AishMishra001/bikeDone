@@ -11,6 +11,8 @@ public final class SecurityConstants {
 
     public static final String[] PUBLIC_URLS = {
             "/api/v1/auth/**",
+            "/api/v1/service-requests/mechanics/**",
+            "/api/v1/service-requests/*/accept",
             "/swagger-ui/**",
             "/v3/api-docs/**",
             "/swagger-ui.html",

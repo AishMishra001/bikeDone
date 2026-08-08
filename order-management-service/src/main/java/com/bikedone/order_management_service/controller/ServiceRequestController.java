@@ -10,6 +10,7 @@ import com.bikedone.order_management_service.dto.request.RescheduleServiceReques
 import com.bikedone.order_management_service.dto.response.CreateServiceRequestResponse;
 import com.bikedone.order_management_service.dto.response.MyServiceRequestResponse;
 import com.bikedone.order_management_service.service.ServiceRequestService;
+import com.bikedone.order_management_service.service.dispatch.DispatchEngineService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -24,6 +25,7 @@ import java.util.UUID;
 public class ServiceRequestController {
 
     private final ServiceRequestService serviceRequestService;
+    private final DispatchEngineService dispatchEngineService;
 
     @PostMapping
     public ResponseEntity<ApiResponse<CreateServiceRequestResponse>>
@@ -92,5 +94,28 @@ public class ServiceRequestController {
         return ResponseEntity.ok(
                 ApiResponse.success(response, "Service request rescheduled successfully.")
         );
+    }
+
+    @PostMapping("/{requestId}/accept")
+    public ResponseEntity<ApiResponse<Boolean>> acceptServiceRequest(
+            @PathVariable UUID requestId,
+            @RequestParam UUID mechanicId) {
+
+        boolean accepted = dispatchEngineService.acceptServiceRequest(requestId, mechanicId);
+        if (accepted) {
+            return ResponseEntity.ok(ApiResponse.success(true, "Service request accepted successfully."));
+        } else {
+            return ResponseEntity.badRequest().body(ApiResponse.failure("Failed to accept service request. Already assigned or inactive."));
+        }
+    }
+
+    @GetMapping("/mechanics/{mechanicId}/pending-notifications")
+    public ResponseEntity<ApiResponse<com.bikedone.order_management_service.dto.response.PendingJobNotificationResponse>>
+    getPendingNotificationForMechanic(@PathVariable UUID mechanicId) {
+
+        com.bikedone.order_management_service.dto.response.PendingJobNotificationResponse response =
+                dispatchEngineService.getPendingNotificationForMechanic(mechanicId);
+
+        return ResponseEntity.ok(ApiResponse.success(response, "Pending job notification fetched successfully."));
     }
 }

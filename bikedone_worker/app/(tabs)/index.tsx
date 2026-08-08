@@ -12,24 +12,73 @@ import { useRouter } from 'expo-router';
 import { Colors, Shadows } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useOnboarding } from '@/context/OnboardingContext';
-import { api } from '@/services/api';
+import { api, tokenStorage } from '@/services/api';
+import { IncomingJobModal } from '@/components/IncomingJobModal';
+import { dispatchService, IncomingJobRequest } from '@/services/dispatchService';
 
 export default function DashboardHomeScreen() {
   const router = useRouter();
   const { data } = useOnboarding();
   const [isOnline, setIsOnline] = useState(true);
   const [mechanicData, setMechanicData] = useState<any>(null);
+  const [incomingJob, setIncomingJob] = useState<IncomingJobRequest | null>(null);
+  const [activeAcceptedJob, setActiveAcceptedJob] = useState<IncomingJobRequest | null>(null);
 
   useEffect(() => {
     fetchProfile();
   }, []);
 
+  const getMechanicId = () => {
+    return mechanicData?.id || mechanicData?.mechanicId || '4043b9cd-bb8d-495d-af42-6305d72133c6';
+  };
+
+  useEffect(() => {
+    if (!isOnline) return;
+    const mechanicId = getMechanicId();
+
+    const sendLocationPing = () => {
+      dispatchService.updateLocation(mechanicId, 28.6139, 77.2090, true).catch(() => {});
+    };
+
+    const checkPendingNotifications = async () => {
+      if (incomingJob) return;
+      const notif = await dispatchService.getPendingNotification(mechanicId);
+      if (notif) {
+        setIncomingJob(notif);
+      }
+    };
+
+    sendLocationPing();
+    checkPendingNotifications();
+
+    const locInterval = setInterval(sendLocationPing, 15000);
+    const notifInterval = setInterval(checkPendingNotifications, 3000);
+
+    return () => {
+      clearInterval(locInterval);
+      clearInterval(notifInterval);
+    };
+  }, [isOnline, mechanicData, incomingJob]);
+
   const fetchProfile = async () => {
     try {
+      const storedMechanic = await tokenStorage.getMechanic();
       const res = await api.get('/mechanics/onboarding');
-      setMechanicData(res);
+      setMechanicData({ ...(storedMechanic || {}), ...(res || {}) });
     } catch (e) {
-      console.warn('Failed to fetch dashboard profile:', e);
+      const storedMechanic = await tokenStorage.getMechanic();
+      if (storedMechanic) setMechanicData(storedMechanic);
+    }
+  };
+
+  const handleToggleOnline = async (newValue: boolean) => {
+    setIsOnline(newValue);
+    const mechanicId = getMechanicId();
+    try {
+      await dispatchService.updateLocation(mechanicId, 28.6139, 77.2090, newValue);
+      console.log(`Duty status updated to ${newValue ? 'ONLINE' : 'OFFLINE'} in UMS`);
+    } catch (e) {
+      console.warn('Failed to update location/duty status:', e);
     }
   };
 
@@ -52,7 +101,7 @@ export default function DashboardHomeScreen() {
             <View style={styles.brandRow}>
               <Text style={styles.greetingText}>{data.fullName || 'Partner Mechanic'}</Text>
               <View style={styles.verifiedBadge}>
-                <Ionicons name="checkmark-seal" size={16} color={Colors.success} />
+                <Ionicons name="checkmark-circle" size={16} color={Colors.success} />
                 <Text style={styles.verifiedText}>Verified</Text>
               </View>
             </View>
@@ -74,7 +123,7 @@ export default function DashboardHomeScreen() {
           </View>
           <Switch
             value={isOnline}
-            onValueChange={setIsOnline}
+            onValueChange={handleToggleOnline}
             trackColor={{ false: Colors.gray300, true: 'rgba(46, 125, 50, 0.4)' }}
             thumbColor={isOnline ? Colors.success : Colors.gray100}
           />
@@ -187,8 +236,41 @@ export default function DashboardHomeScreen() {
             </View>
             <Text style={styles.toolText}>Helpline</Text>
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.toolItem}
+            onPress={() => {
+              setIncomingJob({
+                requestId: '00000000-0000-0000-0000-000000000000',
+                customerName: 'Rahul Sharma',
+                issueDescription: 'Engine Oil Change & Chain Lube',
+                latitude: 28.6139,
+                longitude: 77.2090,
+                addressNote: 'Sector 62, Near Metro Station Gate 2, Noida',
+                dispatchRound: 1,
+                timeoutSeconds: 30,
+              });
+            }}
+          >
+            <View style={[styles.toolIconBox, { backgroundColor: 'rgba(0, 200, 83, 0.15)' }]}>
+              <Ionicons name="notifications" size={24} color="#00C853" />
+            </View>
+            <Text style={[styles.toolText, { color: '#00C853' }]}>Test Alert</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Dispatch Incoming Job Alert Modal */}
+      <IncomingJobModal
+        visible={!!incomingJob}
+        job={incomingJob}
+        mechanicId={getMechanicId()}
+        onAcceptSuccess={(acceptedJob) => {
+          setActiveAcceptedJob(acceptedJob);
+          setIncomingJob(null);
+        }}
+        onDismiss={() => setIncomingJob(null)}
+      />
     </View>
   );
 }

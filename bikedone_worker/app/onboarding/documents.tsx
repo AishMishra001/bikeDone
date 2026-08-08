@@ -127,7 +127,7 @@ export default function DocumentsUploadScreen() {
             id: 'shopPhoto',
             title: 'Shop Photo *',
             subtitle: 'Upload clear storefront photo with name banner',
-            icon: 'image-outline',
+            icon: 'image-outline' as keyof typeof Ionicons.glyphMap,
             uri: documents.shopPhoto?.uri,
             name: documents.shopPhoto?.name,
             isMandatory: true,

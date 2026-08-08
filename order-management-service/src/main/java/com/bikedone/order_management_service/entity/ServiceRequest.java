@@ -73,6 +73,16 @@ public class ServiceRequest extends BaseEntity {
     @Column(name = "status", nullable = false)
     private ServiceRequestStatus status;
 
+    @Column(name = "assigned_mechanic_id")
+    private UUID assignedMechanicId;
+
+    @Column(name = "assigned_at")
+    private java.time.LocalDateTime assignedAt;
+
+    @Column(name = "current_dispatch_round", nullable = false)
+    @Builder.Default
+    private Integer currentDispatchRound = 0;
+
     @Column(name = "cancellation_reason")
     private String cancellationReason;
 

@@ -63,6 +63,8 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
 
     private final RescheduleServiceRequestValidator rescheduleServiceRequestValidator;
 
+    private final com.bikedone.order_management_service.service.dispatch.DispatchEngineService dispatchEngineService;
+
     @Override
     public CreateServiceRequestResponse createServiceRequest(
             CreateServiceRequestRequest request) {
@@ -157,6 +159,14 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
         serviceRequest.addTimeline(timeline);
 
         ServiceRequest savedRequest = serviceRequestRepository.save(serviceRequest);
+
+        if (Boolean.TRUE.equals(savedRequest.getIsImmediate())) {
+            try {
+                dispatchEngineService.startDispatch(savedRequest);
+            } catch (Exception e) {
+                Logger.printLog(LogLevel.ERROR, LogStep.SERVICE_REQUEST, "Failed to auto-start dispatch engine", e.getMessage(), customerId.toString(), savedRequest.getId().toString());
+            }
+        }
 
         Logger.printLog(
                 LogLevel.INFO,

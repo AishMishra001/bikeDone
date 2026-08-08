@@ -676,4 +676,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#f97316", paddingVertical: 12, paddingHorizontal: 28, borderRadius: 12,
   },
   retryBtnText: { color: "#ffffff", fontWeight: "700", fontSize: 14 },
+
+  vehicleChip: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    backgroundColor: "rgba(249, 115, 22, 0.1)", paddingHorizontal: 12,
+    paddingVertical: 6, borderRadius: 10, marginTop: 8,
+  },
+  vehicleChipText: { fontSize: 13, fontWeight: "600", color: "#f97316" },
+  descriptionText: { fontSize: 14, color: "#374151", lineHeight: 21, marginTop: 8 },
 });
