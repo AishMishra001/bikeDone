@@ -125,7 +125,7 @@ export const IncomingJobModal: React.FC<IncomingJobModalProps> = ({
             <View style={styles.detailRow}>
               <Ionicons name="location-outline" size={18} color="#757575" />
               <Text style={styles.detailText} numberOfLines={2}>
-                {job.addressNote || `Lat: ${job.latitude}, Lng: ${job.longitude}`}
+                {job.addressNote || (job.latitude !== undefined && job.longitude !== undefined && job.latitude !== null && job.longitude !== null ? `Lat: ${job.latitude}, Lng: ${job.longitude}` : "📍 Customer Live Location Shared")}
               </Text>
             </View>
           </View>

@@ -109,6 +109,15 @@ public class ServiceRequestController {
         }
     }
 
+    @PatchMapping("/{requestId}/status")
+    public ResponseEntity<ApiResponse<CreateServiceRequestResponse>> updateServiceRequestStatus(
+            @PathVariable UUID requestId,
+            @RequestParam com.bikedone.order_management_service.enums.ServiceRequestStatus status) {
+
+        CreateServiceRequestResponse response = serviceRequestService.updateServiceRequestStatus(requestId, status);
+        return ResponseEntity.ok(ApiResponse.success(response, "Service request status updated successfully."));
+    }
+
     @GetMapping("/mechanics/{mechanicId}/pending-notifications")
     public ResponseEntity<ApiResponse<com.bikedone.order_management_service.dto.response.PendingJobNotificationResponse>>
     getPendingNotificationForMechanic(@PathVariable UUID mechanicId) {
@@ -117,5 +126,17 @@ public class ServiceRequestController {
                 dispatchEngineService.getPendingNotificationForMechanic(mechanicId);
 
         return ResponseEntity.ok(ApiResponse.success(response, "Pending job notification fetched successfully."));
+    }
+
+    @GetMapping("/mechanics/{mechanicId}/active")
+    public ResponseEntity<ApiResponse<MyServiceRequestResponse>> getActiveServiceRequestForMechanic(
+            @PathVariable UUID mechanicId) {
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        serviceRequestService.getActiveServiceRequestForMechanic(mechanicId),
+                        "Active service request fetched successfully."
+                )
+        );
     }
 }

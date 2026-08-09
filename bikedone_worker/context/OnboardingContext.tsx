@@ -29,8 +29,8 @@ export interface OnboardingData {
 }
 
 const DEFAULT_DATA: OnboardingData = {
-  mobileNumber: '9876543210',
-  otp: '123456',
+  mobileNumber: '',
+  otp: '',
   fullName: 'Rahul Kumar',
   experience: '5 Years',
   profilePhoto: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=250&auto=format&fit=crop',

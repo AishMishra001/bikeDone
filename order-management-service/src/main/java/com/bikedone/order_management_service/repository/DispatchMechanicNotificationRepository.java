@@ -18,6 +18,7 @@ public interface DispatchMechanicNotificationRepository extends JpaRepository<Di
     @Query("SELECT dmn FROM DispatchMechanicNotification dmn " +
            "JOIN ServiceRequest sr ON sr.id = dmn.serviceRequestId " +
            "WHERE dmn.mechanicId = :mechanicId " +
+           "AND dmn.notificationStatus = com.bikedone.order_management_service.enums.NotificationStatus.NOTIFIED " +
            "AND sr.status = com.bikedone.order_management_service.enums.ServiceRequestStatus.SEARCHING_MECHANIC " +
            "AND dmn.notifiedAt >= :sinceTime " +
            "ORDER BY dmn.notifiedAt DESC")

@@ -18,7 +18,7 @@ const KEYS = {
   MECHANIC_DETAILS: "mechanic_details",
 } as const;
 
-const storage = {
+export const storage = {
   async get(key: string): Promise<string | null> {
     if (Platform.OS === "web") {
       try {
@@ -143,7 +143,13 @@ export const api = {
 
         if (refreshToken) {
           try {
-            const refreshRes = await fetch(`${SERVICE_URLS.UMS}/auth/refresh`, {
+            // Check if we are refreshing for a mechanic
+            const mechanicStr = await tokenStorage.getMechanic();
+            const refreshUrl = mechanicStr 
+                ? `${SERVICE_URLS.UMS}/auth/mechanic/refresh` 
+                : `${SERVICE_URLS.UMS}/auth/refresh`;
+
+            const refreshRes = await fetch(refreshUrl, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ refreshToken }),
@@ -187,12 +193,27 @@ export const api = {
       });
     }
 
-    const resJson = await response.json().catch(() => ({}));
-    if (!response.ok || resJson.success === false) {
+    let resJson: any = null;
+    try {
+      const text = await response.text();
+      resJson = text ? JSON.parse(text) : null;
+    } catch {
+      resJson = null;
+    }
+
+    if (!response.ok) {
+      throw new Error(resJson?.message || `Request failed with status ${response.status}`);
+    }
+
+    if (resJson === null || resJson === undefined) {
+      return null as unknown as T;
+    }
+
+    if (resJson.success === false) {
       throw new Error(resJson.message || `Request failed with status ${response.status}`);
     }
 
-    return resJson.data as T;
+    return (resJson.data !== undefined ? resJson.data : resJson) as T;
   },
 
   async post<T>(path: string, body?: any, options: any = {}): Promise<T> {

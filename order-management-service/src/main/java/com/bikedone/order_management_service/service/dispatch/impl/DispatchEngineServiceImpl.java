@@ -129,6 +129,19 @@ public class DispatchEngineServiceImpl implements DispatchEngineService {
                         run.setEndedAt(LocalDateTime.now());
                         dispatchRunRepository.save(run);
                     });
+
+            // Mark notifications as ACCEPTED for accepting mechanic and EXPIRED for others
+            List<DispatchMechanicNotification> notifs = notificationRepository.findByServiceRequestId(serviceRequestId);
+            for (DispatchMechanicNotification n : notifs) {
+                if (n.getMechanicId().equals(mechanicId)) {
+                    n.setNotificationStatus(com.bikedone.order_management_service.enums.NotificationStatus.ACCEPTED);
+                } else {
+                    n.setNotificationStatus(com.bikedone.order_management_service.enums.NotificationStatus.EXPIRED);
+                }
+                n.setRespondedAt(LocalDateTime.now());
+            }
+            notificationRepository.saveAll(notifs);
+
             return true;
         } else {
             log.warn("FAILED: Request {} could not be assigned to mechanic {}. (Already assigned or inactive)",
@@ -187,6 +200,9 @@ public class DispatchEngineServiceImpl implements DispatchEngineService {
         }
 
         long elapsedSeconds = java.time.Duration.between(notif.getNotifiedAt(), LocalDateTime.now()).getSeconds();
+        if (elapsedSeconds >= 30) {
+            return null;
+        }
         int remainingSeconds = Math.max(1, 30 - (int) elapsedSeconds);
 
         return com.bikedone.order_management_service.dto.response.PendingJobNotificationResponse.builder()

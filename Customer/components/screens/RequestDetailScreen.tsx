@@ -1,8 +1,9 @@
-import { Feather } from "@expo/vector-icons";
+import { Feather, Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Image,
+  Linking,
   Modal,
   ScrollView,
   StyleSheet,
@@ -12,6 +13,7 @@ import {
   View,
 } from "react-native";
 import { MyServiceRequest, vehicleService } from "../../services/vehicleService";
+import { socketService } from "../../services/socketService";
 import BackButton from "../ui/BackButton";
 import DatePickerField from "../ui/DatePickerField";
 import DigitalTimePickerField from "../ui/DigitalTimePickerField";
@@ -136,17 +138,33 @@ export default function RequestDetailScreen({
   const showToast = (msg: string, type: ToastType = "error") => {
     setToastMessage(msg); setToastType(type); setToastVisible(true);
   };
+  
+  const [mechanicLocation, setMechanicLocation] = useState<{latitude: number, longitude: number} | null>(null);
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
 
-  // ── Load ────────────────────────────────────────────────────────────────────
   useEffect(() => {
+    const initBadge = async () => {
+      const { storage } = require('../../services/tokenStorage');
+      const savedCount = await storage.get(`UNREAD_CHAT_${requestId}`);
+      if (savedCount) {
+        setUnreadChatCount(parseInt(savedCount, 10));
+      }
+    };
+    initBadge();
+
     const load = async () => {
-      setLoading(true);
       try {
+        setLoading(true);
         const [req, slotsRes] = await Promise.all([
           vehicleService.getServiceRequestById(requestId),
           vehicleService.getServiceSlots(),
         ]);
         setRequest(req);
+        
+        if (req.status === 'ON_THE_WAY') {
+          socketService.listenForLocation(requestId, (loc) => setMechanicLocation(loc));
+        }
+
         setSlots(slotsRes);
         // Pre-fill reschedule with current date/time
         if (req.preferredServiceDate) setRescheduleDate(req.preferredServiceDate);
@@ -158,6 +176,22 @@ export default function RequestDetailScreen({
       }
     };
     load();
+
+    const unsubChat = socketService.listenForMessages(requestId, async (msg: any) => {
+      if (msg.senderId !== "CUSTOMER_123") {
+        const { storage } = require('../../services/tokenStorage');
+        const activeChat = await storage.get('ACTIVE_CHAT');
+        if (activeChat === requestId) return; // User is in the chat screen
+
+        setUnreadChatCount(prev => {
+          const newCount = prev + 1;
+          storage.set(`UNREAD_CHAT_${requestId}`, newCount.toString());
+          return newCount;
+        });
+      }
+    });
+
+    return () => unsubChat();
   }, [requestId]);
 
   // ── Cancel handlers ─────────────────────────────────────────────────────────
@@ -333,6 +367,58 @@ export default function RequestDetailScreen({
                 <Image key={i} source={{ uri: url }} style={styles.photoThumb} resizeMode="cover" />
               ))}
             </View>
+          </View>
+        )}
+
+        {/* ── Mechanic Tracking & Communication ─────────────────────── */}
+        {!isTerminal && (request.status === 'MECHANIC_ASSIGNED' || request.status === 'ON_THE_WAY' || request.status === 'ARRIVED') && (
+          <View style={styles.card}>
+             <Text style={styles.cardSectionTitle}>
+               <Feather name="user" size={13} color="#9ca3af" />{"  "}MECHANIC
+             </Text>
+             
+             {request.status === 'ON_THE_WAY' && mechanicLocation && (
+               <View style={styles.trackingBox}>
+                 <Ionicons name="location" size={24} color="#f97316" />
+                 <View style={{ flex: 1, marginLeft: 12 }}>
+                   <Text style={{ fontWeight: "bold", color: "#111827", fontSize: 15 }}>Mechanic is on the way</Text>
+                   <Text style={{ color: "#6b7280", fontSize: 13, marginTop: 4 }}>
+                     Live Location: {mechanicLocation.latitude.toFixed(4)}, {mechanicLocation.longitude.toFixed(4)}
+                   </Text>
+                 </View>
+                 <TouchableOpacity 
+                   style={styles.mapBtn}
+                   onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${mechanicLocation.latitude},${mechanicLocation.longitude}`)}
+                 >
+                   <Text style={styles.mapBtnText}>View Map</Text>
+                 </TouchableOpacity>
+               </View>
+             )}
+
+             <View style={styles.actionsRow}>
+               <TouchableOpacity style={[styles.commBtn, { borderColor: "#22c55e", backgroundColor: "#f0fdf4" }]} onPress={() => Linking.openURL(`tel:9999999999`)}>
+                 <Feather name="phone-call" size={18} color="#16a34a" />
+                 <Text style={[styles.commBtnText, { color: "#16a34a" }]}>Call Mechanic</Text>
+               </TouchableOpacity>
+               <TouchableOpacity style={[styles.commBtn, { borderColor: "#3b82f6", backgroundColor: "#eff6ff" }]} onPress={() => { 
+                 setUnreadChatCount(0); 
+                 const { storage } = require('../../services/tokenStorage');
+                 storage.set(`UNREAD_CHAT_${requestId}`, "0");
+                 onNavigate('CustomerChat'); 
+               }}>
+                 <Feather name="message-circle" size={18} color="#2563eb" />
+                 <Text style={[styles.commBtnText, { color: "#2563eb" }]}>Chat</Text>
+                 {unreadChatCount > 0 && (
+                   <View style={{
+                     position: 'absolute', top: -5, right: -5,
+                     backgroundColor: 'red', borderRadius: 10,
+                     width: 20, height: 20, justifyContent: 'center', alignItems: 'center'
+                   }}>
+                     <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold' }}>{unreadChatCount}</Text>
+                   </View>
+                 )}
+               </TouchableOpacity>
+             </View>
           </View>
         )}
 
@@ -575,6 +661,21 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25, shadowRadius: 6,
   },
   rescheduleBtnText: { color: "#ffffff", fontWeight: "700", fontSize: 14 },
+  
+  // Tracking & Comm
+  trackingBox: {
+    flexDirection: "row", alignItems: "center", backgroundColor: "#fff7ed",
+    padding: 12, borderRadius: 12, borderWidth: 1, borderColor: "#fed7aa", marginBottom: 16
+  },
+  mapBtn: {
+    backgroundColor: "#f97316", paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8
+  },
+  mapBtnText: { color: "#fff", fontSize: 12, fontWeight: "bold" },
+  commBtn: {
+    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 8, paddingVertical: 12, borderRadius: 12, borderWidth: 1
+  },
+  commBtnText: { fontWeight: "700", fontSize: 14 },
 
   // Info note
   infoNote: {

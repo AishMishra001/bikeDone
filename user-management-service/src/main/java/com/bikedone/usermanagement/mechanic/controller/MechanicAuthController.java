@@ -2,6 +2,7 @@ package com.bikedone.usermanagement.mechanic.controller;
 
 import com.bikedone.usermanagement.common.datetime.DateTimeProvider;
 import com.bikedone.usermanagement.common.response.ApiResponse;
+import com.bikedone.usermanagement.dto.request.RefreshTokenRequest;
 import com.bikedone.usermanagement.dto.response.MobileVerificationResponse;
 import com.bikedone.usermanagement.mechanic.dto.request.SendMechanicOtpRequest;
 import com.bikedone.usermanagement.mechanic.dto.request.VerifyMechanicFirebaseTokenRequest;
@@ -9,6 +10,7 @@ import com.bikedone.usermanagement.mechanic.dto.request.VerifyMechanicOtpRequest
 import com.bikedone.usermanagement.mechanic.dto.response.MechanicLoginResponse;
 import com.bikedone.usermanagement.mechanic.service.MechanicAuthService;
 import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -59,33 +61,86 @@ public class MechanicAuthController {
             @Valid @RequestBody VerifyMechanicFirebaseTokenRequest request,
             HttpServletResponse response
     ) {
-        MechanicLoginResponse loginResponse = mechanicAuthService.verifyFirebaseToken(
-                request.getMobileNumber(),
-                request.getFirebaseIdToken()
-        );
+        MechanicLoginResponse loginResponse = mechanicAuthService.verifyFirebaseToken(request.getMobileNumber(), request.getFirebaseIdToken());
         if (loginResponse.getRefreshToken() != null) {
             addRefreshTokenCookie(response, loginResponse.getRefreshToken());
         }
 
         return ApiResponse.<MechanicLoginResponse>builder()
                 .success(true)
-                .message("Mechanic login successful via Firebase.")
+                .message("Mechanic Firebase login successful.")
                 .data(loginResponse)
                 .timestamp(dateTimeProvider.now())
                 .build();
     }
 
-    private void addRefreshTokenCookie(HttpServletResponse response, String refreshToken) {
-        if (refreshToken == null || refreshToken.isBlank()) {
-            return;
+    @PostMapping("/refresh")
+    public ApiResponse<MechanicLoginResponse> refresh(
+            @Valid @RequestBody(required = false) RefreshTokenRequest request,
+            HttpServletRequest httpRequest,
+            HttpServletResponse response) {
+
+        String cookieToken = extractRefreshTokenCookie(httpRequest);
+        String requestToken = request != null ? request.getRefreshToken() : null;
+
+        MechanicLoginResponse loginResponse = mechanicAuthService.refresh(requestToken, cookieToken);
+        if (loginResponse.getRefreshToken() != null) {
+            addRefreshTokenCookie(response, loginResponse.getRefreshToken());
         }
 
+        return ApiResponse.<MechanicLoginResponse>builder()
+                .success(true)
+                .message("Token refreshed successfully.")
+                .data(loginResponse)
+                .timestamp(dateTimeProvider.now())
+                .build();
+    }
+
+    @PostMapping("/logout")
+    public ApiResponse<Void> logout(
+            @RequestBody(required = false) RefreshTokenRequest request,
+            HttpServletRequest httpRequest,
+            HttpServletResponse response) {
+
+        String cookieToken = extractRefreshTokenCookie(httpRequest);
+        String requestToken = request != null ? request.getRefreshToken() : null;
+
+        mechanicAuthService.logout(requestToken, cookieToken);
+        clearRefreshTokenCookie(response);
+
+        return ApiResponse.<Void>builder()
+                .success(true)
+                .message("Logged out successfully.")
+                .timestamp(dateTimeProvider.now())
+                .build();
+    }
+
+    private void addRefreshTokenCookie(HttpServletResponse response, String refreshToken) {
         Cookie cookie = new Cookie("refresh_token", refreshToken);
         cookie.setHttpOnly(true);
         cookie.setSecure(true);
         cookie.setPath("/");
-        cookie.setMaxAge(7 * 24 * 60 * 60);
-        cookie.setAttribute("SameSite", "Lax");
+        cookie.setMaxAge(30 * 24 * 60 * 60); // 30 days
+        response.addCookie(cookie);
+    }
+
+    private String extractRefreshTokenCookie(HttpServletRequest request) {
+        if (request.getCookies() != null) {
+            for (Cookie cookie : request.getCookies()) {
+                if ("refresh_token".equals(cookie.getName())) {
+                    return cookie.getValue();
+                }
+            }
+        }
+        return null;
+    }
+
+    private void clearRefreshTokenCookie(HttpServletResponse response) {
+        Cookie cookie = new Cookie("refresh_token", null);
+        cookie.setHttpOnly(true);
+        cookie.setSecure(true);
+        cookie.setPath("/");
+        cookie.setMaxAge(0);
         response.addCookie(cookie);
     }
 }

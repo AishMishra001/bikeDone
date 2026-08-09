@@ -17,6 +17,8 @@ public interface ServiceRequestService {
 
     List<MyServiceRequestResponse> getMyServiceRequests();
 
+    MyServiceRequestResponse getActiveServiceRequestForMechanic(UUID mechanicId);
+
     MyServiceRequestResponse getServiceRequestById(UUID requestId);
 
     CreateServiceRequestResponse cancelServiceRequest(
@@ -27,5 +29,10 @@ public interface ServiceRequestService {
     CreateServiceRequestResponse rescheduleServiceRequest(
             UUID requestId,
             RescheduleServiceRequestRequest request
+    );
+
+    CreateServiceRequestResponse updateServiceRequestStatus(
+            UUID requestId,
+            com.bikedone.order_management_service.enums.ServiceRequestStatus status
     );
 }

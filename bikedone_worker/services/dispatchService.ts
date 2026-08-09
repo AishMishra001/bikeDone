@@ -20,7 +20,7 @@ export const dispatchService = {
     mechanicId: string,
     latitude: number,
     longitude: number,
-    isOnline: boolean = true
+    isOnline: boolean = false
   ): Promise<void> {
     const params = new URLSearchParams({
       latitude: latitude.toString(),
@@ -33,6 +33,21 @@ export const dispatchService = {
       undefined,
       { targetService: "UMS" }
     );
+  },
+
+  /**
+   * Fetch current mechanic location & duty status from UMS DB
+   */
+  async getLocation(mechanicId: string): Promise<{ isOnline: boolean; isBusy: boolean } | null> {
+    try {
+      const response = await api.get<{ isOnline: boolean; isBusy: boolean } | null>(
+        `/mechanics/${mechanicId}/location`,
+        { targetService: "UMS", requiresAuth: true }
+      );
+      return response;
+    } catch (error) {
+      return null;
+    }
   },
 
   /**
@@ -63,6 +78,22 @@ export const dispatchService = {
       );
       return response;
     } catch (error) {
+      return null;
+    }
+  },
+
+  /**
+   * Fetch active job for mechanic from OMS
+   */
+  async getActiveJob(mechanicId: string): Promise<any | null> {
+    try {
+      const response = await api.get<any | null>(
+        `/service-requests/mechanics/${mechanicId}/active`,
+        { targetService: "OMS", requiresAuth: true }
+      );
+      return response;
+    } catch (error) {
+      // Return null if not found (404)
       return null;
     }
   },

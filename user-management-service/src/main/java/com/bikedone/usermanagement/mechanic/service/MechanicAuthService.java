@@ -12,4 +12,8 @@ public interface MechanicAuthService {
     MechanicLoginResponse verifyOtp(VerifyMechanicOtpRequest request);
 
     MechanicLoginResponse verifyFirebaseToken(String mobileNumber, String firebaseIdToken);
+
+    MechanicLoginResponse refresh(String requestToken, String cookieToken);
+
+    void logout(String requestToken, String cookieToken);
 }

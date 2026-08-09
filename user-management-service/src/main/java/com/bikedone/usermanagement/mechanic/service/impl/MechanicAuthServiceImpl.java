@@ -16,10 +16,13 @@ import com.bikedone.usermanagement.mechanic.dto.request.VerifyMechanicOtpRequest
 import com.bikedone.usermanagement.mechanic.dto.response.MechanicLoginResponse;
 import com.bikedone.usermanagement.mechanic.dto.response.MechanicUserResponse;
 import com.bikedone.usermanagement.mechanic.entity.MechanicOtp;
+import com.bikedone.usermanagement.mechanic.entity.MechanicRefreshToken;
 import com.bikedone.usermanagement.mechanic.entity.MechanicUser;
 import com.bikedone.usermanagement.mechanic.repository.MechanicOtpRepository;
 import com.bikedone.usermanagement.mechanic.repository.MechanicUserRepository;
 import com.bikedone.usermanagement.mechanic.service.MechanicAuthService;
+import com.bikedone.usermanagement.mechanic.service.MechanicRefreshTokenResult;
+import com.bikedone.usermanagement.mechanic.service.MechanicRefreshTokenService;
 import com.bikedone.usermanagement.security.jwt.JwtService;
 import com.bikedone.usermanagement.security.user.UserPrincipal;
 import com.bikedone.usermanagement.service.IntegrationConfigurationService;
@@ -48,6 +51,7 @@ public class MechanicAuthServiceImpl implements MechanicAuthService {
     private final IntegrationConfigurationService integrationConfigurationService;
     private final JwtService jwtService;
     private final JwtProperties jwtProperties;
+    private final MechanicRefreshTokenService mechanicRefreshTokenService;
 
     @Override
     @Transactional
@@ -142,6 +146,10 @@ public class MechanicAuthServiceImpl implements MechanicAuthService {
         UserPrincipal principal = new UserPrincipal(mechanic);
         String accessToken = jwtService.generateToken(principal);
 
+        MechanicRefreshTokenResult refreshTokenResult = mechanicRefreshTokenService.generateRefreshToken(
+                mechanic, null, null, null, null // Assuming no device info for now
+        );
+
         Logger.printLog(
                 LogLevel.INFO,
                 LogStep.AUTH,
@@ -164,7 +172,7 @@ public class MechanicAuthServiceImpl implements MechanicAuthService {
 
         return MechanicLoginResponse.builder()
                 .accessToken(accessToken)
-                .refreshToken(null)
+                .refreshToken(refreshTokenResult.getRawToken())
                 .tokenType(SecurityConstants.TOKEN_TYPE)
                 .accessTokenExpiresIn(jwtProperties.getAccessTokenExpiration())
                 .refreshTokenExpiresIn(jwtProperties.getRefreshTokenExpiration())
@@ -217,6 +225,10 @@ public class MechanicAuthServiceImpl implements MechanicAuthService {
         UserPrincipal principal = new UserPrincipal(mechanic);
         String accessToken = jwtService.generateToken(principal);
 
+        MechanicRefreshTokenResult refreshTokenResult = mechanicRefreshTokenService.generateRefreshToken(
+                mechanic, null, null, null, null // Assuming no device info for now
+        );
+
         MechanicUserResponse mechanicResponse = MechanicUserResponse.builder()
                 .id(mechanic.getId())
                 .firstName(mechanic.getFirstName())
@@ -230,7 +242,7 @@ public class MechanicAuthServiceImpl implements MechanicAuthService {
 
         return MechanicLoginResponse.builder()
                 .accessToken(accessToken)
-                .refreshToken(null)
+                .refreshToken(refreshTokenResult.getRawToken())
                 .tokenType(SecurityConstants.TOKEN_TYPE)
                 .accessTokenExpiresIn(jwtProperties.getAccessTokenExpiration())
                 .refreshTokenExpiresIn(jwtProperties.getRefreshTokenExpiration())
@@ -320,5 +332,65 @@ public class MechanicAuthServiceImpl implements MechanicAuthService {
         entity.setExpiresAt(now.plusMinutes(properties.getExpirationInMinutes()));
 
         return entity;
+    }
+
+    private String resolveRefreshToken(String requestToken, String cookieToken) {
+        if (requestToken != null && !requestToken.isBlank()) {
+            return requestToken;
+        }
+        return cookieToken;
+    }
+
+    @Override
+    @Transactional
+    public MechanicLoginResponse refresh(String requestToken, String cookieToken) {
+        String effectiveToken = resolveRefreshToken(requestToken, cookieToken);
+        if (effectiveToken == null || effectiveToken.isBlank()) {
+            throw new BadRequestException("Refresh token is required.");
+        }
+
+        MechanicRefreshToken existingRefreshToken = mechanicRefreshTokenService.validateRefreshToken(effectiveToken);
+        MechanicUser mechanic = existingRefreshToken.getMechanic();
+
+        UserPrincipal principal = new UserPrincipal(mechanic);
+        String accessToken = jwtService.generateToken(principal);
+
+        MechanicRefreshTokenResult refreshTokenResult = mechanicRefreshTokenService.rotateRefreshToken(existingRefreshToken);
+
+        MechanicUserResponse mechanicResponse = MechanicUserResponse.builder()
+                .id(mechanic.getId())
+                .firstName(mechanic.getFirstName())
+                .lastName(mechanic.getLastName())
+                .email(mechanic.getEmail())
+                .mobileNumber(mechanic.getMobileNumber())
+                .status(mechanic.getStatus().name())
+                .mobileVerified(mechanic.getMobileVerified())
+                .isBlocked(mechanic.getBlocked())
+                .build();
+
+        return MechanicLoginResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshTokenResult.getRawToken())
+                .tokenType(SecurityConstants.TOKEN_TYPE)
+                .accessTokenExpiresIn(jwtProperties.getAccessTokenExpiration())
+                .refreshTokenExpiresIn(jwtProperties.getRefreshTokenExpiration())
+                .mechanic(mechanicResponse)
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public void logout(String requestToken, String cookieToken) {
+        try {
+            String effectiveToken = resolveRefreshToken(requestToken, cookieToken);
+            if (effectiveToken == null || effectiveToken.isBlank()) {
+                return;
+            }
+
+            MechanicRefreshToken existingRefreshToken = mechanicRefreshTokenService.validateRefreshToken(effectiveToken);
+            mechanicRefreshTokenService.revokeAllUserTokens(existingRefreshToken.getMechanic().getId());
+        } catch (Exception ex) {
+            // Logout silently succeeds
+        }
     }
 }

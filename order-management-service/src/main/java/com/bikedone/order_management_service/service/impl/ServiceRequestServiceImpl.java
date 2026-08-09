@@ -214,6 +214,25 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
     }
 
     @Override
+    public MyServiceRequestResponse getActiveServiceRequestForMechanic(UUID mechanicId) {
+        List<ServiceRequestStatus> activeStatuses = java.util.Arrays.asList(
+            ServiceRequestStatus.MECHANIC_ASSIGNED,
+            ServiceRequestStatus.ON_THE_WAY,
+            ServiceRequestStatus.ARRIVED,
+            ServiceRequestStatus.INSPECTION_STARTED,
+            ServiceRequestStatus.ESTIMATE_PREPARED,
+            ServiceRequestStatus.CUSTOMER_APPROVED,
+            ServiceRequestStatus.WORK_STARTED
+        );
+
+        ServiceRequest serviceRequest = serviceRequestRepository
+                .findFirstByAssignedMechanicIdAndStatusInOrderByCreatedAtDesc(mechanicId, activeStatuses)
+                .orElseThrow(() -> new ResourceNotFoundException("No active service request found for mechanic."));
+
+        return serviceRequestMapper.toMyServiceRequestResponse(serviceRequest);
+    }
+
+    @Override
     public CreateServiceRequestResponse cancelServiceRequest(
             UUID requestId,
             CancelServiceRequestRequest request) {
@@ -340,5 +359,24 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
         );
 
         return serviceRequestMapper.toResponse(savedRequest);
+    }
+
+    @Override
+    public CreateServiceRequestResponse updateServiceRequestStatus(UUID requestId, ServiceRequestStatus status) {
+        ServiceRequest serviceRequest = serviceRequestRepository.findById(requestId)
+                .orElseThrow(() -> new ResourceNotFoundException("Service request not found"));
+
+        serviceRequest.setStatus(status);
+        
+        ServiceRequestTimeline timeline = serviceRequestTimelineFactory.create(
+                serviceRequest,
+                status,
+                "Status updated to " + status.name(),
+                serviceRequest.getCustomerId()
+        );
+        serviceRequest.addTimeline(timeline);
+        
+        ServiceRequest updatedRequest = serviceRequestRepository.save(serviceRequest);
+        return serviceRequestMapper.toResponse(updatedRequest);
     }
 }

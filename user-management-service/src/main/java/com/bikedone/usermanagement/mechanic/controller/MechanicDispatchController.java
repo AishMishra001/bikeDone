@@ -2,6 +2,7 @@ package com.bikedone.usermanagement.mechanic.controller;
 
 import com.bikedone.usermanagement.mechanic.dto.request.EligibleMechanicSearchRequest;
 import com.bikedone.usermanagement.mechanic.dto.response.EligibleMechanicsResponse;
+import com.bikedone.usermanagement.mechanic.dto.response.MechanicLocationResponse;
 import com.bikedone.usermanagement.mechanic.service.MechanicLocationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -33,5 +34,11 @@ public class MechanicDispatchController {
             @RequestParam(required = false) Boolean isOnline) {
         mechanicLocationService.updateLocation(mechanicId, latitude, longitude, isOnline);
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/{mechanicId}/location")
+    public ResponseEntity<MechanicLocationResponse> getLocation(@PathVariable UUID mechanicId) {
+        MechanicLocationResponse response = mechanicLocationService.getLocation(mechanicId);
+        return ResponseEntity.ok(response);
     }
 }

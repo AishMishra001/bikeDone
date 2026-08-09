@@ -2,6 +2,7 @@ package com.bikedone.usermanagement.mechanic.service.impl;
 
 import com.bikedone.usermanagement.mechanic.dto.request.EligibleMechanicSearchRequest;
 import com.bikedone.usermanagement.mechanic.dto.response.EligibleMechanicsResponse;
+import com.bikedone.usermanagement.mechanic.dto.response.MechanicLocationResponse;
 import com.bikedone.usermanagement.mechanic.entity.MechanicLocation;
 import com.bikedone.usermanagement.mechanic.repository.MechanicLocationRepository;
 import com.bikedone.usermanagement.mechanic.service.MechanicLocationService;
@@ -26,7 +27,7 @@ public class MechanicLocationServiceImpl implements MechanicLocationService {
         MechanicLocation location = mechanicLocationRepository.findByMechanicId(mechanicId)
                 .orElseGet(() -> MechanicLocation.builder()
                         .mechanicId(mechanicId)
-                        .isOnline(true)
+                        .isOnline(false)
                         .isBusy(false)
                         .build());
 
@@ -52,6 +53,31 @@ public class MechanicLocationServiceImpl implements MechanicLocationService {
         return EligibleMechanicsResponse.builder()
                 .eligibleMechanicIds(mechanicIds)
                 .count(mechanicIds.size())
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public MechanicLocationResponse getLocation(UUID mechanicId) {
+        MechanicLocation location = mechanicLocationRepository.findByMechanicId(mechanicId)
+                .orElse(null);
+
+        if (location == null) {
+            return MechanicLocationResponse.builder()
+                    .mechanicId(mechanicId)
+                    .latitude(null)
+                    .longitude(null)
+                    .isOnline(false)
+                    .isBusy(false)
+                    .build();
+        }
+
+        return MechanicLocationResponse.builder()
+                .mechanicId(location.getMechanicId())
+                .latitude(location.getLatitude())
+                .longitude(location.getLongitude())
+                .isOnline(Boolean.TRUE.equals(location.getIsOnline()))
+                .isBusy(Boolean.TRUE.equals(location.getIsBusy()))
                 .build();
     }
 }

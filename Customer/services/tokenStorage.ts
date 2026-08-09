@@ -22,7 +22,7 @@ export interface LoggedInUser {
 // Web: localStorage (persists across sessions)
 // Mobile (iOS/Android): expo-secure-store (encrypted, persists across app restarts)
 
-const storage = {
+export const storage = {
   async get(key: string): Promise<string | null> {
     if (Platform.OS === "web") {
       try {

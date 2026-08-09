@@ -21,6 +21,7 @@ import AddBikeScreen from '../../components/screens/AddBikeScreen';
 import RequestSuccessScreen from '../../components/screens/RequestSuccessScreen';
 import MyRequestsScreen from '../../components/screens/MyRequestsScreen';
 import RequestDetailScreen from '../../components/screens/RequestDetailScreen';
+import CustomerChatScreen from '../../components/screens/CustomerChatScreen';
 import AppBottomNavigation from '../../components/ui/AppBottomNavigation';
 import { registerAuthFailureCallback } from '../../services/api';
 import { tokenStorage } from '../../services/tokenStorage';
@@ -180,6 +181,12 @@ export default function App() {
             requestId={selectedRequestId}
             onBack={() => setCurrentScreen('MyRequests')}
             onNavigate={setCurrentScreen}
+          />
+        )}
+        {currentScreen === 'CustomerChat' && selectedRequestId && (
+          <CustomerChatScreen
+            requestId={selectedRequestId}
+            onBack={() => setCurrentScreen('RequestDetail')}
           />
         )}
       </KeyboardAvoidingView>

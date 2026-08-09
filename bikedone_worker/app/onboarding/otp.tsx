@@ -100,6 +100,24 @@ export default function OtpScreen() {
         if (loginRes.mechanic) {
           await tokenStorage.setMechanic(loginRes.mechanic);
         }
+
+        try {
+          const onboardingData: any = await api.get('/mechanics/onboarding');
+          const overallStatus = onboardingData?.overallStatus || loginRes.mechanic?.status;
+          if (overallStatus === 'ACTIVE' || overallStatus === 'APPROVED' || onboardingData?.personalInfo) {
+            router.replace('/(tabs)' as any);
+            return;
+          } else if (overallStatus === 'SUBMITTED' || overallStatus === 'UNDER_REVIEW') {
+            router.replace('/onboarding/approval' as any);
+            return;
+          }
+        } catch {
+          const status = loginRes.mechanic?.status;
+          if (status === 'ACTIVE' || status === 'APPROVED') {
+            router.replace('/(tabs)' as any);
+            return;
+          }
+        }
       }
 
       router.push('/onboarding/welcome' as any);
