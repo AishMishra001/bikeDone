@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, FlatList, KeyboardAvoidingView, Platform, ActivityIndicator } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, Feather } from "@expo/vector-icons";
 import { socketService } from "../../services/socketService";
 
 const CUSTOMER_ID = "CUSTOMER_123";
@@ -78,7 +78,7 @@ export default function CustomerChatScreen({ requestId, mechanicName = "Mechanic
     >
       <View style={styles.header}>
         <TouchableOpacity onPress={onBack} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color="#334155" />
+          <Feather name="chevron-left" size={24} color="#334155" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Chat with {mechanicName}</Text>
       </View>
@@ -127,7 +127,17 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
     borderBottomWidth: 1, borderBottomColor: "#e2e8f0"
   },
-  backBtn: { marginRight: 16 },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
   headerTitle: { fontSize: 18, fontWeight: "700", color: "#0f172a" },
   
   chatContainer: { padding: 16, paddingBottom: 24 },

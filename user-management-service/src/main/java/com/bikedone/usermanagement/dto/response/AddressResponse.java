@@ -35,4 +35,6 @@ public class AddressResponse {
     private BigDecimal longitude;
 
     private Boolean defaultAddress;
+    private String receiverName;
+    private String receiverPhoneNumber;
 }

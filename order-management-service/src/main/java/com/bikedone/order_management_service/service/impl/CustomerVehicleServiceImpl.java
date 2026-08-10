@@ -49,11 +49,11 @@ public class CustomerVehicleServiceImpl implements CustomerVehicleService {
                 .trim()
                 .toUpperCase();
 
-        String engineNumber = request.getEngineNumber() != null
+        String engineNumber = request.getEngineNumber() != null && !request.getEngineNumber().trim().isEmpty()
                 ? request.getEngineNumber().trim().toUpperCase()
                 : null;
 
-        String chassisNumber = request.getChassisNumber() != null
+        String chassisNumber = request.getChassisNumber() != null && !request.getChassisNumber().trim().isEmpty()
                 ? request.getChassisNumber().trim().toUpperCase()
                 : null;
 
@@ -80,6 +80,12 @@ public class CustomerVehicleServiceImpl implements CustomerVehicleService {
         customerVehicle.setEngineNumber(engineNumber);
         customerVehicle.setChassisNumber(chassisNumber);
         customerVehicle.setOdometerKm(request.getOdometerKm());
+
+        if (request.getImageUrls() != null && !request.getImageUrls().isEmpty()) {
+            java.util.Map<String, Object> vehicleData = new java.util.HashMap<>();
+            vehicleData.put("customer-bike-image", request.getImageUrls());
+            customerVehicle.setVehicleData(vehicleData);
+        }
 
         long totalVehicles =
                 customerVehicleRepository.countByUserIdAndIsActiveTrue(userId);

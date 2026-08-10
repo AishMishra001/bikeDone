@@ -22,9 +22,7 @@ import {
 } from "../../services/addressService";
 import { api } from "../../services/api";
 import { authService } from "../../services/authService";
-import { CustomerVehicle, vehicleService } from "../../services/vehicleService";
 import BackButton from "../ui/BackButton";
-import BikeDetailSheet from "../ui/BikeDetailSheet";
 import ConfirmModal from "../ui/ConfirmModal";
 import InputField from "../ui/InputField";
 import PrimaryButton from "../ui/PrimaryButton";
@@ -60,13 +58,6 @@ export default function ProfileScreen({ onNavigate }: ProfileScreenProps) {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [updatingPassword, setUpdatingPassword] = useState(false);
 
-  // My Bikes
-  const [myBikes, setMyBikes] = useState<CustomerVehicle[]>([]);
-  const [loadingBikes, setLoadingBikes] = useState(false);
-  const [selectedBike, setSelectedBike] = useState<CustomerVehicle | null>(
-    null,
-  );
-  const [sheetVisible, setSheetVisible] = useState(false);
 
   // Saved addresses
   const [addresses, setAddresses] = useState<UserAddress[]>([]);
@@ -90,6 +81,12 @@ export default function ProfileScreen({ onNavigate }: ProfileScreenProps) {
   const [otpCode, setOtpCode] = useState("");
   const [sendingOtp, setSendingOtp] = useState(false);
   const [verifyingOtp, setVerifyingOtp] = useState(false);
+
+  // Email Verification states
+  const [showEmailSection, setShowEmailSection] = useState(false);
+  const [emailToken, setEmailToken] = useState("");
+  const [sendingEmailOtp, setSendingEmailOtp] = useState(false);
+  const [verifyingEmail, setVerifyingEmail] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const [verificationProvider, setVerificationProvider] = useState<
     "FIREBASE" | "AWS_SNS"
@@ -99,24 +96,12 @@ export default function ProfileScreen({ onNavigate }: ProfileScreenProps) {
 
   useEffect(() => {
     fetchProfile();
-    fetchBikes();
     fetchAddresses();
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, []);
 
-  const fetchBikes = async () => {
-    setLoadingBikes(true);
-    try {
-      const data = await vehicleService.getMyVehicles();
-      setMyBikes(data);
-    } catch {
-      // silent fail — bikes section shows empty state
-    } finally {
-      setLoadingBikes(false);
-    }
-  };
 
   const fetchProfile = async () => {
     setLoadingProfile(true);
@@ -454,6 +439,41 @@ export default function ProfileScreen({ onNavigate }: ProfileScreenProps) {
     }
   };
 
+  const handleSendEmailVerification = async () => {
+    setSendingEmailOtp(true);
+    try {
+      await api.post("/auth/send-email-verification", {});
+      setShowEmailSection(true);
+      alert("📩 Verification email sent. Please check your inbox for the token/link.");
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || "Failed to send verification email. Please try again.");
+    } finally {
+      setSendingEmailOtp(false);
+    }
+  };
+
+  const handleVerifyEmailToken = async () => {
+    const cleanToken = emailToken.trim();
+    if (!cleanToken) {
+      alert("Please enter the verification token received in your email.");
+      return;
+    }
+    setVerifyingEmail(true);
+    try {
+      await api.get(`/auth/verify-email?token=${cleanToken}`);
+      alert("🎉 Email verified successfully! Profile score updated.");
+      setShowEmailSection(false);
+      setEmailToken("");
+      await fetchProfile();
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || "Invalid or expired email token. Please try again.");
+    } finally {
+      setVerifyingEmail(false);
+    }
+  };
+
   const handleVerifyOtp = async () => {
     const cleanOtp = otpCode.trim();
     if (!cleanOtp) {
@@ -575,7 +595,7 @@ export default function ProfileScreen({ onNavigate }: ProfileScreenProps) {
       <View style={styles.profileHeader}>
         <BackButton
           style={styles.backButtonOverride}
-          onPress={() => onNavigate("Home")}
+          onPress={() => onNavigate("Profile")}
         />
         <Text style={styles.profileTitle}>My Profile</Text>
       </View>
@@ -676,6 +696,37 @@ export default function ProfileScreen({ onNavigate }: ProfileScreenProps) {
                     </Text>
                   </View>
                 </View>
+
+                {/* Send Email Verification Action */}
+                {!profile.emailVerified && (
+                  <View style={styles.mobileActionsContainer}>
+                    <View style={styles.actionButtonsRow}>
+                      {!showEmailSection && (
+                        <TouchableOpacity
+                          style={styles.sendOtpButton}
+                          onPress={handleSendEmailVerification}
+                          disabled={sendingEmailOtp}
+                        >
+                          {sendingEmailOtp ? (
+                            <ActivityIndicator color="#ffffff" size="small" />
+                          ) : (
+                            <>
+                              <Feather
+                                name="mail"
+                                size={14}
+                                color="#ffffff"
+                                style={{ marginRight: 6 }}
+                              />
+                              <Text style={styles.sendOtpButtonText}>
+                                Verify Email
+                              </Text>
+                            </>
+                          )}
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  </View>
+                )}
 
                 {/* Mobile info & edit */}
                 <View style={styles.infoRow}>
@@ -867,530 +918,48 @@ export default function ProfileScreen({ onNavigate }: ProfileScreenProps) {
                 </View>
               )}
 
-              {/* Saved Addresses */}
-              <View style={styles.addressCard}>
-                <View style={styles.sectionHeaderRow}>
-                  <View style={styles.sectionTitleGroup}>
-                    <View style={styles.sectionIconBox}>
-                      <Feather name="map-pin" size={16} color="#f97316" />
+              {/* Email Verification Section / Card */}
+              {showEmailSection && !profile.emailVerified && (
+                <View style={styles.otpCard}>
+                  <View style={styles.otpCardHeader}>
+                    <View style={styles.otpIconBox}>
+                      <Feather name="mail" size={20} color="#f97316" />
                     </View>
-                    <Text style={styles.sectionTitle}>Saved Addresses</Text>
-                  </View>
-                  <TouchableOpacity
-                    style={styles.addAddressButton}
-                    onPress={handleOpenAddAddress}
-                  >
-                    <Feather name="plus" size={14} color="#ffffff" />
-                    <Text style={styles.addAddressButtonText}>Add</Text>
-                  </TouchableOpacity>
-                </View>
-
-                {loadingAddresses ? (
-                  <View style={styles.addressLoader}>
-                    <ActivityIndicator size="small" color="#f97316" />
-                    <Text style={styles.addressLoaderText}>
-                      Loading your addresses...
-                    </Text>
-                  </View>
-                ) : addresses.length === 0 ? (
-                  <View style={styles.addressEmptyState}>
-                    <View style={styles.addressEmptyIconCircle}>
-                      <Feather name="map-pin" size={24} color="#d1d5db" />
-                    </View>
-                    <Text style={styles.addressEmptyTitle}>
-                      No saved addresses yet
-                    </Text>
-                    <Text style={styles.addressEmptySubtitle}>
-                      Add your home, work or favorite spot for faster bookings.
-                    </Text>
-                    <TouchableOpacity
-                      style={styles.addressEmptyCta}
-                      onPress={handleOpenAddAddress}
-                    >
-                      <Feather name="plus-circle" size={14} color="#f97316" />
-                      <Text style={styles.addressEmptyCtaText}>
-                        Add Your First Address
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.otpTitle}>
+                        Email Verification
                       </Text>
+                      <Text style={styles.otpSubtitle}>
+                        Enter the token sent to {profile.email}
+                      </Text>
+                    </View>
+                    <TouchableOpacity onPress={() => setShowEmailSection(false)}>
+                      <Feather name="x" size={20} color="#9ca3af" />
                     </TouchableOpacity>
                   </View>
-                ) : (
-                  <View style={styles.addressList}>
-                    {addresses.map((address) => (
-                      <View key={address.id} style={styles.addressItem}>
-                        <View style={styles.addressItemContent}>
-                          <View style={styles.addressTopRow}>
-                            <View style={styles.addressLabelRow}>
-                              <Text style={styles.addressLabel}>
-                                {address.label}
-                              </Text>
-                              {address.defaultAddress ? (
-                                <View style={styles.defaultBadgeSmall}>
-                                  <Text style={styles.defaultBadgeSmallText}>
-                                    Default
-                                  </Text>
-                                </View>
-                              ) : null}
-                            </View>
-                            <TouchableOpacity
-                              onPress={() => handleOpenEditAddress(address)}
-                            >
-                              <Feather
-                                name="edit-3"
-                                size={15}
-                                color="#f97316"
-                              />
-                            </TouchableOpacity>
-                          </View>
 
-                          <Text style={styles.addressDetails}>
-                            {[
-                              address.houseNumber,
-                              address.buildingName,
-                              address.street,
-                            ]
-                              .filter(Boolean)
-                              .join(", ")}
-                          </Text>
-                          <Text style={styles.addressMeta}>
-                            {[
-                              address.landmark,
-                              address.city,
-                              address.state,
-                              address.pincode,
-                              address.country,
-                            ]
-                              .filter(Boolean)
-                              .join(", ")}
-                          </Text>
-                        </View>
-
-                        <View style={styles.addressActionsRow}>
-                          {!address.defaultAddress && (
-                            <TouchableOpacity
-                              style={styles.secondaryActionButton}
-                              onPress={() =>
-                                handleSetDefaultAddress(address.id)
-                              }
-                            >
-                              <Feather name="star" size={13} color="#f97316" />
-                              <Text style={styles.secondaryActionText}>
-                                Set default
-                              </Text>
-                            </TouchableOpacity>
-                          )}
-                          <TouchableOpacity
-                            style={styles.dangerActionButton}
-                            onPress={() => handleDeleteAddressPress(address.id)}
-                          >
-                            <Feather name="trash-2" size={13} color="#ef4444" />
-                            <Text style={styles.dangerActionText}>Delete</Text>
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                    ))}
+                  <View style={styles.otpInputContainer}>
+                    <TextInput
+                      style={styles.otpInput}
+                      value={emailToken}
+                      onChangeText={setEmailToken}
+                      placeholder="Enter Email Token"
+                      autoCapitalize="none"
+                    />
                   </View>
-                )}
-              </View>
 
-              {/* Password change card */}
-              <View style={styles.passwordCard}>
-                <Text style={styles.sectionTitle}>Change Password</Text>
-
-                <InputField
-                  iconName="lock"
-                  placeholder="Current Password"
-                  isPassword
-                  value={currentPassword}
-                  onChangeText={setCurrentPassword}
-                  autoCapitalize="none"
-                />
-
-                <InputField
-                  iconName="lock"
-                  placeholder="New Password"
-                  isPassword
-                  value={newPassword}
-                  onChangeText={setNewPassword}
-                  autoCapitalize="none"
-                />
-
-                <InputField
-                  iconName="lock"
-                  placeholder="Confirm New Password"
-                  isPassword
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  autoCapitalize="none"
-                />
-
-                <PrimaryButton
-                  title="Update Password"
-                  loading={updatingPassword}
-                  style={{ marginTop: 8 }}
-                  onPress={handleChangePassword}
-                />
-              </View>
-
-              {/* ── My Bikes Section ─────────────────────────────────────── */}
-              <View style={styles.bikesCard}>
-                {/* Header row */}
-                <View style={styles.bikesSectionHeader}>
-                  <View style={styles.bikesSectionTitleGroup}>
-                    <View style={styles.bikesIconBox}>
-                      <Feather name="zap" size={16} color="#f97316" />
-                    </View>
-                    <Text style={styles.sectionTitle}>My Bikes</Text>
+                  <View style={styles.otpActions}>
+                    <PrimaryButton
+                      title="Verify Email"
+                      onPress={handleVerifyEmailToken}
+                      loading={verifyingEmail}
+                      style={{ flex: 1, marginLeft: 8 }}
+                    />
                   </View>
-                  <TouchableOpacity
-                    style={styles.addBikeButton}
-                    onPress={() => onNavigate("AddBike")}
-                    activeOpacity={0.8}
-                  >
-                    <Feather name="plus" size={14} color="#ffffff" />
-                    <Text style={styles.addBikeButtonText}>Add Bike</Text>
-                  </TouchableOpacity>
                 </View>
+              )}
 
-                {/* Content */}
-                {loadingBikes ? (
-                  <View style={styles.bikesLoader}>
-                    <ActivityIndicator size="small" color="#f97316" />
-                    <Text style={styles.bikesLoaderText}>
-                      Loading your bikes...
-                    </Text>
-                  </View>
-                ) : myBikes.length === 0 ? (
-                  /* Empty state */
-                  <TouchableOpacity
-                    style={styles.bikesEmptyState}
-                    onPress={() => onNavigate("AddBike")}
-                    activeOpacity={0.8}
-                  >
-                    <View style={styles.bikesEmptyIconCircle}>
-                      <Feather name="zap-off" size={28} color="#d1d5db" />
-                    </View>
-                    <Text style={styles.bikesEmptyTitle}>
-                      No bikes added yet
-                    </Text>
-                    <Text style={styles.bikesEmptySubtitle}>
-                      Add your bike to get faster service bookings
-                    </Text>
-                    <View style={styles.bikesEmptyCta}>
-                      <Feather name="plus-circle" size={14} color="#f97316" />
-                      <Text style={styles.bikesEmptyCtaText}>
-                        Add Your First Bike
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                ) : (
-                  /* Bike list */
-                  <View style={styles.bikesList}>
-                    {myBikes.map((bike, index) => (
-                      <TouchableOpacity
-                        key={bike.id}
-                        style={[
-                          styles.bikeItem,
-                          index < myBikes.length - 1 && styles.bikeItemBorder,
-                        ]}
-                        onPress={() => {
-                          setSelectedBike(bike);
-                          setSheetVisible(true);
-                        }}
-                        activeOpacity={0.7}
-                      >
-                        <View style={styles.bikeItemLeft}>
-                          <View style={styles.bikeItemIconCircle}>
-                            <Feather name="zap" size={16} color="#f97316" />
-                          </View>
-                          <View style={styles.bikeItemInfo}>
-                            <View style={styles.bikeNameRow}>
-                              <Text style={styles.bikeItemName}>
-                                {bike.brandName} {bike.modelName}
-                              </Text>
-                              {bike.isDefault && (
-                                <View style={styles.defaultBadge}>
-                                  <Text style={styles.defaultBadgeText}>
-                                    Default
-                                  </Text>
-                                </View>
-                              )}
-                            </View>
-                            <Text style={styles.bikeItemReg}>
-                              {bike.registrationNumber}
-                            </Text>
-                            <Text style={styles.bikeItemOdometer}>
-                              {bike.odometerKm.toLocaleString()} km
-                              {bike.color ? `  •  ${bike.color}` : ""}
-                              {bike.manufacturingYear
-                                ? `  •  ${bike.manufacturingYear}`
-                                : ""}
-                            </Text>
-                          </View>
-                        </View>
-                        <Feather
-                          name="chevron-right"
-                          size={16}
-                          color="#f97316"
-                        />
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
-              </View>
 
-              {/* Logout button */}
-              <TouchableOpacity
-                style={[
-                  styles.logoutButton,
-                  loggingOut && styles.logoutButtonDisabled,
-                ]}
-                onPress={handleLogout}
-                disabled={loggingOut}
-              >
-                {loggingOut ? (
-                  <ActivityIndicator
-                    size="small"
-                    color="#ef4444"
-                    style={{ marginRight: 8 }}
-                  />
-                ) : (
-                  <Feather
-                    name="log-out"
-                    size={18}
-                    color="#ef4444"
-                    style={{ marginRight: 8 }}
-                  />
-                )}
-                <Text style={styles.logoutText}>
-                  {loggingOut ? "Logging out..." : "Log Out"}
-                </Text>
-              </TouchableOpacity>
-
-              <ConfirmModal
-                visible={logoutConfirmVisible}
-                title="Log out?"
-                message="You will be signed out of BikeDone on this device. You can log back in anytime."
-                confirmText="Yes, Log Out"
-                cancelText="Stay Logged In"
-                confirmDestructive
-                icon="log-out"
-                onConfirm={handleConfirmLogout}
-                onCancel={() => setLogoutConfirmVisible(false)}
-              />
-
-              <ConfirmModal
-                visible={deleteAddressConfirmVisible}
-                title="Delete address?"
-                message="This address will be removed from your saved list."
-                confirmText="Delete"
-                cancelText="Keep"
-                confirmDestructive
-                icon="trash-2"
-                onConfirm={confirmDeleteAddress}
-                onCancel={() => {
-                  setDeleteAddressConfirmVisible(false);
-                  setAddressDeleteTarget(null);
-                }}
-              />
-
-              <Modal
-                visible={addressModalVisible}
-                transparent
-                animationType="slide"
-                onRequestClose={() => setAddressModalVisible(false)}
-              >
-                <View style={styles.modalBackdrop}>
-                  <KeyboardAvoidingView
-                    style={styles.modalContainer}
-                    behavior={Platform.OS === "ios" ? "padding" : undefined}
-                  >
-                    <View style={styles.modalCard}>
-                      <View style={styles.modalHeader}>
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.modalTitle}>
-                            {editAddressId ? "Edit address" : "Add new address"}
-                          </Text>
-                          <Text style={styles.modalSubtitle}>
-                            Save where you want service to be delivered.
-                          </Text>
-                        </View>
-                        <TouchableOpacity
-                          onPress={() => setAddressModalVisible(false)}
-                        >
-                          <Feather name="x" size={18} color="#6b7280" />
-                        </TouchableOpacity>
-                      </View>
-
-                      {addressError ? (
-                        <View style={styles.errorBanner}>
-                          <Feather
-                            name="alert-circle"
-                            size={14}
-                            color="#dc2626"
-                          />
-                          <Text style={styles.errorText}>{addressError}</Text>
-                        </View>
-                      ) : null}
-
-                      <ScrollView
-                        style={styles.formScroll}
-                        keyboardShouldPersistTaps="handled"
-                      >
-                        <Text style={styles.inputLabel}>Address label</Text>
-                        <TextInput
-                          style={styles.inputField}
-                          value={addressForm.label}
-                          onChangeText={(value) =>
-                            handleAddressFieldChange("label", value)
-                          }
-                          placeholder="Home / Office / Other"
-                          placeholderTextColor="#9ca3af"
-                        />
-
-                        <Text style={styles.inputLabel}>
-                          House / Flat number
-                        </Text>
-                        <TextInput
-                          style={styles.inputField}
-                          value={addressForm.houseNumber}
-                          onChangeText={(value) =>
-                            handleAddressFieldChange("houseNumber", value)
-                          }
-                          placeholder="A-101"
-                          placeholderTextColor="#9ca3af"
-                        />
-
-                        <Text style={styles.inputLabel}>
-                          Building / Apartment
-                        </Text>
-                        <TextInput
-                          style={styles.inputField}
-                          value={addressForm.buildingName}
-                          onChangeText={(value) =>
-                            handleAddressFieldChange("buildingName", value)
-                          }
-                          placeholder="Rosewood Apartments"
-                          placeholderTextColor="#9ca3af"
-                        />
-
-                        <Text style={styles.inputLabel}>Street / Area</Text>
-                        <TextInput
-                          style={styles.inputField}
-                          value={addressForm.street}
-                          onChangeText={(value) =>
-                            handleAddressFieldChange("street", value)
-                          }
-                          placeholder="Main Street"
-                          placeholderTextColor="#9ca3af"
-                        />
-
-                        <Text style={styles.inputLabel}>Landmark</Text>
-                        <TextInput
-                          style={styles.inputField}
-                          value={addressForm.landmark}
-                          onChangeText={(value) =>
-                            handleAddressFieldChange("landmark", value)
-                          }
-                          placeholder="Near Metro Station"
-                          placeholderTextColor="#9ca3af"
-                        />
-
-                        <Text style={styles.inputLabel}>City</Text>
-                        <TextInput
-                          style={styles.inputField}
-                          value={addressForm.city}
-                          onChangeText={(value) =>
-                            handleAddressFieldChange("city", value)
-                          }
-                          placeholder="Mumbai"
-                          placeholderTextColor="#9ca3af"
-                        />
-
-                        <Text style={styles.inputLabel}>State</Text>
-                        <TextInput
-                          style={styles.inputField}
-                          value={addressForm.state}
-                          onChangeText={(value) =>
-                            handleAddressFieldChange("state", value)
-                          }
-                          placeholder="Maharashtra"
-                          placeholderTextColor="#9ca3af"
-                        />
-
-                        <Text style={styles.inputLabel}>Pincode</Text>
-                        <TextInput
-                          style={styles.inputField}
-                          value={addressForm.pincode}
-                          onChangeText={(value) =>
-                            handleAddressFieldChange("pincode", value)
-                          }
-                          placeholder="400001"
-                          keyboardType="number-pad"
-                          placeholderTextColor="#9ca3af"
-                        />
-
-                        <Text style={styles.inputLabel}>Country</Text>
-                        <TextInput
-                          style={styles.inputField}
-                          value={addressForm.country}
-                          onChangeText={(value) =>
-                            handleAddressFieldChange("country", value)
-                          }
-                          placeholder="India"
-                          placeholderTextColor="#9ca3af"
-                        />
-                      </ScrollView>
-
-                      <View style={styles.modalActions}>
-                        <TouchableOpacity
-                          style={styles.cancelAddressButton}
-                          onPress={() => setAddressModalVisible(false)}
-                        >
-                          <Text style={styles.cancelAddressButtonText}>
-                            Cancel
-                          </Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={styles.saveAddressButton}
-                          onPress={handleSaveAddress}
-                          disabled={savingAddress}
-                        >
-                          {savingAddress ? (
-                            <ActivityIndicator size="small" color="#ffffff" />
-                          ) : (
-                            <Text style={styles.saveAddressButtonText}>
-                              {editAddressId ? "Save changes" : "Save address"}
-                            </Text>
-                          )}
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  </KeyboardAvoidingView>
-                </View>
-              </Modal>
-
-              {/* Bike Detail Sheet */}
-              <BikeDetailSheet
-                bike={selectedBike}
-                visible={sheetVisible}
-                onClose={() => setSheetVisible(false)}
-                onUpdated={(updated) => {
-                  setMyBikes((prev) =>
-                    prev.map((b) =>
-                      b.id === updated.id
-                        ? updated
-                        : updated.isDefault
-                          ? { ...b, isDefault: false }
-                          : b,
-                    ),
-                  );
-                  setSelectedBike(updated);
-                }}
-                onDeleted={(vehicleId) => {
-                  setMyBikes((prev) => prev.filter((b) => b.id !== vehicleId));
-                  setSheetVisible(false);
-                }}
-              />
             </>
           )
         )}

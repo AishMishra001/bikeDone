@@ -9,7 +9,7 @@ import { Feather } from '@expo/vector-icons';
 export default function BackButton({ style, ...rest }: TouchableOpacityProps) {
   return (
     <TouchableOpacity style={[styles.backButton, style]} {...rest}>
-      <Feather name="arrow-left" size={24} color="#374151" />
+      <Feather name="chevron-left" size={24} color="#374151" />
     </TouchableOpacity>
   );
 }

@@ -198,6 +198,11 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
         List<MyServiceRequestResponse> result = serviceRequestRepository
                 .findByCustomerIdAndIsActiveTrueOrderByCreatedAtDesc(customerId)
                 .stream()
+                .filter(req -> 
+                    req.getStatus() != com.bikedone.order_management_service.enums.ServiceRequestStatus.SEARCHING_MECHANIC && 
+                    req.getStatus() != com.bikedone.order_management_service.enums.ServiceRequestStatus.EXPIRED &&
+                    req.getStatus() != com.bikedone.order_management_service.enums.ServiceRequestStatus.NO_MECHANIC_AVAILABLE
+                )
                 .map(serviceRequestMapper::toMyServiceRequestResponse)
                 .toList();
 

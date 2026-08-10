@@ -9,8 +9,11 @@ import {
   Switch,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import { uploadServiceImages, ImageAsset } from '../../services/imageUploadService';
 import { vehicleService, VehicleBrand, VehicleModel } from '../../services/vehicleService';
 import InputField from '../ui/InputField';
 import PrimaryButton from '../ui/PrimaryButton';
@@ -22,11 +25,14 @@ interface AddBikeScreenProps {
 }
 
 // ─── Step indicator constants ────────────────────────────────────────────────
-const STEPS = ['Brand', 'Model', 'Details'];
+const STEPS = ['Photos', 'Brand', 'Model', 'Details'];
 
 export default function AddBikeScreen({ onNavigate }: AddBikeScreenProps) {
+  // ── Photo state ─────────────────────────────────────────────────────────────
+  const [images, setImages] = useState<ImageAsset[]>([]);
+
   // ── Step state ──────────────────────────────────────────────────────────────
-  const [currentStep, setCurrentStep] = useState(0); // 0=Brand, 1=Model, 2=Details
+  const [currentStep, setCurrentStep] = useState(0); // 0=Photos, 1=Brand, 2=Model, 3=Details
 
   // ── Data state ──────────────────────────────────────────────────────────────
   const [brands, setBrands] = useState<VehicleBrand[]>([]);
@@ -107,25 +113,52 @@ export default function AddBikeScreen({ onNavigate }: AddBikeScreenProps) {
   const handleBrandSelect = useCallback((brand: VehicleBrand) => {
     setSelectedBrand(brand);
     setSelectedModel(null);
-    setCurrentStep(1);
+    setCurrentStep(2);
   }, []);
 
   // ── Model select ────────────────────────────────────────────────────────────
   const handleModelSelect = useCallback((model: VehicleModel) => {
     setSelectedModel(model);
-    setCurrentStep(2);
+    setCurrentStep(3);
   }, []);
+
+  // ── Photo functions ─────────────────────────────────────────────────────────
+  const pickImages = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsMultipleSelection: true,
+        quality: 0.8,
+      });
+      if (!result.canceled) {
+        const newImages = result.assets.map((asset) => ({
+          uri: asset.uri,
+          fileName: asset.fileName || `photo_${Date.now()}.jpg`,
+          mimeType: asset.mimeType || 'image/jpeg',
+        }));
+        setImages((prev) => [...prev, ...newImages]);
+      }
+    } catch (e) {
+      showToast('Error picking images', 'error');
+    }
+  };
+
+  const removeImage = (index: number) => {
+    setImages((prev) => prev.filter((_, i) => i !== index));
+  };
 
   // ── Back between steps ──────────────────────────────────────────────────────
   const handleBack = () => {
     if (currentStep === 0) {
       onNavigate('Home');
     } else if (currentStep === 1) {
+      setCurrentStep(0);
+    } else if (currentStep === 2) {
       setSelectedBrand(null);
       setModels([]);
-      setCurrentStep(0);
-    } else {
       setCurrentStep(1);
+    } else {
+      setCurrentStep(2);
     }
   };
 
@@ -177,6 +210,11 @@ export default function AddBikeScreen({ onNavigate }: AddBikeScreenProps) {
 
     setSubmitting(true);
     try {
+      let imageUrls: string[] = [];
+      if (images.length > 0) {
+        imageUrls = await uploadServiceImages(images);
+      }
+
       await vehicleService.addBike({
         brandId: selectedBrand.id,
         modelId: selectedModel.id,
@@ -189,12 +227,12 @@ export default function AddBikeScreen({ onNavigate }: AddBikeScreenProps) {
         chassisNumber: chassisNumber.trim(),
         odometerKm: parseInt(odometerKm, 10),
         isDefault,
+        imageUrls: imageUrls.length > 0 ? imageUrls : undefined,
       });
       showToast(
         `🏍️ ${selectedBrand.brandName} ${selectedModel.modelName} registered successfully!`,
         'success'
       );
-      // Navigate after toast is visible briefly
       setTimeout(() => onNavigate('Home'), 1800);
     } catch (err: any) {
       showToast(
@@ -263,7 +301,45 @@ export default function AddBikeScreen({ onNavigate }: AddBikeScreenProps) {
     </View>
   );
 
-  // ── Step 0: Brand Selection ─────────────────────────────────────────────────
+  // ── Step 0: Photos ──────────────────────────────────────────────────────────
+  const renderPhotoStep = () => (
+    <View>
+      <Text style={styles.stepTitle}>Add Photos</Text>
+      <Text style={styles.stepSubtitle}>Upload pictures of your bike (Optional)</Text>
+
+      <View style={styles.photoGrid}>
+        {images.map((img, idx) => (
+          <View key={idx} style={styles.photoItemWrapper}>
+            <Image source={{ uri: img.uri }} style={styles.photoItem} />
+            <TouchableOpacity
+              style={styles.removePhotoBtn}
+              onPress={() => removeImage(idx)}
+            >
+              <Feather name="x" size={12} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        ))}
+        <TouchableOpacity style={styles.addPhotoBtn} onPress={pickImages}>
+          <Feather name="camera" size={24} color="#f97316" />
+          <Text style={styles.addPhotoBtnText}>Add Photos</Text>
+        </TouchableOpacity>
+      </View>
+
+      <PrimaryButton
+        title="Next Step"
+        onPress={() => setCurrentStep(1)}
+        style={styles.nextBtn}
+      />
+      <TouchableOpacity
+        onPress={() => setCurrentStep(1)}
+        style={styles.skipBtn}
+      >
+        <Text style={styles.skipBtnText}>Skip for now</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  // ── Step 1: Brand Selection ─────────────────────────────────────────────────
   const renderBrandStep = () => (
     <View>
       <Text style={styles.stepTitle}>Select Brand</Text>
@@ -562,7 +638,7 @@ export default function AddBikeScreen({ onNavigate }: AddBikeScreenProps) {
       {/* ── Orange Header ─────────────────────────────────────────────────── */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.headerBack} onPress={handleBack} activeOpacity={0.7}>
-          <Feather name="arrow-left" size={22} color="#ffffff" />
+          <Feather name="chevron-left" size={22} color="#ffffff" />
         </TouchableOpacity>
         <View>
           <Text style={styles.headerTitle}>Add Your Bike</Text>
@@ -595,9 +671,10 @@ export default function AddBikeScreen({ onNavigate }: AddBikeScreenProps) {
 
         {/* ── Step Content ────────────────────────────────────────────────── */}
         <View style={styles.card}>
-          {currentStep === 0 && renderBrandStep()}
-          {currentStep === 1 && renderModelStep()}
-          {currentStep === 2 && renderDetailsStep()}
+          {currentStep === 0 && renderPhotoStep()}
+          {currentStep === 1 && renderBrandStep()}
+          {currentStep === 2 && renderModelStep()}
+          {currentStep === 3 && renderDetailsStep()}
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -623,6 +700,66 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 3,
+  },
+
+  // ── Photos Step ───────────────────────────────────────────────────────────
+  photoGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 24,
+  },
+  photoItemWrapper: {
+    width: 80,
+    height: 80,
+    borderRadius: 12,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  photoItem: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#e5e7eb',
+  },
+  removePhotoBtn: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  addPhotoBtn: {
+    width: 80,
+    height: 80,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#fed7aa',
+    borderStyle: 'dashed',
+    backgroundColor: '#fff3eb',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  addPhotoBtnText: {
+    fontSize: 10,
+    color: '#ea580c',
+    marginTop: 4,
+    fontWeight: '600',
+  },
+  nextBtn: {
+    marginBottom: 12,
+  },
+  skipBtn: {
+    padding: 12,
+    alignItems: 'center',
+  },
+  skipBtnText: {
+    color: '#6b7280',
+    fontWeight: '600',
+    fontSize: 14,
   },
 
   // ── Header ────────────────────────────────────────────────────────────────

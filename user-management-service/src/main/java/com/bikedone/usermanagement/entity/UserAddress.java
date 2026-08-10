@@ -62,4 +62,10 @@ public class UserAddress extends BaseEntity {
     @Column(name = "is_deleted", nullable = false)
     @Builder.Default
     private Boolean deleted = false;
+
+    @Column(name = "receiver_name", length = 100)
+    private String receiverName;
+
+    @Column(name = "receiver_phone_number", length = 20)
+    private String receiverPhoneNumber;
 }

@@ -14,6 +14,8 @@ export interface UserAddress {
   latitude: number | null;
   longitude: number | null;
   defaultAddress: boolean;
+  receiverName?: string;
+  receiverPhoneNumber?: string;
 }
 
 export interface AddressPayload {
@@ -28,6 +30,8 @@ export interface AddressPayload {
   pincode: string;
   latitude: number | null;
   longitude: number | null;
+  receiverName?: string;
+  receiverPhoneNumber?: string;
 }
 
 export const emptyAddressPayload: AddressPayload = {
@@ -42,6 +46,8 @@ export const emptyAddressPayload: AddressPayload = {
   pincode: '',
   latitude: null,
   longitude: null,
+  receiverName: '',
+  receiverPhoneNumber: '',
 };
 
 export const addressService = {

@@ -4,6 +4,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.util.UUID;
+import java.util.Map;
 
 @Getter
 @Setter
@@ -24,5 +25,7 @@ public class CustomerVehicleResponse {
     private Integer odometerKm;
 
     private Boolean isDefault;
+
+    private Map<String, Object> vehicleData;
 
 }

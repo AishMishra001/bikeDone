@@ -41,4 +41,6 @@ public class CreateAddressRequest {
     private BigDecimal latitude;
 
     private BigDecimal longitude;
+    private String receiverName;
+    private String receiverPhoneNumber;
 }

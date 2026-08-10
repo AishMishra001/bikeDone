@@ -48,7 +48,7 @@ export interface ReviewData {
 
 interface BookingReviewScreenProps {
   reviewData: ReviewData;
-  onConfirm: (requestNumber: string) => void;
+  onConfirm: (requestNumber: string, requestId: string) => void;
   onBack: () => void;
   onNavigate: (screen: string) => void;
 }
@@ -150,8 +150,8 @@ export default function BookingReviewScreen({
       const result = await vehicleService.createServiceRequest(finalPayload);
 
       if (result.requestNumber) {
-        onConfirm(result.requestNumber);
-        onNavigate("RequestSuccess");
+        onConfirm(result.requestNumber, result.id);
+        onNavigate("FindingMechanic");
       }
     } catch (err: any) {
       const message =
@@ -180,7 +180,7 @@ export default function BookingReviewScreen({
       {/* Header */}
       <View style={styles.header}>
         <BackButton style={styles.backBtnOverride} onPress={onBack} />
-        <Text style={styles.headerTitle}>Review & Confirm</Text>
+        <Text style={styles.headerTitle}>Review & Find Mechanic</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -286,14 +286,14 @@ export default function BookingReviewScreen({
         <View style={styles.noteCard}>
           <Feather name="info" size={15} color="#2563eb" />
           <Text style={styles.noteText}>
-            Once confirmed, our team will review your request and assign a mechanic. You can track the status in My Bookings.
+            Our team will review your request and assign a mechanic. You can track the status in My Bookings.
           </Text>
         </View>
 
         {/* ── Submit ─────────────────────────────────────────────────── */}
         <View style={styles.submitSection}>
           <PrimaryButton
-            title={submitting ? "Confirming..." : "Confirm Request"}
+            title={submitting ? "Finding Mechanic..." : "Find Mechanic"}
             onPress={handleConfirm}
             disabled={submitting}
             loading={submitting}

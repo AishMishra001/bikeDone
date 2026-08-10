@@ -29,6 +29,9 @@ export interface CustomerVehicle {
   color: string | null;
   odometerKm: number;
   isDefault: boolean;
+  vehicleData?: {
+    "customer-bike-image"?: string[];
+  };
 }
 
 export interface RequestType {
@@ -116,6 +119,7 @@ export interface AddBikePayload {
   chassisNumber: string;
   odometerKm: number;
   isDefault: boolean;
+  imageUrls?: string[];
 }
 
 export interface UpdateBikePayload {

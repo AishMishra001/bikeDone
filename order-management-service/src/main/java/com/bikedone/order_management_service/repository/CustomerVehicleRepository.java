@@ -11,11 +11,11 @@ import java.util.UUID;
 
 public interface CustomerVehicleRepository extends JpaRepository<CustomerVehicle, UUID> {
 
-    boolean existsByRegistrationNumberIgnoreCase(String registrationNumber);
+    boolean existsByRegistrationNumberIgnoreCaseAndIsActiveTrue(String registrationNumber);
 
-    boolean existsByEngineNumberIgnoreCase(String engineNumber);
+    boolean existsByEngineNumberIgnoreCaseAndIsActiveTrue(String engineNumber);
 
-    boolean existsByChassisNumberIgnoreCase(String chassisNumber);
+    boolean existsByChassisNumberIgnoreCaseAndIsActiveTrue(String chassisNumber);
 
     List<CustomerVehicle> findAllByUserIdAndIsActiveTrue(UUID userId);
 

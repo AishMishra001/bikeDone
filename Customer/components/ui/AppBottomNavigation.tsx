@@ -2,7 +2,8 @@ import { Feather } from "@expo/vector-icons";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
-type MainScreen = "Home" | "MyRequests" | "Profile";
+// Garage added to match UI, will need to be added to routing later if needed.
+type MainScreen = "Home" | "MyRequests" | "Garage" | "Profile";
 
 interface AppBottomNavigationProps {
   activeScreen: MainScreen;
@@ -15,68 +16,98 @@ const NAV_ITEMS: Array<{
   icon: keyof typeof Feather.glyphMap;
 }> = [
   { screen: "Home", label: "Home", icon: "home" },
-  { screen: "MyRequests", label: "My Bookings", icon: "clipboard" },
-  { screen: "Profile", label: "Profile", icon: "user" },
+  { screen: "MyRequests", label: "Activity", icon: "clock" },
+  { screen: "Garage", label: "Garage", icon: "tool" }, // Using tool as placeholder for bike
+  { screen: "Profile", label: "Support", icon: "user" },
 ];
 
-/** Shared navigation for the three main customer screens. */
 export default function AppBottomNavigation({
   activeScreen,
   onNavigate,
 }: AppBottomNavigationProps) {
   return (
-    <View style={styles.bottomNav}>
-      {NAV_ITEMS.map((item) => {
-        const isActive = activeScreen === item.screen;
-        const color = isActive ? "#f97316" : "#9ca3af";
-        return (
-          <TouchableOpacity
-            key={item.screen}
-            style={styles.navItem}
-            onPress={() => onNavigate(item.screen)}
-            activeOpacity={0.7}
-          >
-            <Feather name={item.icon} size={24} color={color} />
-            <Text style={[styles.navText, isActive && styles.navTextActive]}>
-              {item.label}
-            </Text>
-          </TouchableOpacity>
-        );
-      })}
+    <View style={styles.floatingContainer}>
+      <View style={styles.bottomNav}>
+        {NAV_ITEMS.map((item) => {
+          const isActive = activeScreen === item.screen;
+          
+          if (isActive) {
+            return (
+              <TouchableOpacity
+                key={item.screen}
+                style={[styles.navItem, styles.navItemActive]}
+                onPress={() => onNavigate(item.screen)}
+                activeOpacity={0.7}
+              >
+                <Feather name={item.icon} size={20} color="#000000" />
+                <Text style={styles.navTextActive}>{item.label}</Text>
+              </TouchableOpacity>
+            );
+          }
+          
+          return (
+            <TouchableOpacity
+              key={item.screen}
+              style={styles.navItem}
+              onPress={() => onNavigate(item.screen)}
+              activeOpacity={0.7}
+            >
+              <Feather name={item.icon} size={22} color="#6b7280" />
+              <Text style={styles.navText}>{item.label}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  bottomNav: {
+  floatingContainer: {
     position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
+    bottom: 24,
+    left: 20,
+    right: 20,
+    backgroundColor: "transparent",
+  },
+  bottomNav: {
     flexDirection: "row",
-    justifyContent: "space-around",
+    justifyContent: "space-between",
+    alignItems: "center",
     backgroundColor: "#ffffff",
-    paddingTop: 12,
-    paddingBottom: 24,
-    borderTopWidth: 1,
-    borderTopColor: "#f3f4f6",
-    elevation: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 36,
+    elevation: 8,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
   },
   navItem: {
     alignItems: "center",
-    minWidth: 84,
+    justifyContent: "center",
+    flex: 1,
+  },
+  navItemActive: {
+    backgroundColor: "#f97316", // Orange background for active item
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 24,
+    flexDirection: "column",
+    flex: 0,
+    minWidth: 80,
   },
   navText: {
-    fontSize: 10,
-    fontWeight: "700",
+    fontSize: 11,
+    fontWeight: "600",
     marginTop: 4,
-    color: "#9ca3af",
+    color: "#6b7280",
   },
   navTextActive: {
-    color: "#f97316",
+    fontSize: 12,
+    fontWeight: "700",
+    marginTop: 4,
+    color: "#000000",
   },
 });

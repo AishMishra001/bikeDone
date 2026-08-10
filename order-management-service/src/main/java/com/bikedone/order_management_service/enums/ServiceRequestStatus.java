@@ -24,6 +24,8 @@ public enum ServiceRequestStatus {
 
     WORK_COMPLETED,
 
-    CANCELLED
+    CANCELLED,
+
+    EXPIRED
 
 }

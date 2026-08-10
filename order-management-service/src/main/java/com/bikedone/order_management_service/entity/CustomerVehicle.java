@@ -4,6 +4,9 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+import java.util.Map;
 
 @Getter
 @Setter
@@ -62,4 +65,8 @@ public class CustomerVehicle extends BaseEntity {
 
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "vehicle_data", columnDefinition = "jsonb")
+    private Map<String, Object> vehicleData;
 }

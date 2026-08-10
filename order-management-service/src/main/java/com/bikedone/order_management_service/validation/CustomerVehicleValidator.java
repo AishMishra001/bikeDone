@@ -48,7 +48,7 @@ public class CustomerVehicleValidator {
 
     public void validateRegistrationNumber(String registrationNumber) {
 
-        if (customerVehicleRepository.existsByRegistrationNumberIgnoreCase(
+        if (customerVehicleRepository.existsByRegistrationNumberIgnoreCaseAndIsActiveTrue(
                 registrationNumber)) {
 
             throw new ConflictException(
@@ -62,7 +62,7 @@ public class CustomerVehicleValidator {
             return;
         }
 
-        if (customerVehicleRepository.existsByEngineNumberIgnoreCase(engineNumber)) {
+        if (customerVehicleRepository.existsByEngineNumberIgnoreCaseAndIsActiveTrue(engineNumber)) {
 
             throw new ConflictException(
                     "Vehicle with same engine number already exists.");
@@ -75,7 +75,7 @@ public class CustomerVehicleValidator {
             return;
         }
 
-        if (customerVehicleRepository.existsByChassisNumberIgnoreCase(chassisNumber)) {
+        if (customerVehicleRepository.existsByChassisNumberIgnoreCaseAndIsActiveTrue(chassisNumber)) {
 
             throw new ConflictException(
                     "Vehicle with same chassis number already exists.");

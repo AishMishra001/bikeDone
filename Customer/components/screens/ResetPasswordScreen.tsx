@@ -103,7 +103,7 @@ export default function ResetPasswordScreen({
           style={styles.backButton}
           onPress={() => onNavigate('Login')}
         >
-          <Feather name="arrow-left" size={24} color="#111827" />
+          <Feather name="chevron-left" size={24} color="#111827" />
         </TouchableOpacity>
 
         <View style={styles.headerContainer}>
@@ -183,10 +183,15 @@ const styles = StyleSheet.create({
   },
   backButton: {
     marginTop: 20,
-    marginBottom: 10,
     width: 40,
     height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    backgroundColor: '#fff',
     justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
   },
   headerContainer: {
     alignItems: 'center',

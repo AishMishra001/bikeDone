@@ -19,9 +19,13 @@ import ProfileScreen from '../../components/screens/ProfileScreen';
 import ResetPasswordScreen from '../../components/screens/ResetPasswordScreen';
 import AddBikeScreen from '../../components/screens/AddBikeScreen';
 import RequestSuccessScreen from '../../components/screens/RequestSuccessScreen';
+import FindingMechanicScreen from '../../components/screens/FindingMechanicScreen';
 import MyRequestsScreen from '../../components/screens/MyRequestsScreen';
 import RequestDetailScreen from '../../components/screens/RequestDetailScreen';
 import CustomerChatScreen from '../../components/screens/CustomerChatScreen';
+import GarageScreen from '../../components/screens/GarageScreen';
+import SavedAddressesScreen from '../../components/screens/SavedAddressesScreen';
+import AddAddressScreen from '../../components/screens/AddAddressScreen';
 import AppBottomNavigation from '../../components/ui/AppBottomNavigation';
 import { registerAuthFailureCallback } from '../../services/api';
 import { tokenStorage } from '../../services/tokenStorage';
@@ -30,8 +34,10 @@ export default function App() {
   const [currentScreen, setCurrentScreen] = useState<string>('loading');
   const [resetToken, setResetToken] = useState('');
   const [lastRequestNumber, setLastRequestNumber] = useState('');
+  const [lastRequestId, setLastRequestId] = useState('');
   const [reviewData, setReviewData] = useState<ReviewData | null>(null);
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
+  const [editAddress, setEditAddress] = useState<any | null>(null);
 
   useEffect(() => {
     registerAuthFailureCallback(() => {
@@ -94,8 +100,9 @@ export default function App() {
     };
   }, []);
 
-  const handleRequestSuccess = (requestNumber: string) => {
+  const handleRequestSuccess = (requestNumber: string, requestId?: string) => {
     setLastRequestNumber(requestNumber);
+    if (requestId) setLastRequestId(requestId);
   };
 
   const handleReview = (data: ReviewData) => {
@@ -119,8 +126,8 @@ export default function App() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar
-        barStyle={currentScreen === 'Home' || currentScreen === 'AddBike' ? 'light-content' : 'dark-content'}
-        backgroundColor={currentScreen === 'Home' || currentScreen === 'AddBike' ? '#f97316' : '#ffffff'}
+        barStyle={currentScreen === 'AddBike' ? 'light-content' : 'dark-content'}
+        backgroundColor={currentScreen === 'AddBike' ? '#f97316' : '#f9fafb'}
       />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
@@ -132,8 +139,14 @@ export default function App() {
         {currentScreen === 'Signup' && (
           <SignupScreen onNavigate={setCurrentScreen} />
         )}
-        {currentScreen === 'Home' && (
-          <HomeScreen onNavigate={setCurrentScreen} />
+        {['Home', 'Profile', 'SavedAddresses', 'AddAddress'].includes(currentScreen) && (
+          <HomeScreen 
+            onNavigate={setCurrentScreen} 
+            initialSidebarOpen={currentScreen !== 'Home'} 
+          />
+        )}
+        {currentScreen === 'FullProfile' && (
+          <ProfileScreen onNavigate={setCurrentScreen} />
         )}
         {currentScreen === 'Booking' && (
           <BookingScreen
@@ -145,16 +158,14 @@ export default function App() {
         {currentScreen === 'BookingReview' && reviewData && (
           <BookingReviewScreen
             reviewData={reviewData}
-            onConfirm={(requestNumber) => {
-              handleRequestSuccess(requestNumber);
+            onConfirm={(requestNumber, requestId) => {
+              handleRequestSuccess(requestNumber, requestId);
             }}
             onBack={() => setCurrentScreen('Booking')}
             onNavigate={setCurrentScreen}
           />
         )}
-        {currentScreen === 'Profile' && (
-          <ProfileScreen onNavigate={setCurrentScreen} />
-        )}
+
         {currentScreen === 'ResetPassword' && (
           <ResetPasswordScreen
             initialToken={resetToken}
@@ -163,6 +174,13 @@ export default function App() {
         )}
         {currentScreen === 'AddBike' && (
           <AddBikeScreen onNavigate={setCurrentScreen} />
+        )}
+        {currentScreen === 'FindingMechanic' && (
+          <FindingMechanicScreen
+            onNavigate={setCurrentScreen}
+            requestId={lastRequestId}
+            requestNumber={lastRequestNumber}
+          />
         )}
         {currentScreen === 'RequestSuccess' && (
           <RequestSuccessScreen
@@ -189,10 +207,31 @@ export default function App() {
             onBack={() => setCurrentScreen('RequestDetail')}
           />
         )}
+        {currentScreen === 'Garage' && (
+          <GarageScreen onNavigate={setCurrentScreen} />
+        )}
+
+        {['SavedAddresses', 'AddAddress'].includes(currentScreen) && (
+          <SavedAddressesScreen 
+            isActive={currentScreen === 'SavedAddresses'}
+            onNavigate={(screen, params) => {
+              if (screen === 'AddAddress') {
+                setEditAddress(params?.address || null);
+              }
+              setCurrentScreen(screen);
+            }} 
+          />
+        )}
+        {currentScreen === 'AddAddress' && (
+          <AddAddressScreen 
+            onNavigate={setCurrentScreen} 
+            initialAddress={editAddress} 
+          />
+        )}
       </KeyboardAvoidingView>
-      {(['Home', 'MyRequests', 'Profile'] as const).includes(currentScreen as 'Home' | 'MyRequests' | 'Profile') && (
+      {(['Home', 'MyRequests', 'Profile', 'FullProfile', 'Garage'] as const).includes(currentScreen as 'Home' | 'MyRequests' | 'Profile' | 'FullProfile' | 'Garage') && (
         <AppBottomNavigation
-          activeScreen={currentScreen as 'Home' | 'MyRequests' | 'Profile'}
+          activeScreen={currentScreen as 'Home' | 'MyRequests' | 'Profile' | 'FullProfile' | 'Garage'}
           onNavigate={setCurrentScreen}
         />
       )}
