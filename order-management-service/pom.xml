@@ -130,6 +130,13 @@
 			<artifactId>spring-cloud-aws-starter-sqs</artifactId>
 			<version>3.2.1</version>
 		</dependency>
+
+		<!-- Razorpay -->
+		<dependency>
+			<groupId>com.razorpay</groupId>
+			<artifactId>razorpay-java</artifactId>
+			<version>1.4.6</version>
+		</dependency>
 	</dependencies>
 
 	<build>

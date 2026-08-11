@@ -82,3 +82,8 @@ cloudinary:
 services:
   ums:
     base-url: ${UMS_BASE_URL:http://localhost:8080}
+
+razorpay:
+  key-id: ${RAZORPAY_KEY_ID:rzp_test_mock_key}
+  key-secret: ${RAZORPAY_KEY_SECRET:mock_secret}
+  webhook-secret: ${RAZORPAY_WEBHOOK_SECRET:mock_webhook_secret}
