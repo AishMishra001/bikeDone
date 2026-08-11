@@ -124,7 +124,7 @@ export default function HomeScreen({ onNavigate, initialSidebarOpen = false }: H
           <View style={styles.header}>
             <Text style={styles.greetingText}>Hello, {getGreetingName()}</Text>
             <TouchableOpacity style={styles.profileIcon} onPress={() => setSidebarVisible(true)}>
-              <Feather name="user" size={20} color="#4b5563" />
+              <Feather name="user" size={20} color="#ffffff" />
             </TouchableOpacity>
           </View>
 
@@ -134,11 +134,11 @@ export default function HomeScreen({ onNavigate, initialSidebarOpen = false }: H
             onPress={refreshLocation}
             activeOpacity={0.7}
           >
-            <Feather name="map-pin" size={14} color="#6b7280" />
+            <Feather name="map-pin" size={14} color="#ffedd5" />
             <View style={styles.locationTextContainer}>
               {renderLocationText()}
             </View>
-            <Feather name="edit-2" size={14} color="#6b7280" />
+            <Feather name="edit-2" size={14} color="#ffedd5" />
           </TouchableOpacity>
         </View>
 
@@ -149,7 +149,7 @@ export default function HomeScreen({ onNavigate, initialSidebarOpen = false }: H
           {/* Inspection Card */}
           <Pressable 
             style={[styles.gridCard, hoveredCard === 'Inspection' && styles.gridCardHovered]} 
-            onPress={() => onNavigate('Booking')}
+            onPress={() => onNavigate('Inspection')}
             onHoverIn={() => setHoveredCard('Inspection')}
             onHoverOut={() => setHoveredCard(null)}
             onPressIn={() => setHoveredCard('Inspection')}
@@ -164,7 +164,7 @@ export default function HomeScreen({ onNavigate, initialSidebarOpen = false }: H
           {/* Routine Service Card */}
           <Pressable 
             style={[styles.gridCard, hoveredCard === 'Routine Service' && styles.gridCardHovered]} 
-            onPress={() => onNavigate('Booking')}
+            onPress={() => onNavigate('RoutineService')}
             onHoverIn={() => setHoveredCard('Routine Service')}
             onHoverOut={() => setHoveredCard(null)}
             onPressIn={() => setHoveredCard('Routine Service')}
@@ -179,7 +179,7 @@ export default function HomeScreen({ onNavigate, initialSidebarOpen = false }: H
           {/* Repair Card */}
           <Pressable 
             style={[styles.gridCard, hoveredCard === 'Repair' && styles.gridCardHovered]} 
-            onPress={() => onNavigate('Booking')}
+            onPress={() => onNavigate('Repair')}
             onHoverIn={() => setHoveredCard('Repair')}
             onHoverOut={() => setHoveredCard(null)}
             onPressIn={() => setHoveredCard('Repair')}
@@ -194,7 +194,7 @@ export default function HomeScreen({ onNavigate, initialSidebarOpen = false }: H
           {/* Emergency Card */}
           <TouchableOpacity 
             style={[styles.gridCard, styles.emergencyCard]} 
-            onPress={() => onNavigate('Booking')}
+            onPress={() => onNavigate('Emergency')}
             activeOpacity={0.8}
           >
             <Animated.View style={[styles.emergencyIconCircle, { opacity: sosOpacity }]}>
@@ -247,10 +247,15 @@ const styles = StyleSheet.create({
     paddingBottom: 140,
   },
   topCard: {
-    backgroundColor: '#fff7f2',
+    backgroundColor: '#f97316',
     borderRadius: 24,
     padding: 20,
     marginBottom: 24,
+    shadowColor: '#f97316',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 4,
   },
   header: {
     flexDirection: 'row',
@@ -261,13 +266,13 @@ const styles = StyleSheet.create({
   greetingText: {
     fontSize: 26,
     fontWeight: '800',
-    color: '#111827',
+    color: '#ffffff',
   },
   profileIcon: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#f1ece9',
+    backgroundColor: 'rgba(255, 255, 255, 0.22)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -275,16 +280,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    backgroundColor: 'transparent',
+    backgroundColor: 'rgba(0, 0, 0, 0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
   },
   locationTextContainer: {
     marginHorizontal: 8,
     maxWidth: 200,
   },
   locationText: {
-    color: '#6b7280',
+    color: '#ffffff',
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   sectionTitle: {
     fontSize: 16,

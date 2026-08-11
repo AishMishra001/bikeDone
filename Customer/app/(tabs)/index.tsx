@@ -25,13 +25,14 @@ import RequestDetailScreen from '../../components/screens/RequestDetailScreen';
 import CustomerChatScreen from '../../components/screens/CustomerChatScreen';
 import GarageScreen from '../../components/screens/GarageScreen';
 import SavedAddressesScreen from '../../components/screens/SavedAddressesScreen';
-import AddAddressScreen from '../../components/screens/AddAddressScreen';
+import InspectionScreen from '../../components/screens/InspectionScreen';
 import AppBottomNavigation from '../../components/ui/AppBottomNavigation';
 import { registerAuthFailureCallback } from '../../services/api';
 import { tokenStorage } from '../../services/tokenStorage';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<string>('loading');
+  const [previousScreen, setPreviousScreen] = useState<string>('Inspection');
   const [resetToken, setResetToken] = useState('');
   const [lastRequestNumber, setLastRequestNumber] = useState('');
   const [lastRequestId, setLastRequestId] = useState('');
@@ -100,12 +101,20 @@ export default function App() {
     };
   }, []);
 
+  const handleNavigate = (nextScreen: string) => {
+    if (nextScreen !== currentScreen) {
+      setPreviousScreen(currentScreen);
+      setCurrentScreen(nextScreen);
+    }
+  };
+
   const handleRequestSuccess = (requestNumber: string, requestId?: string) => {
     setLastRequestNumber(requestNumber);
     if (requestId) setLastRequestId(requestId);
   };
 
   const handleReview = (data: ReviewData) => {
+    setPreviousScreen(currentScreen);
     setReviewData(data);
     setCurrentScreen('BookingReview');
   };
@@ -134,23 +143,56 @@ export default function App() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         {currentScreen === 'Login' && (
-          <LoginScreen onNavigate={setCurrentScreen} />
+          <LoginScreen onNavigate={handleNavigate} />
         )}
         {currentScreen === 'Signup' && (
-          <SignupScreen onNavigate={setCurrentScreen} />
+          <SignupScreen onNavigate={handleNavigate} />
         )}
         {['Home', 'Profile', 'SavedAddresses', 'AddAddress'].includes(currentScreen) && (
           <HomeScreen 
-            onNavigate={setCurrentScreen} 
+            onNavigate={handleNavigate} 
             initialSidebarOpen={currentScreen !== 'Home'} 
           />
         )}
         {currentScreen === 'FullProfile' && (
-          <ProfileScreen onNavigate={setCurrentScreen} />
+          <ProfileScreen onNavigate={handleNavigate} />
+        )}
+        {currentScreen === 'Inspection' && (
+          <InspectionScreen
+            onNavigate={handleNavigate}
+            onRequestSuccess={handleRequestSuccess}
+            onReview={handleReview}
+            serviceTypeLabel="Inspection"
+          />
+        )}
+        {currentScreen === 'RoutineService' && (
+          <InspectionScreen
+            onNavigate={handleNavigate}
+            onRequestSuccess={handleRequestSuccess}
+            onReview={handleReview}
+            serviceTypeLabel="Routine Service"
+          />
+        )}
+        {currentScreen === 'Repair' && (
+          <InspectionScreen
+            onNavigate={handleNavigate}
+            onRequestSuccess={handleRequestSuccess}
+            onReview={handleReview}
+            serviceTypeLabel="Repair"
+          />
+        )}
+        {currentScreen === 'Emergency' && (
+          <InspectionScreen
+            onNavigate={handleNavigate}
+            onRequestSuccess={handleRequestSuccess}
+            onReview={handleReview}
+            serviceTypeLabel="Emergency"
+            isEmergency={true}
+          />
         )}
         {currentScreen === 'Booking' && (
           <BookingScreen
-            onNavigate={setCurrentScreen}
+            onNavigate={handleNavigate}
             onRequestSuccess={handleRequestSuccess}
             onReview={handleReview}
           />
@@ -161,36 +203,39 @@ export default function App() {
             onConfirm={(requestNumber, requestId) => {
               handleRequestSuccess(requestNumber, requestId);
             }}
-            onBack={() => setCurrentScreen('Booking')}
-            onNavigate={setCurrentScreen}
+            onBack={() => setCurrentScreen(previousScreen || 'Inspection')}
+            onNavigate={handleNavigate}
           />
         )}
 
         {currentScreen === 'ResetPassword' && (
           <ResetPasswordScreen
             initialToken={resetToken}
-            onNavigate={setCurrentScreen}
+            onNavigate={handleNavigate}
           />
         )}
         {currentScreen === 'AddBike' && (
-          <AddBikeScreen onNavigate={setCurrentScreen} />
+          <AddBikeScreen
+            onNavigate={handleNavigate}
+            onBack={() => setCurrentScreen(previousScreen || 'Inspection')}
+          />
         )}
         {currentScreen === 'FindingMechanic' && (
           <FindingMechanicScreen
-            onNavigate={setCurrentScreen}
+            onNavigate={handleNavigate}
             requestId={lastRequestId}
             requestNumber={lastRequestNumber}
           />
         )}
         {currentScreen === 'RequestSuccess' && (
           <RequestSuccessScreen
-            onNavigate={setCurrentScreen}
+            onNavigate={handleNavigate}
             requestNumber={lastRequestNumber}
           />
         )}
         {currentScreen === 'MyRequests' && (
           <MyRequestsScreen
-            onNavigate={setCurrentScreen}
+            onNavigate={handleNavigate}
             onViewDetails={handleViewDetails}
           />
         )}
@@ -198,7 +243,7 @@ export default function App() {
           <RequestDetailScreen
             requestId={selectedRequestId}
             onBack={() => setCurrentScreen('MyRequests')}
-            onNavigate={setCurrentScreen}
+            onNavigate={handleNavigate}
           />
         )}
         {currentScreen === 'CustomerChat' && selectedRequestId && (
@@ -208,7 +253,7 @@ export default function App() {
           />
         )}
         {currentScreen === 'Garage' && (
-          <GarageScreen onNavigate={setCurrentScreen} />
+          <GarageScreen onNavigate={handleNavigate} />
         )}
 
         {['SavedAddresses', 'AddAddress'].includes(currentScreen) && (
@@ -218,13 +263,13 @@ export default function App() {
               if (screen === 'AddAddress') {
                 setEditAddress(params?.address || null);
               }
-              setCurrentScreen(screen);
+              handleNavigate(screen);
             }} 
           />
         )}
         {currentScreen === 'AddAddress' && (
           <AddAddressScreen 
-            onNavigate={setCurrentScreen} 
+            onNavigate={handleNavigate} 
             initialAddress={editAddress} 
           />
         )}
@@ -232,7 +277,7 @@ export default function App() {
       {(['Home', 'MyRequests', 'Profile', 'FullProfile', 'Garage'] as const).includes(currentScreen as 'Home' | 'MyRequests' | 'Profile' | 'FullProfile' | 'Garage') && (
         <AppBottomNavigation
           activeScreen={currentScreen as 'Home' | 'MyRequests' | 'Profile' | 'FullProfile' | 'Garage'}
-          onNavigate={setCurrentScreen}
+          onNavigate={handleNavigate}
         />
       )}
     </SafeAreaView>

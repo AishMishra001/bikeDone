@@ -22,12 +22,13 @@ import Toast, { ToastType } from '../ui/Toast';
 
 interface AddBikeScreenProps {
   onNavigate: (screen: string) => void;
+  onBack?: () => void;
 }
 
 // ─── Step indicator constants ────────────────────────────────────────────────
 const STEPS = ['Photos', 'Brand', 'Model', 'Details'];
 
-export default function AddBikeScreen({ onNavigate }: AddBikeScreenProps) {
+export default function AddBikeScreen({ onNavigate, onBack }: AddBikeScreenProps) {
   // ── Photo state ─────────────────────────────────────────────────────────────
   const [images, setImages] = useState<ImageAsset[]>([]);
 
@@ -150,7 +151,11 @@ export default function AddBikeScreen({ onNavigate }: AddBikeScreenProps) {
   // ── Back between steps ──────────────────────────────────────────────────────
   const handleBack = () => {
     if (currentStep === 0) {
-      onNavigate('Home');
+      if (onBack) {
+        onBack();
+      } else {
+        onNavigate('Home');
+      }
     } else if (currentStep === 1) {
       setCurrentStep(0);
     } else if (currentStep === 2) {
@@ -233,7 +238,13 @@ export default function AddBikeScreen({ onNavigate }: AddBikeScreenProps) {
         `🏍️ ${selectedBrand.brandName} ${selectedModel.modelName} registered successfully!`,
         'success'
       );
-      setTimeout(() => onNavigate('Home'), 1800);
+      setTimeout(() => {
+        if (onBack) {
+          onBack();
+        } else {
+          onNavigate('Home');
+        }
+      }, 1800);
     } catch (err: any) {
       showToast(
         err?.message || 'Something went wrong. Please try again.',
