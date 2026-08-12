@@ -32,7 +32,7 @@ public class CreateServiceRequestRequest {
      * the requested date and time to its current time and does not assign a slot.
      */
     @NotNull(message = "Immediate request flag is required.")
-    private Boolean isImmediate = false;
+    private Boolean isImmediate;
 
     @Valid
     private CurrentLocationRequest currentLocation;
@@ -65,4 +65,8 @@ public class CreateServiceRequestRequest {
 
     @Size(max = 1000)
     private String addressNote;
+
+    private String couponCode;
+
+    private UUID itemId;
 }

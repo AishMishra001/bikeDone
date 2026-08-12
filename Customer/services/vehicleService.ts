@@ -22,6 +22,9 @@ export interface VehicleModel {
 
 export interface CustomerVehicle {
   id: string;
+  itemId?: string;
+  itemCode?: string;
+  itemDisplayName?: string;
   brandName: string;
   modelName: string;
   registrationNumber: string;
@@ -32,6 +35,37 @@ export interface CustomerVehicle {
   vehicleData?: {
     "customer-bike-image"?: string[];
   };
+}
+
+export interface Item {
+  id: string;
+  itemCode: string;
+  displayName: string;
+  description: string;
+}
+
+export interface PricingEstimateResponse {
+  itemId: string;
+  itemCode: string;
+  itemDisplayName: string;
+  requestTypeId: number;
+  requestTypeCode: string;
+  requestTypeDisplayName: string;
+  baseCharge: number;
+  convenienceFee: number;
+  platformFee: number;
+  subtotal: number;
+  discountAmount: number;
+  appliedCouponCode: string | null;
+  couponTitle: string | null;
+  taxableAmount: number;
+  gstPercentage: number;
+  gstAmount: number;
+  cgstAmount: number;
+  sgstAmount: number;
+  totalPayableAmount: number;
+  couponApplied: boolean;
+  couponMessage: string | null;
 }
 
 export interface RequestType {
@@ -82,6 +116,8 @@ export interface CreateServiceRequestPayload {
     note?: string;
   };
   imageUrls?: string[];
+  couponCode?: string;
+  itemId?: string;
 }
 
 export interface CreateServiceRequestResponse {
@@ -171,6 +207,28 @@ export const vehicleService = {
   /** Fetch request types that can be selected when booking a service */
   getRequestTypes: (): Promise<RequestType[]> =>
     vmsApi.get<RequestType[]>("/request-types"),
+
+  /** Fetch active items (Bike, Scooty, Car, TV, Washing Machine) */
+  getItems: (): Promise<Item[]> =>
+    vmsApi.get<Item[]>("/pricing/items"),
+
+  /** Fetch pricing estimate including fees, coupon discounts, and GST */
+  getPricingEstimate: (
+    itemId?: string,
+    itemCode?: string,
+    requestTypeId?: number,
+    requestTypeCode?: string,
+    couponCode?: string,
+  ): Promise<PricingEstimateResponse> => {
+    const params: string[] = [];
+    if (itemId) params.push(`itemId=${encodeURIComponent(itemId)}`);
+    if (itemCode) params.push(`itemCode=${encodeURIComponent(itemCode)}`);
+    if (requestTypeId) params.push(`requestTypeId=${requestTypeId}`);
+    if (requestTypeCode) params.push(`requestTypeCode=${encodeURIComponent(requestTypeCode)}`);
+    if (couponCode) params.push(`couponCode=${encodeURIComponent(couponCode)}`);
+    const query = params.length > 0 ? `?${params.join("&")}` : "";
+    return vmsApi.get<PricingEstimateResponse>(`/pricing/estimate${query}`);
+  },
 
   /** Fetch service categories (used when issue is identified) */
   getServiceCategories: (): Promise<ServiceCategory[]> =>

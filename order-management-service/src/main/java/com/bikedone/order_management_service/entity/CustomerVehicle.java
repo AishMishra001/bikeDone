@@ -42,6 +42,10 @@ public class CustomerVehicle extends BaseEntity {
     @JoinColumn(name = "model_id", nullable = false)
     private VehicleModel model;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "item_id")
+    private Item item;
+
     @Column(name = "registration_number", nullable = false, length = 20)
     private String registrationNumber;
 

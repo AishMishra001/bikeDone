@@ -331,6 +331,8 @@ export default function InspectionScreen({
       description,
       photoUris: selectedPhoto ? [selectedPhoto] : [],
       payload,
+      itemId: selectedVehicle?.itemId,
+      requestTypeId: targetRequestType?.id,
     };
 
     if (onReview) {

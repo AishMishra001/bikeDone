@@ -10,6 +10,9 @@ public interface CustomerVehicleMapper {
 
     @Mapping(source = "brand.brandName", target = "brandName")
     @Mapping(source = "model.modelName", target = "modelName")
+    @Mapping(source = "item.id", target = "itemId")
+    @Mapping(source = "item.itemCode", target = "itemCode")
+    @Mapping(source = "item.displayName", target = "itemDisplayName")
     CustomerVehicleResponse toResponse(CustomerVehicle customerVehicle);
 
 }

@@ -10,6 +10,7 @@ import com.bikedone.order_management_service.dto.response.CustomerVehicleRespons
 import com.bikedone.order_management_service.entity.CustomerVehicle;
 import com.bikedone.order_management_service.mapper.CustomerVehicleMapper;
 import com.bikedone.order_management_service.repository.CustomerVehicleRepository;
+import com.bikedone.order_management_service.repository.ItemRepository;
 import com.bikedone.order_management_service.security.authentication.AuthenticationFacade;
 import com.bikedone.order_management_service.service.CustomerVehicleService;
 import com.bikedone.order_management_service.validation.CustomerVehicleValidator;
@@ -26,6 +27,7 @@ import java.util.UUID;
 public class CustomerVehicleServiceImpl implements CustomerVehicleService {
 
     private final CustomerVehicleRepository customerVehicleRepository;
+    private final ItemRepository itemRepository;
     private final CustomerVehicleValidator customerVehicleValidator;
     private final CustomerVehicleMapper customerVehicleMapper;
     private final AuthenticationFacade authenticationFacade;
@@ -80,6 +82,12 @@ public class CustomerVehicleServiceImpl implements CustomerVehicleService {
         customerVehicle.setEngineNumber(engineNumber);
         customerVehicle.setChassisNumber(chassisNumber);
         customerVehicle.setOdometerKm(request.getOdometerKm());
+
+        if (request.getItemId() != null) {
+            itemRepository.findById(request.getItemId()).ifPresent(customerVehicle::setItem);
+        } else {
+            itemRepository.findByItemCodeAndIsActiveTrue("BIKE").ifPresent(customerVehicle::setItem);
+        }
 
         if (request.getImageUrls() != null && !request.getImageUrls().isEmpty()) {
             java.util.Map<String, Object> vehicleData = new java.util.HashMap<>();

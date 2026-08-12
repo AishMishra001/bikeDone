@@ -11,6 +11,8 @@ import java.util.List;
 @Setter
 public class CreateCustomerVehicleRequest {
 
+    private UUID itemId;
+
     @NotNull(message = "Brand Id is required.")
     private UUID brandId;
 

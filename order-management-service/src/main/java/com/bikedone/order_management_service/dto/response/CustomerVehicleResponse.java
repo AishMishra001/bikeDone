@@ -12,6 +12,12 @@ public class CustomerVehicleResponse {
 
     private UUID id;
 
+    private UUID itemId;
+
+    private String itemCode;
+
+    private String itemDisplayName;
+
     private String brandName;
 
     private String modelName;

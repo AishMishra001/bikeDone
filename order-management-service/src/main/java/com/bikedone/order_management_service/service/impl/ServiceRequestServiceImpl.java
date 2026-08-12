@@ -65,6 +65,10 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
 
     private final com.bikedone.order_management_service.service.dispatch.DispatchEngineService dispatchEngineService;
 
+    private final com.bikedone.order_management_service.service.PricingService pricingService;
+
+    private final com.bikedone.order_management_service.repository.CustomerVehicleRepository customerVehicleRepository;
+
     @Override
     public CreateServiceRequestResponse createServiceRequest(
             CreateServiceRequestRequest request) {
@@ -159,6 +163,20 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
         serviceRequest.addTimeline(timeline);
 
         ServiceRequest savedRequest = serviceRequestRepository.save(serviceRequest);
+
+        UUID itemId = request.getItemId();
+        if (itemId == null) {
+            var cv = customerVehicleRepository.findById(request.getCustomerVehicleId()).orElse(null);
+            if (cv != null && cv.getItem() != null) {
+                itemId = cv.getItem().getId();
+            }
+        }
+        try {
+            pricingService.createOrderBillSnapshot(
+                    savedRequest.getId(), customerId, itemId, request.getRequestTypeId(), request.getCouponCode());
+        } catch (Exception e) {
+            Logger.printLog(LogLevel.ERROR, LogStep.SERVICE_REQUEST, "Failed to save order bill snapshot", e.getMessage(), customerId.toString(), savedRequest.getId().toString());
+        }
 
         if (Boolean.TRUE.equals(savedRequest.getIsImmediate())) {
             try {
