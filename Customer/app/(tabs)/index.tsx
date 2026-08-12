@@ -25,6 +25,7 @@ import RequestDetailScreen from '../../components/screens/RequestDetailScreen';
 import CustomerChatScreen from '../../components/screens/CustomerChatScreen';
 import GarageScreen from '../../components/screens/GarageScreen';
 import SavedAddressesScreen from '../../components/screens/SavedAddressesScreen';
+import AddAddressScreen from '../../components/screens/AddAddressScreen';
 import InspectionScreen from '../../components/screens/InspectionScreen';
 import AppBottomNavigation from '../../components/ui/AppBottomNavigation';
 import { registerAuthFailureCallback } from '../../services/api';
@@ -38,7 +39,7 @@ export default function App() {
   const [lastRequestId, setLastRequestId] = useState('');
   const [reviewData, setReviewData] = useState<ReviewData | null>(null);
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
-  const [editAddress, setEditAddress] = useState<any | null>(null);
+  const [editAddress, setEditAddress] = useState<any>(null);
 
   useEffect(() => {
     registerAuthFailureCallback(() => {
@@ -102,9 +103,10 @@ export default function App() {
   }, []);
 
   const handleNavigate = (nextScreen: string) => {
-    if (nextScreen !== currentScreen) {
+    const target = nextScreen === 'Booking' ? 'RoutineService' : nextScreen;
+    if (target !== currentScreen) {
       setPreviousScreen(currentScreen);
-      setCurrentScreen(nextScreen);
+      setCurrentScreen(target);
     }
   };
 
@@ -191,10 +193,11 @@ export default function App() {
           />
         )}
         {currentScreen === 'Booking' && (
-          <BookingScreen
+          <InspectionScreen
             onNavigate={handleNavigate}
             onRequestSuccess={handleRequestSuccess}
             onReview={handleReview}
+            serviceTypeLabel="Routine Service"
           />
         )}
         {currentScreen === 'BookingReview' && reviewData && (

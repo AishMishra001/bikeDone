@@ -3,11 +3,11 @@ import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 // Garage added to match UI, will need to be added to routing later if needed.
-type MainScreen = "Home" | "MyRequests" | "Garage" | "Profile";
+type MainScreen = "Home" | "MyRequests" | "Garage" | "Profile" | "FullProfile";
 
 interface AppBottomNavigationProps {
   activeScreen: MainScreen;
-  onNavigate: (screen: MainScreen) => void;
+  onNavigate: (screen: any) => void;
 }
 
 const NAV_ITEMS: Array<{

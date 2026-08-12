@@ -694,14 +694,14 @@ export default function BookingScreen({
           <View style={styles.emptyStateCard}>
             <Feather name="plus-circle" size={32} color="#d1d5db" />
             <Text style={styles.emptyStateText}>
-              No bikes found. Add one to book a service.
+              No vehicles found. Add one to book a service.
             </Text>
             <TouchableOpacity
               style={styles.emptyStateButton}
               onPress={() => onNavigate("AddBike")}
             >
               <Feather name="plus" size={16} color="#ffffff" />
-              <Text style={styles.emptyStateButtonText}>Add Bike</Text>
+              <Text style={styles.emptyStateButtonText}>Add Vehicle</Text>
             </TouchableOpacity>
           </View>
         )}

@@ -249,7 +249,7 @@ export default function MyRequestsScreen({ onNavigate, onViewDetails }: MyReques
       <View style={styles.header}>
         <BackButton style={styles.backButtonOverride} onPress={() => onNavigate("Home")} />
         <Text style={styles.headerTitle}>My Bookings</Text>
-        <TouchableOpacity onPress={() => onNavigate("Booking")} style={styles.newRequestBtn}>
+        <TouchableOpacity onPress={() => onNavigate("RoutineService")} style={styles.newRequestBtn}>
           <Feather name="plus" size={18} color="#f97316" />
         </TouchableOpacity>
       </View>
@@ -278,7 +278,7 @@ export default function MyRequestsScreen({ onNavigate, onViewDetails }: MyReques
           </Text>
           <TouchableOpacity
             style={styles.bookNowBtn}
-            onPress={() => onNavigate("Booking")}
+            onPress={() => onNavigate("RoutineService")}
             activeOpacity={0.8}
           >
             <Feather name="plus" size={18} color="#ffffff" />

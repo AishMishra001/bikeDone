@@ -14,7 +14,7 @@ import {
 import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { uploadServiceImages, ImageAsset } from '../../services/imageUploadService';
-import { vehicleService, VehicleBrand, VehicleModel } from '../../services/vehicleService';
+import { vehicleService, VehicleBrand, VehicleModel, Item } from '../../services/vehicleService';
 import InputField from '../ui/InputField';
 import PrimaryButton from '../ui/PrimaryButton';
 import BackButton from '../ui/BackButton';
@@ -35,7 +35,9 @@ export default function AddBikeScreen({ onNavigate, onBack }: AddBikeScreenProps
   // ── Step state ──────────────────────────────────────────────────────────────
   const [currentStep, setCurrentStep] = useState(0); // 0=Photos, 1=Brand, 2=Model, 3=Details
 
-  // ── Data state ──────────────────────────────────────────────────────────────
+  // ── Vehicle Type & Data state ───────────────────────────────────────────────
+  const [items, setItems] = useState<Item[]>([]);
+  const [selectedVehicleCode, setSelectedVehicleCode] = useState<'BIKE' | 'SCOOTY' | 'CAR'>('BIKE');
   const [brands, setBrands] = useState<VehicleBrand[]>([]);
   const [models, setModels] = useState<VehicleModel[]>([]);
   const [selectedBrand, setSelectedBrand] = useState<VehicleBrand | null>(null);
@@ -73,24 +75,28 @@ export default function AddBikeScreen({ onNavigate, onBack }: AddBikeScreenProps
     setToastVisible(true);
   };
 
-  // ── Fetch brands on mount ───────────────────────────────────────────────────
+  // ── Fetch active items & brands on mount ────────────────────────────────────
   useEffect(() => {
-    const fetchBrands = async () => {
+    const fetchInitialData = async () => {
       setLoadingBrands(true);
       setBrandsError('');
       try {
-        const data = await vehicleService.getAllBrands();
-        setBrands(data);
+        const [itemsData, brandsData] = await Promise.all([
+          vehicleService.getItems().catch(() => []),
+          vehicleService.getAllBrands().catch(() => []),
+        ]);
+        setItems(itemsData);
+        setBrands(brandsData);
       } catch {
-        setBrandsError('Could not load brands. Tap to retry.');
+        setBrandsError('Could not load vehicle brands. Tap to retry.');
       } finally {
         setLoadingBrands(false);
       }
     };
-    fetchBrands();
+    fetchInitialData();
   }, []);
 
-  // ── Fetch models when brand changes ─────────────────────────────────────────
+  // ── Fetch models when brand or vehicle type changes ─────────────────────────
   useEffect(() => {
     if (!selectedBrand) return;
     const fetchModels = async () => {
@@ -99,7 +105,8 @@ export default function AddBikeScreen({ onNavigate, onBack }: AddBikeScreenProps
       setModels([]);
       setSelectedModel(null);
       try {
-        const data = await vehicleService.getModelsByBrand(selectedBrand.id);
+        const matchedItem = items.find((i) => i.itemCode === selectedVehicleCode);
+        const data = await vehicleService.getModelsByBrand(selectedBrand.id, matchedItem?.id);
         setModels(data);
       } catch {
         setModelsError('Could not load models. Tap to retry.');
@@ -108,7 +115,7 @@ export default function AddBikeScreen({ onNavigate, onBack }: AddBikeScreenProps
       }
     };
     fetchModels();
-  }, [selectedBrand]);
+  }, [selectedBrand, selectedVehicleCode, items]);
 
   // ── Brand select ────────────────────────────────────────────────────────────
   const handleBrandSelect = useCallback((brand: VehicleBrand) => {
@@ -220,7 +227,11 @@ export default function AddBikeScreen({ onNavigate, onBack }: AddBikeScreenProps
         imageUrls = await uploadServiceImages(images);
       }
 
+      const matchedItem = items.find((i) => i.itemCode === selectedVehicleCode);
+      const vehicleEmoji = selectedVehicleCode === 'CAR' ? '🚗' : selectedVehicleCode === 'SCOOTY' ? '🛵' : '🏍️';
+
       await vehicleService.addBike({
+        itemId: matchedItem?.id,
         brandId: selectedBrand.id,
         modelId: selectedModel.id,
         registrationNumber: registrationNumber.trim().toUpperCase(),
@@ -235,7 +246,7 @@ export default function AddBikeScreen({ onNavigate, onBack }: AddBikeScreenProps
         imageUrls: imageUrls.length > 0 ? imageUrls : undefined,
       });
       showToast(
-        `🏍️ ${selectedBrand.brandName} ${selectedModel.modelName} registered successfully!`,
+        `${vehicleEmoji} ${selectedBrand.brandName} ${selectedModel.modelName} registered successfully!`,
         'success'
       );
       setTimeout(() => {
@@ -312,11 +323,19 @@ export default function AddBikeScreen({ onNavigate, onBack }: AddBikeScreenProps
     </View>
   );
 
+  // ── Derived Vehicle Type Label ────────────────────────────────────────────────
+  const vehicleLabel =
+    selectedVehicleCode === 'CAR'
+      ? 'Car'
+      : selectedVehicleCode === 'SCOOTY'
+      ? 'Scooty'
+      : 'Bike';
+
   // ── Step 0: Photos ──────────────────────────────────────────────────────────
   const renderPhotoStep = () => (
     <View>
       <Text style={styles.stepTitle}>Add Photos</Text>
-      <Text style={styles.stepSubtitle}>Upload pictures of your bike (Optional)</Text>
+      <Text style={styles.stepSubtitle}>Upload pictures of your {vehicleLabel.toLowerCase()} (Optional)</Text>
 
       <View style={styles.photoGrid}>
         {images.map((img, idx) => (
@@ -354,7 +373,7 @@ export default function AddBikeScreen({ onNavigate, onBack }: AddBikeScreenProps
   const renderBrandStep = () => (
     <View>
       <Text style={styles.stepTitle}>Select Brand</Text>
-      <Text style={styles.stepSubtitle}>Choose your bike manufacturer</Text>
+      <Text style={styles.stepSubtitle}>Choose your {vehicleLabel.toLowerCase()} manufacturer</Text>
 
       {loadingBrands ? (
         <View style={styles.loaderBox}>
@@ -411,7 +430,7 @@ export default function AddBikeScreen({ onNavigate, onBack }: AddBikeScreenProps
       </View>
 
       <Text style={styles.stepTitle}>Select Model</Text>
-      <Text style={styles.stepSubtitle}>Pick the model of your bike</Text>
+      <Text style={styles.stepSubtitle}>Pick the model of your {vehicleLabel.toLowerCase()}</Text>
 
       {loadingModels ? (
         <View style={styles.loaderBox}>
@@ -486,7 +505,7 @@ export default function AddBikeScreen({ onNavigate, onBack }: AddBikeScreenProps
     </View>
   );
 
-  // ── Step 2: Bike Details ────────────────────────────────────────────────────
+  // ── Step 2: Details ─────────────────────────────────────────────────────────
   const renderDetailsStep = () => (
     <View>
       {/* Selected summary pill row */}
@@ -501,7 +520,7 @@ export default function AddBikeScreen({ onNavigate, onBack }: AddBikeScreenProps
         </View>
       </View>
 
-      <Text style={styles.stepTitle}>Bike Details</Text>
+      <Text style={styles.stepTitle}>{vehicleLabel} Details</Text>
       <Text style={styles.stepSubtitle}>Fill in your vehicle information</Text>
 
       {/* Registration Number */}
@@ -605,7 +624,7 @@ export default function AddBikeScreen({ onNavigate, onBack }: AddBikeScreenProps
         <View style={styles.toggleLeft}>
           <Feather name="star" size={18} color="#f97316" />
           <View style={styles.toggleTextGroup}>
-            <Text style={styles.toggleTitle}>Set as Default Bike</Text>
+            <Text style={styles.toggleTitle}>Set as Default {vehicleLabel}</Text>
             <Text style={styles.toggleSubtitle}>Used for quick bookings and service requests</Text>
           </View>
         </View>
@@ -619,7 +638,7 @@ export default function AddBikeScreen({ onNavigate, onBack }: AddBikeScreenProps
 
       {/* Submit Button */}
       <PrimaryButton
-        title="Add Bike"
+        title={`Add ${vehicleLabel}`}
         onPress={handleSubmit}
         loading={submitting}
         style={styles.submitButton}
@@ -628,6 +647,86 @@ export default function AddBikeScreen({ onNavigate, onBack }: AddBikeScreenProps
       <Text style={styles.footerNote}>
         Fields marked <Text style={{ color: '#ef4444' }}>*</Text> are required
       </Text>
+    </View>
+  );
+
+  // ── Vehicle Type Selector ───────────────────────────────────────────────────
+  const renderVehicleTypeSelector = () => (
+    <View style={styles.vehicleTypeCard}>
+      <Text style={styles.vehicleTypeLabel}>SELECT VEHICLE TYPE</Text>
+      <View style={styles.vehicleTypeGrid}>
+        <TouchableOpacity
+          style={[
+            styles.vehicleTypeBox,
+            selectedVehicleCode === 'BIKE' && styles.vehicleTypeBoxActive,
+          ]}
+          onPress={() => {
+            setSelectedVehicleCode('BIKE');
+            setSelectedBrand(null);
+            setSelectedModel(null);
+            if (currentStep > 1) setCurrentStep(1);
+          }}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.vehicleTypeEmoji}>🏍️</Text>
+          <Text
+            style={[
+              styles.vehicleTypeBoxText,
+              selectedVehicleCode === 'BIKE' && styles.vehicleTypeBoxTextActive,
+            ]}
+          >
+            Bike
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.vehicleTypeBox,
+            selectedVehicleCode === 'SCOOTY' && styles.vehicleTypeBoxActive,
+          ]}
+          onPress={() => {
+            setSelectedVehicleCode('SCOOTY');
+            setSelectedBrand(null);
+            setSelectedModel(null);
+            if (currentStep > 1) setCurrentStep(1);
+          }}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.vehicleTypeEmoji}>🛵</Text>
+          <Text
+            style={[
+              styles.vehicleTypeBoxText,
+              selectedVehicleCode === 'SCOOTY' && styles.vehicleTypeBoxTextActive,
+            ]}
+          >
+            Scooty
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.vehicleTypeBox,
+            selectedVehicleCode === 'CAR' && styles.vehicleTypeBoxActive,
+          ]}
+          onPress={() => {
+            setSelectedVehicleCode('CAR');
+            setSelectedBrand(null);
+            setSelectedModel(null);
+            if (currentStep > 1) setCurrentStep(1);
+          }}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.vehicleTypeEmoji}>🚗</Text>
+          <Text
+            style={[
+              styles.vehicleTypeBoxText,
+              selectedVehicleCode === 'CAR' && styles.vehicleTypeBoxTextActive,
+            ]}
+          >
+            Car
+          </Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 
@@ -652,7 +751,9 @@ export default function AddBikeScreen({ onNavigate, onBack }: AddBikeScreenProps
           <Feather name="chevron-left" size={22} color="#ffffff" />
         </TouchableOpacity>
         <View>
-          <Text style={styles.headerTitle}>Add Your Bike</Text>
+          <Text style={styles.headerTitle}>
+            Add Your {selectedVehicleCode === 'CAR' ? 'Car' : selectedVehicleCode === 'SCOOTY' ? 'Scooty' : 'Bike'}
+          </Text>
           <Text style={styles.headerSub}>
             Step {currentStep + 1} of {STEPS.length} — {STEPS[currentStep]}
           </Text>
@@ -677,6 +778,9 @@ export default function AddBikeScreen({ onNavigate, onBack }: AddBikeScreenProps
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
+        {/* ── Vehicle Type Selector ────────────────────────────────────────── */}
+        {renderVehicleTypeSelector()}
+
         {/* ── Step Indicator Dots ──────────────────────────────────────────── */}
         {renderStepIndicator()}
 
@@ -1140,12 +1244,66 @@ const styles = StyleSheet.create({
 
   // ── Submit ────────────────────────────────────────────────────────────────
   submitButton: {
-    marginBottom: 12,
+    marginBottom: 16,
   },
   footerNote: {
     textAlign: 'center',
     fontSize: 12,
     color: '#9ca3af',
+  },
+
+  // ── Vehicle Type Selector Styles ──────────────────────────────────────────
+  vehicleTypeCard: {
+    backgroundColor: '#ffffff',
+    marginHorizontal: 16,
+    marginTop: 16,
     marginBottom: 8,
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1.5,
+    borderColor: '#e5e7eb',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  vehicleTypeLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#9ca3af',
+    letterSpacing: 0.5,
+    marginBottom: 10,
+  },
+  vehicleTypeGrid: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  vehicleTypeBox: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: '#f9fafb',
+    borderWidth: 1.5,
+    borderColor: '#e5e7eb',
+  },
+  vehicleTypeBoxActive: {
+    backgroundColor: '#fff3eb',
+    borderColor: '#f97316',
+  },
+  vehicleTypeEmoji: {
+    fontSize: 16,
+  },
+  vehicleTypeBoxText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#4b5563',
+  },
+  vehicleTypeBoxTextActive: {
+    color: '#f97316',
   },
 });

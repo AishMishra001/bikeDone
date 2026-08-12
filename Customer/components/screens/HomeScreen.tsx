@@ -104,9 +104,9 @@ export default function HomeScreen({ onNavigate, initialSidebarOpen = false }: H
     if (!profileToUse) return 50;
     let score = 0;
     if (profileToUse.firstName) score += 25;
-    if (profileToUse.emailVerified) score += 25;
+    if ('emailVerified' in profileToUse && profileToUse.emailVerified) score += 25;
     if (profileToUse.mobileNumber && profileToUse.mobileNumber.trim().length >= 10) score += 25;
-    if (profileToUse.mobileVerified) score += 25;
+    if ('mobileVerified' in profileToUse && profileToUse.mobileVerified) score += 25;
     return score;
   };
 
@@ -142,7 +142,7 @@ export default function HomeScreen({ onNavigate, initialSidebarOpen = false }: H
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.sectionTitle}>Bike Related Issues</Text>
+        <Text style={styles.sectionTitle}>Vehicle Services & Issues</Text>
 
         {/* Action Grid */}
         <View style={styles.gridContainer}>
@@ -205,15 +205,15 @@ export default function HomeScreen({ onNavigate, initialSidebarOpen = false }: H
         </View>
 
         {/* Promotional Offer Card */}
-        <TouchableOpacity activeOpacity={0.9} style={styles.promoContainer} onPress={() => onNavigate('Booking')}>
+        <TouchableOpacity activeOpacity={0.9} style={styles.promoContainer} onPress={() => onNavigate('RoutineService')}>
           <View style={styles.promoBackground}>
             <View style={styles.offerBadge}>
               <Text style={styles.offerBadgeText}>OFFER</Text>
             </View>
             <Text style={styles.promoTitle}>Winter Prep{'\n'}Package</Text>
-            <Text style={styles.promoSubtitle}>Get your bike ready for{'\n'}tough conditions with o...</Text>
+            <Text style={styles.promoSubtitle}>Get your vehicle ready for{'\n'}tough conditions with our service package.</Text>
             
-            <TouchableOpacity style={styles.bookNowBtn} onPress={() => onNavigate('Booking')}>
+            <TouchableOpacity style={styles.bookNowBtn} onPress={() => onNavigate('RoutineService')}>
               <Text style={styles.bookNowText}>Book Now</Text>
             </TouchableOpacity>
           </View>

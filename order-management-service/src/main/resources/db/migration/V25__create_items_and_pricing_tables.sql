@@ -15,20 +15,16 @@ CREATE TABLE items (
 
 CREATE INDEX idx_items_code ON items(item_code);
 
-INSERT INTO items (id, item_code, display_name, description)
+INSERT INTO items (item_code, display_name, description)
 VALUES
-    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'BIKE', 'Motorcycle / Bike', 'Two-wheeler motorcycle'),
-    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a22', 'SCOOTY', 'Scooter / Scooty', 'Two-wheeler scooter'),
-    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a33', 'CAR', 'Four Wheeler / Car', 'Four-wheeler automobile'),
-    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a44', 'TV', 'Television', 'Home television appliance'),
-    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a55', 'WASHING_MACHINE', 'Washing Machine', 'Home washing machine appliance');
+    ('BIKE', 'Motorcycle / Bike', 'Two-wheeler motorcycle'),
+    ('SCOOTY', 'Scooter / Scooty', 'Two-wheeler scooter'),
+    ('CAR', 'Four Wheeler / Car', 'Four-wheeler automobile'),
+    ('TV', 'Television', 'Home television appliance'),
+    ('WASHING_MACHINE', 'Washing Machine', 'Home washing machine appliance');
 
 ALTER TABLE customer_vehicles
     ADD COLUMN item_id UUID REFERENCES items(id);
-
-UPDATE customer_vehicles
-SET item_id = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'
-WHERE item_id IS NULL;
 
 CREATE INDEX idx_customer_vehicle_item ON customer_vehicles(item_id);
 
@@ -61,14 +57,14 @@ CREATE INDEX idx_pricing_item_request ON service_pricing_rules(item_id, request_
 
 INSERT INTO service_pricing_rules (item_id, request_type_id, base_charge, convenience_fee, platform_fee, gst_percentage)
 VALUES
-    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 3, 300.00, 50.00, 15.00, 18.00),
-    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a22', 3, 250.00, 50.00, 15.00, 18.00),
-    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a33', 3, 500.00, 100.00, 25.00, 18.00),
-    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a44', 3, 350.00, 50.00, 15.00, 18.00),
-    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a55', 3, 400.00, 50.00, 15.00, 18.00),
-    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 1, 499.00, 50.00, 20.00, 18.00),
-    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 2, 200.00, 50.00, 15.00, 18.00),
-    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 4, 350.00, 100.00, 25.00, 18.00);
+    ((SELECT id FROM items WHERE item_code = 'BIKE' LIMIT 1), 3, 300.00, 50.00, 15.00, 18.00),
+    ((SELECT id FROM items WHERE item_code = 'SCOOTY' LIMIT 1), 3, 250.00, 50.00, 15.00, 18.00),
+    ((SELECT id FROM items WHERE item_code = 'CAR' LIMIT 1), 3, 500.00, 100.00, 25.00, 18.00),
+    ((SELECT id FROM items WHERE item_code = 'TV' LIMIT 1), 3, 350.00, 50.00, 15.00, 18.00),
+    ((SELECT id FROM items WHERE item_code = 'WASHING_MACHINE' LIMIT 1), 3, 400.00, 50.00, 15.00, 18.00),
+    ((SELECT id FROM items WHERE item_code = 'BIKE' LIMIT 1), 1, 499.00, 50.00, 20.00, 18.00),
+    ((SELECT id FROM items WHERE item_code = 'BIKE' LIMIT 1), 2, 200.00, 50.00, 15.00, 18.00),
+    ((SELECT id FROM items WHERE item_code = 'BIKE' LIMIT 1), 4, 350.00, 100.00, 25.00, 18.00);
 
 CREATE TABLE coupons (
     id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),

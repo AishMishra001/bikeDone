@@ -407,9 +407,9 @@ export default function InspectionScreen({
           </Text>
         </View>
 
-        {/* ── 1. ADD BIKE PHOTO (OPTIONAL) ─────────────────────────────────── */}
+        {/* ── 1. ADD VEHICLE PHOTO (OPTIONAL) ─────────────────────────────────── */}
         <View style={styles.cardContainer}>
-          <Text style={styles.cardSectionTitle}>Add Bike Photo</Text>
+          <Text style={styles.cardSectionTitle}>Add Vehicle Photo</Text>
           
           {selectedPhoto ? (
             <View style={styles.photoPreviewWrapper}>
@@ -445,10 +445,10 @@ export default function InspectionScreen({
           )}
         </View>
 
-        {/* ── 2. BIKE DETAILS (DROPDOWN) ───────────────────────────────────── */}
+        {/* ── 2. VEHICLE DETAILS (DROPDOWN) ───────────────────────────────────── */}
         <View style={styles.cardContainer}>
-          <Text style={styles.cardSectionTitle}>Bike Details</Text>
-          <Text style={styles.fieldLabel}>Select Your Bike</Text>
+          <Text style={styles.cardSectionTitle}>Vehicle Details</Text>
+          <Text style={styles.fieldLabel}>Select Your Vehicle</Text>
 
           <TouchableOpacity
             style={styles.dropdownSelector}
@@ -456,7 +456,13 @@ export default function InspectionScreen({
             activeOpacity={0.7}
           >
             <View style={styles.dropdownLeft}>
-              <Feather name="disc" size={18} color="#ea580c" style={{ marginRight: 10 }} />
+              {selectedVehicle ? (
+                <Text style={{ fontSize: 18, marginRight: 10 }}>
+                  {selectedVehicle.itemCode === 'CAR' ? '🚗' : selectedVehicle.itemCode === 'SCOOTY' ? '🛵' : '🏍️'}
+                </Text>
+              ) : (
+                <Feather name="disc" size={18} color="#ea580c" style={{ marginRight: 10 }} />
+              )}
               <Text
                 style={[
                   styles.dropdownText,
@@ -466,7 +472,7 @@ export default function InspectionScreen({
               >
                 {selectedVehicle
                   ? `${selectedVehicle.brandName} ${selectedVehicle.modelName} (${selectedVehicle.registrationNumber})`
-                  : 'Choose a bike'}
+                  : 'Choose a vehicle'}
               </Text>
             </View>
             <Feather name="chevron-down" size={20} color="#6b7280" />
@@ -654,7 +660,7 @@ export default function InspectionScreen({
         </View>
       </ScrollView>
 
-      {/* ── MODAL 1: SELECT BIKE DROPDOWN ────────────────────────────────────── */}
+      {/* ── MODAL 1: SELECT VEHICLE DROPDOWN ────────────────────────────────────── */}
       <Modal
         visible={bikeModalVisible}
         animationType="slide"
@@ -664,7 +670,7 @@ export default function InspectionScreen({
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Your Bike</Text>
+              <Text style={styles.modalTitle}>Select Your Vehicle</Text>
               <TouchableOpacity onPress={() => setBikeModalVisible(false)}>
                 <Feather name="x" size={20} color="#4b5563" />
               </TouchableOpacity>
@@ -673,7 +679,7 @@ export default function InspectionScreen({
             {vehicles.length === 0 ? (
               <View style={styles.modalEmptyState}>
                 <Feather name="disc" size={40} color="#d1d5db" style={{ marginBottom: 12 }} />
-                <Text style={styles.modalEmptyText}>No bikes found in your garage.</Text>
+                <Text style={styles.modalEmptyText}>No vehicles found in your garage.</Text>
                 <TouchableOpacity
                   style={styles.addBikeModalBtn}
                   onPress={() => {
@@ -682,7 +688,7 @@ export default function InspectionScreen({
                   }}
                 >
                   <Feather name="plus" size={16} color="#ffffff" />
-                  <Text style={styles.addBikeModalBtnText}>Add Bike to My Garage</Text>
+                  <Text style={styles.addBikeModalBtnText}>Add Vehicle to My Garage</Text>
                 </TouchableOpacity>
               </View>
             ) : (
@@ -692,6 +698,11 @@ export default function InspectionScreen({
                 showsVerticalScrollIndicator={false}
                 renderItem={({ item }) => {
                   const isSelected = item.id === selectedVehicleId;
+                  const emoji = item.itemCode === 'CAR' ? '🚗' : item.itemCode === 'SCOOTY' ? '🛵' : '🏍️';
+                  const tagLabel = item.itemCode === 'CAR' ? 'Car' : item.itemCode === 'SCOOTY' ? 'Scooty' : 'Bike';
+                  const tagBg = item.itemCode === 'CAR' ? '#eff6ff' : item.itemCode === 'SCOOTY' ? '#fdf4ff' : '#fff7ed';
+                  const tagColor = item.itemCode === 'CAR' ? '#1d4ed8' : item.itemCode === 'SCOOTY' ? '#a21caf' : '#c2410c';
+
                   return (
                     <TouchableOpacity
                       style={[
@@ -705,12 +716,24 @@ export default function InspectionScreen({
                     >
                       <View style={styles.bikeSelectItemLeft}>
                         <View style={styles.bikeIconContainer}>
-                          <Feather name="disc" size={18} color="#ea580c" />
+                          <Text style={{ fontSize: 18 }}>{emoji}</Text>
                         </View>
                         <View style={{ flex: 1 }}>
-                          <Text style={styles.bikeSelectTitle}>
-                            {item.brandName} {item.modelName}
-                          </Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <Text style={styles.bikeSelectTitle}>
+                              {item.brandName} {item.modelName}
+                            </Text>
+                            <View style={{
+                              backgroundColor: tagBg,
+                              paddingHorizontal: 6,
+                              paddingVertical: 2,
+                              borderRadius: 6,
+                            }}>
+                              <Text style={{ fontSize: 10, fontWeight: '700', color: tagColor }}>
+                                {tagLabel}
+                              </Text>
+                            </View>
+                          </View>
                           <Text style={styles.bikeSelectSub}>
                             Reg: {item.registrationNumber} {item.color ? `· ${item.color}` : ''}
                           </Text>
@@ -734,7 +757,7 @@ export default function InspectionScreen({
                     }}
                   >
                     <Feather name="plus-circle" size={16} color="#ea580c" />
-                    <Text style={styles.addBikeFooterLinkText}>Add New Bike to Garage</Text>
+                    <Text style={styles.addBikeFooterLinkText}>Add New Vehicle (Bike, Scooty, Car)</Text>
                   </TouchableOpacity>
                 }
               />

@@ -29,6 +29,10 @@ public class VehicleModel extends BaseEntity {
     private VehicleBrand brand;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "item_id")
+    private Item item;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "fuel_type_id", nullable = false)
     private FuelType fuelType;
 

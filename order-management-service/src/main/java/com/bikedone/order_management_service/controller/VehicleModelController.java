@@ -28,20 +28,21 @@ public class VehicleModelController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<VehicleModelResponse>>> getVehicleModels(
-            @RequestParam UUID brandId
+            @RequestParam UUID brandId,
+            @RequestParam(required = false) UUID itemId
     ) {
 
         Logger.printLog(
                 LogLevel.INFO,
                 LogStep.VEHICLE_MODEL,
                 "Fetch vehicle models request received",
-                "Fetching models for brandId=" + brandId,
+                "Fetching models for brandId=" + brandId + ", itemId=" + itemId,
                 null,
                 brandId.toString()
         );
 
         List<VehicleModelResponse> response =
-                vehicleModelService.getVehicleModels(brandId);
+                vehicleModelService.getVehicleModels(brandId, itemId);
 
         Logger.printLog(
                 LogLevel.INFO,

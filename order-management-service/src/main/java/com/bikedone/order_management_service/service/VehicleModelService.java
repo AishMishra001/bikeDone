@@ -8,5 +8,6 @@ import java.util.UUID;
 public interface VehicleModelService {
 
     List<VehicleModelResponse> getVehicleModels(UUID brandId);
+    List<VehicleModelResponse> getVehicleModels(UUID brandId, UUID itemId);
 
 }

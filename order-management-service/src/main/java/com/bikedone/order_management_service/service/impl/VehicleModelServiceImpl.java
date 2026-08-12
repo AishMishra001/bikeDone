@@ -23,22 +23,26 @@ import java.util.UUID;
 public class VehicleModelServiceImpl implements VehicleModelService {
 
     private final VehicleBrandRepository vehicleBrandRepository;
-
     private final VehicleModelRepository vehicleModelRepository;
-
     private final VehicleModelMapper vehicleModelMapper;
 
     @Transactional(readOnly = true)
     @Override
     public List<VehicleModelResponse> getVehicleModels(UUID brandId) {
+        return getVehicleModels(brandId, null);
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public List<VehicleModelResponse> getVehicleModels(UUID brandId, UUID itemId) {
 
         Logger.printLog(
                 LogLevel.INFO,
                 LogStep.VEHICLE_MODEL,
                 "Fetching vehicle models",
-                "brandId=" + brandId,
+                "brandId=" + brandId + ", itemId=" + itemId,
                 null,
-                brandId.toString()
+                brandId != null ? brandId.toString() : null
         );
 
         VehicleBrand brand = vehicleBrandRepository
@@ -50,13 +54,14 @@ public class VehicleModelServiceImpl implements VehicleModelService {
                             "Vehicle brand not found",
                             "brandId=" + brandId,
                             null,
-                            brandId.toString()
+                            brandId != null ? brandId.toString() : null
                     );
                     return new ResourceNotFoundException("Vehicle brand not found.");
                 });
 
-        List<VehicleModel> models =
-                vehicleModelRepository.findActiveModelsByBrandId(brand.getId());
+        List<VehicleModel> models = (itemId != null)
+                ? vehicleModelRepository.findActiveModelsByBrandIdAndItemId(brand.getId(), itemId)
+                : vehicleModelRepository.findActiveModelsByBrandId(brand.getId());
 
         List<VehicleModelResponse> result = vehicleModelMapper.toResponse(models);
 
@@ -64,9 +69,9 @@ public class VehicleModelServiceImpl implements VehicleModelService {
                 LogLevel.INFO,
                 LogStep.VEHICLE_MODEL,
                 "Vehicle models fetched successfully",
-                "Returned " + result.size() + " model(s) for brandId=" + brandId,
+                "Returned " + result.size() + " model(s) for brandId=" + brandId + ", itemId=" + itemId,
                 null,
-                brandId.toString()
+                brandId != null ? brandId.toString() : null
         );
 
         return result;

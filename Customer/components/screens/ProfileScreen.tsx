@@ -1813,4 +1813,21 @@ const styles = StyleSheet.create({
     color: "#9ca3af",
     marginTop: 2,
   },
+  otpInputContainer: {
+    marginVertical: 8,
+  },
+  otpInput: {
+    borderWidth: 1,
+    borderColor: "#d1d5db",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: "#111827",
+    backgroundColor: "#ffffff",
+  },
+  otpActions: {
+    flexDirection: "row",
+    marginTop: 8,
+  },
 });

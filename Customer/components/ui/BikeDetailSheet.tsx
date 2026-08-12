@@ -185,6 +185,9 @@ export default function BikeDetailSheet({
 
   if (!bike) return null;
 
+  const vehicleLabel = bike.itemCode === 'CAR' ? 'Car' : bike.itemCode === 'SCOOTY' ? 'Scooty' : 'Bike';
+  const vehicleEmoji = bike.itemCode === 'CAR' ? '🚗' : bike.itemCode === 'SCOOTY' ? '🛵' : '🏍️';
+
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
       {/* Toast sits above everything */}
@@ -198,7 +201,7 @@ export default function BikeDetailSheet({
       {/* Delete Confirm Modal */}
       <ConfirmModal
         visible={confirmVisible}
-        title="Remove Bike?"
+        title={`Remove ${vehicleLabel}?`}
         message={`Are you sure you want to remove ${bike.brandName} ${bike.modelName} (${bike.registrationNumber})? This action cannot be undone.`}
         confirmText="Yes, Remove"
         cancelText="Cancel"
@@ -222,7 +225,7 @@ export default function BikeDetailSheet({
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <View style={styles.bikeIconCircle}>
-              <Feather name="zap" size={20} color="#f97316" />
+              <Text style={{ fontSize: 20 }}>{vehicleEmoji}</Text>
             </View>
             <View>
               <Text style={styles.headerTitle}>{bike.brandName} {bike.modelName}</Text>
@@ -238,7 +241,7 @@ export default function BikeDetailSheet({
         {bike.isDefault && (
           <View style={styles.defaultBanner}>
             <Feather name="star" size={13} color="#f97316" />
-            <Text style={styles.defaultBannerText}>This is your default bike</Text>
+            <Text style={styles.defaultBannerText}>This is your default {vehicleLabel.toLowerCase()}</Text>
           </View>
         )}
 
@@ -254,6 +257,7 @@ export default function BikeDetailSheet({
               {/* Info rows */}
               <View style={styles.infoCard}>
                 {[
+                  { label: 'Type', value: vehicleLabel, icon: 'shield' },
                   { label: 'Brand', value: bike.brandName, icon: 'tag' },
                   { label: 'Model', value: bike.modelName, icon: 'cpu' },
                   { label: 'Color', value: bike.color || '—', icon: 'droplet' },
@@ -271,7 +275,7 @@ export default function BikeDetailSheet({
               {/* Actions */}
               <TouchableOpacity style={styles.actionBtn} onPress={() => setMode('edit')}>
                 <Feather name="edit-2" size={16} color="#f97316" />
-                <Text style={styles.actionBtnText}>Edit Bike Details</Text>
+                <Text style={styles.actionBtnText}>Edit {vehicleLabel} Details</Text>
                 <Feather name="chevron-right" size={16} color="#d1d5db" />
               </TouchableOpacity>
 
@@ -286,7 +290,7 @@ export default function BikeDetailSheet({
                   ) : (
                     <Feather name="star" size={16} color="#f97316" />
                   )}
-                  <Text style={styles.actionBtnText}>Set as Default Bike</Text>
+                  <Text style={styles.actionBtnText}>Set as Default {vehicleLabel}</Text>
                   <Feather name="chevron-right" size={16} color="#d1d5db" />
                 </TouchableOpacity>
               )}
@@ -301,13 +305,13 @@ export default function BikeDetailSheet({
                 ) : (
                   <Feather name="trash-2" size={16} color="#ef4444" />
                 )}
-                <Text style={[styles.actionBtnText, styles.deleteBtnText]}>Remove Bike</Text>
+                <Text style={[styles.actionBtnText, styles.deleteBtnText]}>Remove {vehicleLabel}</Text>
               </TouchableOpacity>
             </>
           ) : (
             /* ── EDIT MODE ─────────────────────────────────────────────────── */
             <>
-              <Text style={styles.editHeading}>Edit Bike Details</Text>
+              <Text style={styles.editHeading}>Edit {vehicleLabel} Details</Text>
 
               <View style={styles.fieldGroup}>
                 <View style={styles.fieldLabelRow}>

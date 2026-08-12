@@ -100,12 +100,23 @@ const BikeImageSlider = ({ images, onImagePress }: { images: string[], onImagePr
   );
 };
 
+const getVehicleTypeBadge = (itemCode?: string) => {
+  if (itemCode === 'CAR') {
+    return { label: 'Car', icon: '🚗', bg: '#eff6ff', border: '#bfdbfe', text: '#1d4ed8' };
+  }
+  if (itemCode === 'SCOOTY') {
+    return { label: 'Scooty', icon: '🛵', bg: '#fdf4ff', border: '#f5d0fe', text: '#a21caf' };
+  }
+  return { label: 'Bike', icon: '🏍️', bg: '#fff7ed', border: '#ffedd5', text: '#c2410c' };
+};
+
 export default function GarageScreen({ onNavigate }: GarageScreenProps) {
   const [myBikes, setMyBikes] = useState<CustomerVehicle[]>([]);
   const [loadingBikes, setLoadingBikes] = useState(false);
   const [selectedBike, setSelectedBike] = useState<CustomerVehicle | null>(null);
   const [sheetVisible, setSheetVisible] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [activeFilter, setActiveFilter] = useState<'ALL' | 'BIKE' | 'SCOOTY' | 'CAR'>('ALL');
 
   useEffect(() => {
     fetchBikes();
@@ -123,12 +134,53 @@ export default function GarageScreen({ onNavigate }: GarageScreenProps) {
     }
   };
 
+  const filteredVehicles = myBikes.filter((v) => {
+    if (activeFilter === 'ALL') return true;
+    return (v.itemCode || 'BIKE') === activeFilter;
+  });
+
   return (
     <View style={styles.screenContainer}>
       {/* Header */}
       <View style={styles.header}>
         <BackButton onPress={() => onNavigate('Home')} style={styles.backButton} />
         <Text style={styles.headerTitle}>My Garage</Text>
+      </View>
+
+      {/* Category Filter Pills */}
+      <View style={{ flexDirection: 'row', paddingHorizontal: 24, marginBottom: 12, gap: 8 }}>
+        {[
+          { key: 'ALL', label: 'All' },
+          { key: 'BIKE', label: '🏍️ Bikes' },
+          { key: 'SCOOTY', label: '🛵 Scooties' },
+          { key: 'CAR', label: '🚗 Cars' },
+        ].map((tab) => {
+          const isActive = activeFilter === tab.key;
+          return (
+            <TouchableOpacity
+              key={tab.key}
+              onPress={() => setActiveFilter(tab.key as any)}
+              style={{
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                borderRadius: 20,
+                backgroundColor: isActive ? '#ea580c' : '#f3f4f6',
+                borderWidth: 1,
+                borderColor: isActive ? '#ea580c' : '#e5e7eb',
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 12,
+                  fontWeight: '700',
+                  color: isActive ? '#ffffff' : '#4b5563',
+                }}
+              >
+                {tab.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
       <ScrollView
@@ -138,19 +190,19 @@ export default function GarageScreen({ onNavigate }: GarageScreenProps) {
         {loadingBikes ? (
           <View style={styles.loaderContainer}>
             <ActivityIndicator color="#ea580c" size="large" />
-            <Text style={styles.loadingText}>Loading your bikes...</Text>
+            <Text style={styles.loadingText}>Loading your vehicles...</Text>
           </View>
-        ) : myBikes.length === 0 ? (
+        ) : filteredVehicles.length === 0 ? (
           <View style={styles.emptyState}>
             <Feather name="zap-off" size={48} color="#d1d5db" />
-            <Text style={styles.emptyTitle}>No bikes found</Text>
+            <Text style={styles.emptyTitle}>No vehicles found</Text>
             <Text style={styles.emptySubtitle}>
-              Click the + button below to add your first bike to the garage.
+              Click the + button below to add your first bike, scooty, or car to the garage.
             </Text>
           </View>
         ) : (
           <View style={styles.bikeList}>
-            {myBikes.map((bike) => (
+            {filteredVehicles.map((bike) => (
               <View key={bike.id} style={styles.bikeCard}>
                 {/* Photo Area */}
                 <View style={{ position: 'relative' }}>
@@ -168,9 +220,30 @@ export default function GarageScreen({ onNavigate }: GarageScreenProps) {
 
                 {/* Info Area */}
                 <View style={styles.infoContainer}>
-                  <Text style={styles.bikeName}>
-                    {bike.brandName} {bike.modelName}
-                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <Text style={[styles.bikeName, { flex: 1, paddingRight: 8 }]}>
+                      {bike.brandName} {bike.modelName}
+                    </Text>
+                    {(() => {
+                      const badge = getVehicleTypeBadge(bike.itemCode);
+                      return (
+                        <View style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 4,
+                          paddingHorizontal: 8,
+                          paddingVertical: 3,
+                          borderRadius: 12,
+                          backgroundColor: badge.bg,
+                          borderWidth: 1,
+                          borderColor: badge.border,
+                        }}>
+                          <Text style={{ fontSize: 11 }}>{badge.icon}</Text>
+                          <Text style={{ fontSize: 11, fontWeight: '700', color: badge.text }}>{badge.label}</Text>
+                        </View>
+                      );
+                    })()}
+                  </View>
                   
                   <View style={styles.detailRow}>
                     <Feather name="map-pin" size={12} color="#6b7280" />
@@ -196,7 +269,7 @@ export default function GarageScreen({ onNavigate }: GarageScreenProps) {
                       <Text style={styles.viewDetailsText}>View Details</Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity onPress={() => onNavigate('Booking')}>
+                    <TouchableOpacity onPress={() => onNavigate('RoutineService')}>
                       <Text style={styles.requestServiceText}>Request Service</Text>
                     </TouchableOpacity>
                   </View>

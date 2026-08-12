@@ -146,6 +146,7 @@ export interface MyServiceRequest {
 // ─── Request Types ────────────────────────────────────────────────────────────
 
 export interface AddBikePayload {
+  itemId?: string;
   brandId: string;
   modelId: string;
   registrationNumber: string;
@@ -171,9 +172,9 @@ export const vehicleService = {
   getAllBrands: (): Promise<VehicleBrand[]> =>
     vmsApi.get<VehicleBrand[]>("/vehicle-brands"),
 
-  /** Fetch models for a specific brand */
-  getModelsByBrand: (brandId: string): Promise<VehicleModel[]> =>
-    vmsApi.get<VehicleModel[]>(`/vehicle-models?brandId=${brandId}`),
+  /** Fetch models for a specific brand and optional vehicle item */
+  getModelsByBrand: (brandId: string, itemId?: string): Promise<VehicleModel[]> =>
+    vmsApi.get<VehicleModel[]>(`/vehicle-models?brandId=${brandId}${itemId ? `&itemId=${itemId}` : ""}`),
 
   /** Add a new bike for the logged-in customer */
   addBike: (payload: AddBikePayload): Promise<CustomerVehicle> =>
