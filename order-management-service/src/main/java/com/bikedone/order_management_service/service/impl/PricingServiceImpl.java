@@ -69,24 +69,18 @@ public class PricingServiceImpl implements PricingService {
         // 2. Resolve Request Type
         RequestType requestType = resolveRequestType(requestTypeId, requestTypeCode);
 
-        // 3. Find Pricing Rule
-        BigDecimal baseCharge = new BigDecimal("300.00");
-        BigDecimal convenienceFee = new BigDecimal("50.00");
-        BigDecimal platformFee = new BigDecimal("15.00");
-        BigDecimal gstPercentage = new BigDecimal("18.00");
-
-        if (item != null && requestType != null) {
-            Optional<ServicePricingRule> ruleOpt = servicePricingRuleRepository
-                    .findByItemIdAndRequestTypeIdAndIsActiveTrue(item.getId(), requestType.getId());
-
-            if (ruleOpt.isPresent()) {
-                ServicePricingRule rule = ruleOpt.get();
-                baseCharge = rule.getBaseCharge();
-                convenienceFee = rule.getConvenienceFee();
-                platformFee = rule.getPlatformFee();
-                gstPercentage = rule.getGstPercentage();
-            }
+        if (item == null || requestType == null) {
+            throw new IllegalArgumentException("Item or RequestType cannot be null");
         }
+
+        ServicePricingRule rule = servicePricingRuleRepository
+                .findByItemIdAndRequestTypeIdAndIsActiveTrue(item.getId(), requestType.getId())
+                .orElseThrow(() -> new RuntimeException("Pricing rule not found for Item ID: " + item.getId() + " and Request Type ID: " + requestType.getId()));
+
+        BigDecimal baseCharge = rule.getBaseCharge();
+        BigDecimal convenienceFee = rule.getConvenienceFee();
+        BigDecimal platformFee = rule.getPlatformFee();
+        BigDecimal gstPercentage = rule.getGstPercentage();
 
         BigDecimal subtotal = baseCharge.add(convenienceFee).add(platformFee);
 
@@ -134,10 +128,11 @@ public class PricingServiceImpl implements PricingService {
                     boolean isApplicable = true;
                     List<CouponApplicabilityRule> appRules = couponApplicabilityRuleRepository.findByCouponId(coupon.getId());
                     if (!isLimitExceeded && !appRules.isEmpty()) {
-                        isApplicable = appRules.stream().anyMatch(rule -> {
-                            boolean itemMatches = rule.getItem() == null || (item != null && rule.getItem().getId().equals(item.getId()));
-                            boolean requestTypeMatches = rule.getRequestType() == null || (requestType != null && rule.getRequestType().getId().equals(requestType.getId()));
-                            return itemMatches && requestTypeMatches;
+                        isApplicable = appRules.stream().anyMatch(appRule -> {
+                            boolean itemMatches = appRule.getItem() == null || appRule.getItem().getId().equals(item.getId());
+                            boolean requestTypeMatches = appRule.getRequestType() == null || appRule.getRequestType().getId().equals(requestType.getId());
+                            boolean categoryMatches = appRule.getCategory() == null || item.getCategory() != null && appRule.getCategory().getId().equals(item.getCategory().getId());
+                            return itemMatches && requestTypeMatches && categoryMatches;
                         });
 
                         if (!isApplicable) {
@@ -180,23 +175,22 @@ public class PricingServiceImpl implements PricingService {
         BigDecimal gstAmount = taxableAmount.multiply(gstPercentage)
                 .divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
 
-        BigDecimal halfGst = gstAmount.divide(new BigDecimal("2"), 2, RoundingMode.HALF_UP);
-        BigDecimal cgstAmount = halfGst;
+        BigDecimal cgstAmount = gstAmount.divide(new BigDecimal("2"), 2, RoundingMode.HALF_UP);
         BigDecimal sgstAmount = gstAmount.subtract(cgstAmount);
 
         BigDecimal totalPayableAmount = taxableAmount.add(gstAmount);
 
-        String reqCodeStr = requestType != null && requestType.getRequestTypeCode() != null
+        String reqCodeStr = requestType.getRequestTypeCode() != null
                 ? requestType.getRequestTypeCode().name()
-                : (requestTypeCode != null ? requestTypeCode : "INSPECTION");
+                : requestTypeCode != null ? requestTypeCode : "INSPECTION";
 
         return PricingEstimateResponse.builder()
-                .itemId(item != null ? item.getId() : itemId)
-                .itemCode(item != null ? item.getItemCode() : (itemCode != null ? itemCode : "BIKE"))
-                .itemDisplayName(item != null ? item.getDisplayName() : "Motorcycle / Bike")
-                .requestTypeId(requestType != null ? requestType.getId() : requestTypeId)
+                .itemId(item.getId())
+                .itemCode(item.getItemCode())
+                .itemDisplayName(item.getDisplayName())
+                .requestTypeId(requestType.getId())
                 .requestTypeCode(reqCodeStr)
-                .requestTypeDisplayName(requestType != null ? requestType.getDisplayName() : "Inspection")
+                .requestTypeDisplayName(requestType.getDisplayName())
                 .baseCharge(baseCharge)
                 .convenienceFee(convenienceFee)
                 .platformFee(platformFee)
