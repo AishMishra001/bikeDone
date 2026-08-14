@@ -1,0 +1,33 @@
+# Environment files
+.env
+.env*
+.env*.local
+*.env
+**/.env
+**/.env*
+
+# Node / JS
+node_modules/
+dist/
+build/
+.expo/
+web-build/
+expo-env.d.ts
+
+# Java / Maven
+target/
+*.class
+*.jar
+*.war
+
+# Secrets & Configs
+**/secrets.properties
+**/config/dev/secrets.properties
+**/config/prod/secrets.properties
+**/config/uat/secrets.properties
+
+# IDEs & System
+.idea/
+.vscode/
+.DS_Store
+*.log
