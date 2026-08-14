@@ -15,6 +15,7 @@ public class CancelServiceRequestValidator {
         switch (status) {
 
             case REQUEST_CREATED:
+            case SEARCHING_MECHANIC:
             case MECHANIC_ASSIGNED:
                 return;
 

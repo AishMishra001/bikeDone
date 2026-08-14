@@ -194,7 +194,7 @@ export default function InspectionScreen({
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       quality: 0.8,
-      allowsEditing: true,
+      allowsEditing: false,
     });
 
     if (!result.canceled && result.assets && result.assets.length > 0) {
@@ -217,7 +217,7 @@ export default function InspectionScreen({
 
     const result = await ImagePicker.launchCameraAsync({
       quality: 0.8,
-      allowsEditing: true,
+      allowsEditing: false,
     });
 
     if (!result.canceled && result.assets && result.assets.length > 0) {

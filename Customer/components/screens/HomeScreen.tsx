@@ -13,10 +13,11 @@ import { Feather } from '@expo/vector-icons';
 import { tokenStorage, LoggedInUser } from '../../services/tokenStorage';
 import { useUserLocation } from '../../hooks/useUserLocation';
 import { api } from '../../services/api';
+import { vehicleService, MyServiceRequest } from '../../services/vehicleService';
 import ProfileSidebar from '../ui/ProfileSidebar';
 
 interface HomeScreenProps {
-  onNavigate: (screen: string) => void;
+  onNavigate: (screen: string, params?: any) => void;
   initialSidebarOpen?: boolean;
 }
 
@@ -38,7 +39,7 @@ export default function HomeScreen({ onNavigate, initialSidebarOpen = false }: H
   const { loading: locationLoading, location, errorType, refreshLocation } = useUserLocation();
   const [hoveredCard, setHoveredCard] = useState<string | null>(null);
   const [sidebarVisible, setSidebarVisible] = useState(initialSidebarOpen);
-
+  const [activeRequest, setActiveRequest] = useState<MyServiceRequest | null>(null);
   const sosOpacity = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -57,6 +58,19 @@ export default function HomeScreen({ onNavigate, initialSidebarOpen = false }: H
       }
     };
     fetchFullProfile();
+
+    const fetchActiveRequest = async () => {
+      try {
+        const reqs = await vehicleService.getMyServiceRequests();
+        const active = reqs.find((req) => 
+          ["SEARCHING", "MECHANIC_ASSIGNED", "ACCEPTED", "ON_THE_WAY", "ARRIVED", "INSPECTION_STARTED", "WORK_STARTED"].includes(req.status)
+        );
+        setActiveRequest(active || null);
+      } catch (err) {
+        console.warn('Failed to load active request in home:', err);
+      }
+    };
+    fetchActiveRequest();
 
     // Start SOS Blinking animation
     Animated.loop(
@@ -220,6 +234,37 @@ export default function HomeScreen({ onNavigate, initialSidebarOpen = false }: H
         </TouchableOpacity>
       </ScrollView>
 
+      {activeRequest && (
+        <TouchableOpacity 
+          style={styles.activeRequestWidget} 
+          activeOpacity={0.9} 
+          onPress={() => onNavigate('FindingMechanic', { requestId: activeRequest.id, requestNumber: activeRequest.requestNumber })}
+        >
+          <View style={styles.widgetIconContainer}>
+            <Feather name="navigation" size={20} color="#ffffff" />
+          </View>
+          <View style={styles.widgetTextContainer}>
+            <View style={styles.widgetHeaderRow}>
+              <View style={styles.liveIndicatorDot} />
+              <Text style={styles.widgetTitle} numberOfLines={1}>
+                {activeRequest.vehicleName ? `${activeRequest.vehicleName} • #${activeRequest.requestNumber}` : `Request #${activeRequest.requestNumber}`}
+              </Text>
+            </View>
+            <Text style={styles.widgetSubtitle} numberOfLines={1}>
+              {["SEARCHING"].includes(activeRequest.status) 
+                ? "Connecting your mechanic..." 
+                : ["ON_THE_WAY", "ARRIVED"].includes(activeRequest.status)
+                ? "Mechanic on the way • Tap to track"
+                : "Mechanic assigned • Tap to track"}
+            </Text>
+          </View>
+          <View style={styles.trackBadge}>
+            <Text style={styles.trackBadgeText}>Track</Text>
+            <Feather name="chevron-right" size={14} color="#f97316" />
+          </View>
+        </TouchableOpacity>
+      )}
+
       <ProfileSidebar
         visible={sidebarVisible}
         onClose={() => {
@@ -244,7 +289,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 24,
-    paddingBottom: 140,
+    paddingBottom: 220,
   },
   topCard: {
     backgroundColor: '#f97316',
@@ -415,6 +460,79 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontWeight: 'bold',
     fontSize: 15,
-  }
+  },
+  activeRequestWidget: {
+    position: 'absolute',
+    bottom: 112,
+    left: 16,
+    right: 16,
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 10,
+    zIndex: 99,
+    borderLeftWidth: 4,
+    borderLeftColor: '#f97316',
+    borderWidth: 1,
+    borderColor: '#f3f4f6',
+  },
+  widgetIconContainer: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#f97316',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  widgetTextContainer: {
+    flex: 1,
+  },
+  widgetHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  liveIndicatorDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: '#22c55e',
+    marginRight: 6,
+  },
+  widgetTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  widgetSubtitle: {
+    fontSize: 11,
+    color: '#6b7280',
+    fontWeight: '500',
+  },
+  trackBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff7ed',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#ffedd5',
+    gap: 2,
+    marginLeft: 6,
+  },
+  trackBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#f97316',
+  },
 });
 

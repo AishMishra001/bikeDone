@@ -73,14 +73,21 @@ public class PricingServiceImpl implements PricingService {
             throw new IllegalArgumentException("Item or RequestType cannot be null");
         }
 
-        ServicePricingRule rule = servicePricingRuleRepository
-                .findByItemIdAndRequestTypeIdAndIsActiveTrue(item.getId(), requestType.getId())
-                .orElseThrow(() -> new RuntimeException("Pricing rule not found for Item ID: " + item.getId() + " and Request Type ID: " + requestType.getId()));
+        Optional<ServicePricingRule> ruleOpt = servicePricingRuleRepository
+                .findByItemIdAndRequestTypeIdAndIsActiveTrue(item.getId(), requestType.getId());
 
-        BigDecimal baseCharge = rule.getBaseCharge();
-        BigDecimal convenienceFee = rule.getConvenienceFee();
-        BigDecimal platformFee = rule.getPlatformFee();
-        BigDecimal gstPercentage = rule.getGstPercentage();
+        BigDecimal baseCharge = BigDecimal.ZERO;
+        BigDecimal convenienceFee = BigDecimal.ZERO;
+        BigDecimal platformFee = BigDecimal.ZERO;
+        BigDecimal gstPercentage = BigDecimal.ZERO;
+
+        if (ruleOpt.isPresent()) {
+            ServicePricingRule rule = ruleOpt.get();
+            baseCharge = rule.getBaseCharge() != null ? rule.getBaseCharge() : BigDecimal.ZERO;
+            convenienceFee = rule.getConvenienceFee() != null ? rule.getConvenienceFee() : BigDecimal.ZERO;
+            platformFee = rule.getPlatformFee() != null ? rule.getPlatformFee() : BigDecimal.ZERO;
+            gstPercentage = rule.getGstPercentage() != null ? rule.getGstPercentage() : BigDecimal.ZERO;
+        }
 
         BigDecimal subtotal = baseCharge.add(convenienceFee).add(platformFee);
 

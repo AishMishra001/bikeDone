@@ -357,13 +357,13 @@ export default function RequestDetailScreen({
         ) : null}
 
         {/* ── Photos ─────────────────────────────────────────────────── */}
-        {request.imageUrls && request.imageUrls.length > 0 && (
+        {request.imageUrls && request.imageUrls.filter(url => url && !url.startsWith('blob:')).length > 0 && (
           <View style={styles.card}>
             <Text style={styles.cardSectionTitle}>
               <Feather name="image" size={13} color="#9ca3af" />{"  "}PHOTOS
             </Text>
             <View style={styles.photoRow}>
-              {request.imageUrls.map((url, i) => (
+              {request.imageUrls.filter(url => url && !url.startsWith('blob:')).map((url, i) => (
                 <Image key={i} source={{ uri: url }} style={styles.photoThumb} resizeMode="cover" />
               ))}
             </View>

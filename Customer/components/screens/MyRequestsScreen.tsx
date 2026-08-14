@@ -372,7 +372,7 @@ const styles = StyleSheet.create({
   // ── List ────────────────────────────────────────────────────────────────
   listContent: {
     padding: 20,
-    paddingBottom: 110,
+    paddingBottom: 130,
   },
 
   // ── Request Card ────────────────────────────────────────────────────────

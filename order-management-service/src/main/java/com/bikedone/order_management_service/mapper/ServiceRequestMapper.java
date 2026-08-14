@@ -24,6 +24,7 @@ import java.time.LocalTime;
 public class ServiceRequestMapper {
 
     private final CustomerVehicleRepository customerVehicleRepository;
+    private final com.bikedone.order_management_service.repository.OrderBillBreakdownRepository orderBillBreakdownRepository;
 
     public ServiceRequest toEntity(
             CreateServiceRequestRequest request,
@@ -40,6 +41,10 @@ public class ServiceRequestMapper {
         serviceRequest.setCustomerId(customerId);
         serviceRequest.setCustomerVehicleId(request.getCustomerVehicleId());
         serviceRequest.setAddressId(request.getAddressId());
+
+        // Generate 4 digit pin
+        String pin = String.format("%04d", new java.util.Random().nextInt(10000));
+        serviceRequest.setServicePin(pin);
 
         if (request.getCurrentLocation() != null) {
             // User chose live current location
@@ -117,6 +122,12 @@ public class ServiceRequestMapper {
         // Resolve service address from current_location_note (set for both saved & live address)
         String serviceAddress = serviceRequest.getCurrentLocationNote();
 
+        // Resolve total payable amount
+        java.math.BigDecimal totalPayableAmount = orderBillBreakdownRepository
+                .findByServiceRequestId(serviceRequest.getId())
+                .map(com.bikedone.order_management_service.entity.OrderBillBreakdown::getFinalPayableAmount)
+                .orElse(null);
+
         return MyServiceRequestResponse.builder()
                 .id(serviceRequest.getId())
                 .requestNumber(serviceRequest.getRequestNumber())
@@ -132,6 +143,11 @@ public class ServiceRequestMapper {
                 .vehicleName(vehicleName)
                 .vehicleRegistrationNumber(vehicleRegNumber)
                 .serviceAddress(serviceAddress)
+                .latitude(serviceRequest.getCurrentLocationLatitude())
+                .longitude(serviceRequest.getCurrentLocationLongitude())
+                .totalPayableAmount(totalPayableAmount)
+                .assignedMechanicId(serviceRequest.getAssignedMechanicId())
+                .servicePin(serviceRequest.getServicePin())
                 .description(serviceRequest.getDescription())
                 .imageUrls(imageUrls)
                 .build();

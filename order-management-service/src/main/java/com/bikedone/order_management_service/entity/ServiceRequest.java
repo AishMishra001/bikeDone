@@ -76,6 +76,9 @@ public class ServiceRequest extends BaseEntity {
     @Column(name = "assigned_mechanic_id")
     private UUID assignedMechanicId;
 
+    @Column(name = "service_pin", length = 4)
+    private String servicePin;
+
     @Column(name = "assigned_at")
     private java.time.LocalDateTime assignedAt;
 

@@ -6,46 +6,67 @@ import { SERVICE_URLS } from '../config/services';
 import 'text-encoding';
 
 let stompClient: Client | null = null;
+let connectionPromise: Promise<Client> | null = null;
 let activeSubscriptions: { [key: string]: any } = {};
 
 export const socketService = {
-  init: async () => {
-    if (stompClient && stompClient.active) {
-      return stompClient;
+  init: () => {
+    if (stompClient && stompClient.connected) {
+      return Promise.resolve(stompClient);
     }
 
-    const token = await tokenStorage.getAccessToken();
-    
-    // Construct WebSocket URL from HTTP URL (e.g. http://localhost:8082 -> ws://localhost:8082/ws)
-    const wsUrl = SERVICE_URLS.OMS.replace(/^http/, 'ws').replace(/\/api\/v1$/, '') + '/ws';
+    if (connectionPromise) {
+      return connectionPromise;
+    }
 
-    stompClient = new Client({
-      brokerURL: wsUrl,
-      connectHeaders: {
-        Authorization: `Bearer ${token}`
-      },
-      reconnectDelay: 5000,
-      heartbeatIncoming: 4000,
-      heartbeatOutgoing: 4000,
-      debug: (str) => {
-        // console.log('[STOMP]:', str);
-      },
-    });
+    connectionPromise = (async () => {
+      try {
+        const token = await tokenStorage.getAccessToken();
+        
+        // Construct WebSocket URL from HTTP URL (e.g. http://localhost:8082 -> ws://localhost:8082/ws)
+        const wsUrl = SERVICE_URLS.OMS.replace(/^http/, 'ws').replace(/\/api\/v1$/, '') + '/ws';
 
-    return new Promise<Client>((resolve, reject) => {
-      if (!stompClient) return reject("Client not initialized");
-      
-      stompClient.onConnect = () => {
-        resolve(stompClient!);
-      };
+        if (stompClient) {
+          stompClient.deactivate();
+        }
 
-      stompClient.onStompError = (frame) => {
-        console.error('Broker reported error: ' + frame.headers['message']);
-        console.error('Additional details: ' + frame.body);
-      };
+        stompClient = new Client({
+          brokerURL: wsUrl,
+          connectHeaders: {
+            Authorization: `Bearer ${token}`
+          },
+          reconnectDelay: 5000,
+          heartbeatIncoming: 4000,
+          heartbeatOutgoing: 4000,
+          debug: (str) => {
+            // console.log('[STOMP]:', str);
+          },
+        });
 
-      stompClient.activate();
-    });
+        return await new Promise<Client>((resolve, reject) => {
+          stompClient!.onConnect = () => {
+            resolve(stompClient!);
+          };
+
+          stompClient!.onStompError = (frame) => {
+            console.error('Broker reported error: ' + frame.headers['message']);
+            console.error('Additional details: ' + frame.body);
+            reject(new Error(frame.headers['message']));
+          };
+
+          stompClient!.onWebSocketClose = () => {
+            connectionPromise = null;
+          };
+
+          stompClient!.activate();
+        });
+      } catch (error) {
+        connectionPromise = null;
+        throw error;
+      }
+    })();
+
+    return connectionPromise;
   },
 
   disconnect: () => {
@@ -54,6 +75,7 @@ export const socketService = {
       stompClient = null;
       activeSubscriptions = {};
     }
+    connectionPromise = null;
   },
 
   // -- CHAT SYSTEM --

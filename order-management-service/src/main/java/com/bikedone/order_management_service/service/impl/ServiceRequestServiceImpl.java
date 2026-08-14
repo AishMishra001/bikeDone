@@ -84,6 +84,19 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
                 null
         );
 
+        // Check if there is an active request for this vehicle
+        List<com.bikedone.order_management_service.enums.ServiceRequestStatus> terminalStatuses = java.util.Arrays.asList(
+            com.bikedone.order_management_service.enums.ServiceRequestStatus.CANCELLED,
+            com.bikedone.order_management_service.enums.ServiceRequestStatus.WORK_COMPLETED,
+            com.bikedone.order_management_service.enums.ServiceRequestStatus.PAYMENT_CONFIRMED,
+            com.bikedone.order_management_service.enums.ServiceRequestStatus.EXPIRED,
+            com.bikedone.order_management_service.enums.ServiceRequestStatus.NO_MECHANIC_AVAILABLE
+        );
+        
+        if (serviceRequestRepository.existsByCustomerVehicleIdAndStatusNotIn(request.getCustomerVehicleId(), terminalStatuses)) {
+             throw new com.bikedone.order_management_service.exception.BadRequestException("An active service request already exists for this vehicle. Please complete or cancel it before raising a new one.");
+        }
+
         RequestType requestType =
                 createServiceRequestValidator.validateRequestType(
                         request.getRequestTypeId()

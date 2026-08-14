@@ -11,6 +11,8 @@ public interface ServiceRequestRepository extends JpaRepository<ServiceRequest, 
 
     boolean existsByRequestNumber(String requestNumber);
 
+    boolean existsByCustomerVehicleIdAndStatusNotIn(UUID customerVehicleId, List<com.bikedone.order_management_service.enums.ServiceRequestStatus> statuses);
+
     Optional<ServiceRequest> findByRequestNumber(String requestNumber);
 
     Optional<ServiceRequest> findFirstByAssignedMechanicIdAndStatusInOrderByCreatedAtDesc(UUID assignedMechanicId, List<com.bikedone.order_management_service.enums.ServiceRequestStatus> statuses);

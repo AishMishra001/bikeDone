@@ -388,7 +388,8 @@ export default function BookingReviewScreen({
         )}
 
         {/* ── PRICING & COST BREAKDOWN CARD ──────────────────────────── */}
-        <View style={styles.pricingCard}>
+        {requestTypeLabel.toLowerCase().includes("inspection") && (
+          <View style={styles.pricingCard}>
           <Text style={styles.pricingTitle}>
             <Feather name="credit-card" size={15} color="#111827" />
             {"  "}PRICING & COST BREAKDOWN
@@ -488,6 +489,7 @@ export default function BookingReviewScreen({
             <Text style={styles.errorText}>Unable to load pricing details.</Text>
           )}
         </View>
+        )}
 
         {/* ── Note ───────────────────────────────────────────────────── */}
         <View style={styles.noteCard}>

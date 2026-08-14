@@ -1,4 +1,4 @@
-import { vmsApi } from "./api";
+import { api, vmsApi } from "./api";
 
 // ─── Response Types ───────────────────────────────────────────────────────────
 
@@ -118,6 +118,8 @@ export interface CreateServiceRequestPayload {
   imageUrls?: string[];
   couponCode?: string;
   itemId?: string;
+  assignedMechanicId?: string;
+  servicePin?: string;
 }
 
 export interface CreateServiceRequestResponse {
@@ -139,6 +141,11 @@ export interface MyServiceRequest {
   vehicleName: string | null;
   vehicleRegistrationNumber: string | null;
   serviceAddress: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  totalPayableAmount: number | null;
+  assignedMechanicId?: string | null;
+  servicePin?: string | null;
   description: string | null;
   imageUrls: string[];
 }
@@ -166,6 +173,14 @@ export interface UpdateBikePayload {
 }
 
 // ─── API Calls ────────────────────────────────────────────────────────────────
+
+export interface PublicMechanicProfileResponse {
+  id: string;
+  fullName: string;
+  mobileNumber: string;
+  profilePhotoUrl: string;
+  rating: number;
+}
 
 export const vehicleService = {
   /** Fetch all active vehicle brands */
@@ -256,6 +271,10 @@ export const vehicleService = {
   /** Get a single service request by ID */
   getServiceRequestById: (requestId: string): Promise<MyServiceRequest> =>
     vmsApi.get<MyServiceRequest>(`/service-requests/${requestId}`),
+
+  /** Fetch mechanic profile */
+  getMechanicProfile: (mechanicId: string): Promise<PublicMechanicProfileResponse> =>
+    api.get<PublicMechanicProfileResponse>(`/mechanics/${mechanicId}/profile/public`),
 
   /** Cancel an existing service request */
   cancelServiceRequest: (

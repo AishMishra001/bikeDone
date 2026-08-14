@@ -102,8 +102,17 @@ export default function App() {
     };
   }, []);
 
-  const handleNavigate = (nextScreen: string) => {
+  const handleNavigate = (nextScreen: string, params?: any) => {
     const target = nextScreen === 'Booking' ? 'RoutineService' : nextScreen;
+    if (params?.requestId) {
+      if (['RequestDetail', 'CustomerChat'].includes(target)) {
+        setSelectedRequestId(params.requestId);
+      }
+      if (['FindingMechanic'].includes(target)) {
+        setLastRequestId(params.requestId);
+        if (params.requestNumber) setLastRequestNumber(params.requestNumber);
+      }
+    }
     if (target !== currentScreen) {
       setPreviousScreen(currentScreen);
       setCurrentScreen(target);
@@ -252,7 +261,7 @@ export default function App() {
         {currentScreen === 'CustomerChat' && selectedRequestId && (
           <CustomerChatScreen
             requestId={selectedRequestId}
-            onBack={() => setCurrentScreen('RequestDetail')}
+            onBack={() => setCurrentScreen(previousScreen || 'RequestDetail')}
           />
         )}
         {currentScreen === 'Garage' && (

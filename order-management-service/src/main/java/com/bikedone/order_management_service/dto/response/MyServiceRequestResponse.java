@@ -42,6 +42,16 @@ public record MyServiceRequestResponse(
          */
         String serviceAddress,
 
+        java.math.BigDecimal latitude,
+
+        java.math.BigDecimal longitude,
+
+        java.math.BigDecimal totalPayableAmount,
+        
+        UUID assignedMechanicId,
+        
+        String servicePin,
+
         /** Issue description entered by the customer (nullable). */
         String description,
 
