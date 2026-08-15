@@ -229,10 +229,10 @@ export default function App() {
         {currentScreen === 'Signup' && (
           <SignupScreen onNavigate={handleNavigate} />
         )}
-        {['Home', 'Profile', 'SavedAddresses', 'AddAddress'].includes(currentScreen) && (
+        {['Home', 'Profile'].includes(currentScreen) && (
           <HomeScreen 
             onNavigate={handleNavigate} 
-            initialSidebarOpen={currentScreen !== 'Home'} 
+            initialSidebarOpen={currentScreen === 'Profile'} 
           />
         )}
         {currentScreen === 'FullProfile' && (
@@ -338,21 +338,26 @@ export default function App() {
           <GarageScreen onNavigate={handleNavigate} />
         )}
 
-        {['SavedAddresses', 'AddAddress'].includes(currentScreen) && (
+        {currentScreen === 'SavedAddresses' && (
           <SavedAddressesScreen 
-            isActive={currentScreen === 'SavedAddresses'}
-            onNavigate={(screen, params) => {
-              if (screen === 'AddAddress') {
-                setEditAddress(params?.address || null);
-              }
-              handleNavigate(screen);
-            }} 
+            onNavigate={handleNavigate}
+            onAddAddress={() => {
+              setEditAddress(null);
+              handleNavigate('AddAddress');
+            }}
+            onEditAddress={(addr) => {
+              setEditAddress(addr);
+              handleNavigate('AddAddress');
+            }}
+            onBack={() => handleNavigate('Home')}
           />
         )}
         {currentScreen === 'AddAddress' && (
           <AddAddressScreen 
             onNavigate={handleNavigate} 
             initialAddress={editAddress} 
+            onBack={() => handleNavigate('SavedAddresses')}
+            onSaveSuccess={() => handleNavigate('SavedAddresses')}
           />
         )}
       </KeyboardAvoidingView>

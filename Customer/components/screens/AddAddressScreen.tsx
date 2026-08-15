@@ -1,25 +1,65 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput,
-  ActivityIndicator, SafeAreaView, KeyboardAvoidingView, Platform, Animated, Dimensions, Modal
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  TextInput,
+  ActivityIndicator,
+  SafeAreaView,
+  KeyboardAvoidingView,
+  Platform,
+  Animated,
+  Dimensions,
+  Alert,
 } from 'react-native';
-import { Feather } from '@expo/vector-icons';
+import { Feather, Ionicons } from '@expo/vector-icons';
 import { addressService, AddressPayload, emptyAddressPayload, UserAddress } from '../../services/addressService';
 
 interface AddAddressScreenProps {
-  onNavigate: (screen: string) => void;
+  onNavigate?: (screen: string, params?: any) => void;
+  onBack?: () => void;
+  onSaveSuccess?: () => void;
   initialAddress?: UserAddress | null;
 }
 
-export default function AddAddressScreen({ onNavigate, initialAddress }: AddAddressScreenProps) {
+const { width } = Dimensions.get('window');
+
+export default function AddAddressScreen({
+  onNavigate,
+  onBack,
+  onSaveSuccess,
+  initialAddress,
+}: AddAddressScreenProps) {
   const [addressForm, setAddressForm] = useState<AddressPayload>(
     initialAddress 
-      ? { ...initialAddress, buildingName: initialAddress.buildingName || '', landmark: initialAddress.landmark || '' }
-      : { ...emptyAddressPayload, country: 'India' }
+      ? {
+          label: initialAddress.label || 'Home',
+          houseNumber: initialAddress.houseNumber || '',
+          buildingName: initialAddress.buildingName || '',
+          street: initialAddress.street || '',
+          landmark: initialAddress.landmark || '',
+          city: initialAddress.city || 'Noida',
+          state: initialAddress.state || 'Uttar Pradesh',
+          country: initialAddress.country || 'India',
+          pincode: initialAddress.pincode || '201301',
+          latitude: initialAddress.latitude,
+          longitude: initialAddress.longitude,
+          receiverName: initialAddress.receiverName || '',
+          receiverPhoneNumber: initialAddress.receiverPhoneNumber || '',
+        }
+      : { 
+          ...emptyAddressPayload, 
+          city: 'Noida', 
+          state: 'Uttar Pradesh', 
+          country: 'India',
+          pincode: '201301',
+        }
   );
-  const [selectedTag, setSelectedTag] = useState(initialAddress?.label || 'Home');
+  const [selectedTag, setSelectedTag] = useState<string>(initialAddress?.label || 'Home');
   const [saving, setSaving] = useState(false);
-  const slideAnim = useRef(new Animated.Value(Dimensions.get('window').width)).current;
+  const slideAnim = useRef(new Animated.Value(width)).current;
 
   useEffect(() => {
     Animated.timing(slideAnim, {
@@ -31,11 +71,15 @@ export default function AddAddressScreen({ onNavigate, initialAddress }: AddAddr
 
   const handleBack = () => {
     Animated.timing(slideAnim, {
-      toValue: Dimensions.get('window').width,
-      duration: 250,
+      toValue: width,
+      duration: 220,
       useNativeDriver: true,
     }).start(() => {
-      onNavigate('SavedAddresses');
+      if (onBack) {
+        onBack();
+      } else if (onNavigate) {
+        onNavigate('SavedAddresses');
+      }
     });
   };
 
@@ -44,199 +88,383 @@ export default function AddAddressScreen({ onNavigate, initialAddress }: AddAddr
   };
 
   const handleSave = async () => {
-    if (!addressForm.houseNumber.trim()) { alert('Please enter House/Flat Number'); return; }
-    if (!addressForm.pincode.trim()) { alert('Please enter Pincode'); return; }
-    
+    if (!addressForm.houseNumber.trim()) {
+      Alert.alert('Required Field', 'Please enter your Flat / House / Shop Number.');
+      return;
+    }
+    if (!addressForm.pincode.trim() || addressForm.pincode.trim().length < 6) {
+      Alert.alert('Invalid Pincode', 'Please enter a valid 6-digit Pincode (e.g. 201301).');
+      return;
+    }
+
     setSaving(true);
     try {
       const payload: AddressPayload = {
         ...addressForm,
         label: selectedTag,
-        city: addressForm.city || 'Seattle', // mock city if empty
-        state: addressForm.state || 'WA',
-        street: addressForm.street || 'Main Street',
+        houseNumber: addressForm.houseNumber.trim(),
+        buildingName: addressForm.buildingName?.trim() || '',
+        landmark: addressForm.landmark?.trim() || '',
+        street: addressForm.street?.trim() || addressForm.landmark?.trim() || 'Sector 62',
+        city: addressForm.city?.trim() || 'Noida',
+        state: addressForm.state?.trim() || 'Uttar Pradesh',
+        country: 'India',
+        pincode: addressForm.pincode.trim(),
+        receiverName: addressForm.receiverName?.trim() || '',
+        receiverPhoneNumber: addressForm.receiverPhoneNumber?.trim() || '',
       };
-      
+
       if (initialAddress?.id) {
         await addressService.updateAddress(initialAddress.id, payload);
       } else {
         await addressService.createAddress(payload);
       }
-      onNavigate('SavedAddresses');
+
+      Animated.timing(slideAnim, {
+        toValue: width,
+        duration: 200,
+        useNativeDriver: true,
+      }).start(() => {
+        if (onSaveSuccess) {
+          onSaveSuccess();
+        } else if (onNavigate) {
+          onNavigate('SavedAddresses');
+        }
+      });
     } catch (err: any) {
-      alert('Failed to save address: ' + err.message);
+      Alert.alert('Error', err.message || 'Failed to save address. Please try again.');
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <Modal visible={true} transparent={true} animationType="none" onRequestClose={handleBack}>
-      <Animated.View style={[StyleSheet.absoluteFill, { transform: [{ translateX: slideAnim }], zIndex: 200, backgroundColor: '#fff' }]}>
+    <Animated.View style={[styles.container, { transform: [{ translateX: slideAnim }] }]}>
       <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <View style={styles.headerBar}>
-          <TouchableOpacity onPress={handleBack} style={styles.backBtn}>
-            <Feather name="chevron-left" size={24} color="#111827" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Add Address Details</Text>
-          <View style={{ width: 40 }} />
-        </View>
-
-        <View style={styles.addressPreviewBar}>
-          <Text style={styles.addressPreviewText} numberOfLines={1}>
-            {addressForm.street || 'Select location on map...'}
-          </Text>
-        </View>
-        <View style={styles.dividerLine} />
-
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-          <Text style={styles.sectionTitle}>Add address</Text>
-
-          <View style={styles.inputGroup}>
-            <TextInput
-              style={styles.input}
-              placeholder="House No. & Floor"
-              value={addressForm.houseNumber}
-              onChangeText={(val) => handleFieldChange('houseNumber', val)}
-              placeholderTextColor="#9ca3af"
-            />
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+          style={{ flex: 1 }}
+        >
+          {/* Top Header */}
+          <View style={styles.headerBar}>
+            <TouchableOpacity onPress={handleBack} style={styles.backBtn} activeOpacity={0.7}>
+              <Feather name="chevron-left" size={24} color="#0f172a" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>
+              {initialAddress?.id ? 'Edit Address' : 'Add New Address'}
+            </Text>
+            <View style={{ width: 40 }} />
           </View>
 
-          <View style={styles.inputGroup}>
-            <TextInput
-              style={styles.input}
-              placeholder="Building & Block No. (Optional)"
-              value={addressForm.buildingName}
-              onChangeText={(val) => handleFieldChange('buildingName', val)}
-              placeholderTextColor="#9ca3af"
-            />
-          </View>
+          <ScrollView 
+            showsVerticalScrollIndicator={false} 
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+          >
+            {/* Address Label Selector (Home, Work, Other) */}
+            <Text style={styles.sectionTitle}>ADDRESS TYPE / LABEL</Text>
+            <View style={styles.tagsContainer}>
+              {['Home', 'Work', 'Other'].map((tag) => {
+                const isActive = selectedTag === tag;
+                return (
+                  <TouchableOpacity
+                    key={tag}
+                    style={[styles.tagBtn, isActive && styles.tagBtnActive]}
+                    onPress={() => setSelectedTag(tag)}
+                    activeOpacity={0.7}
+                  >
+                    <Feather
+                      name={tag === 'Home' ? 'home' : tag === 'Work' ? 'briefcase' : 'map-pin'}
+                      size={16}
+                      color={isActive ? '#ea580c' : '#64748b'}
+                      style={{ marginRight: 6 }}
+                    />
+                    <Text style={[styles.tagBtnText, isActive && styles.tagBtnTextActive]}>
+                      {tag}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
 
-          <View style={styles.inputGroup}>
-            <TextInput
-              style={styles.input}
-              placeholder="Landmark & Area Name (Optional)"
-              value={addressForm.landmark}
-              onChangeText={(val) => handleFieldChange('landmark', val)}
-              placeholderTextColor="#9ca3af"
-            />
-          </View>
+            {/* Address Details Fields */}
+            <Text style={[styles.sectionTitle, { marginTop: 20 }]}>HOUSE & LOCATION DETAILS</Text>
 
-          <Text style={[styles.sectionTitle, { marginTop: 8 }]}>Add address label</Text>
-          <View style={styles.tagsContainer}>
-            {['Home', 'Work', 'Other'].map(tag => {
-              const isActive = selectedTag === tag;
-              return (
-                <TouchableOpacity 
-                  key={tag} 
-                  style={styles.tagBtn}
-                  onPress={() => setSelectedTag(tag)}
-                >
-                  <Feather 
-                    name={tag === 'Home' ? 'home' : tag === 'Work' ? 'briefcase' : 'map-pin'} 
-                    size={16} 
-                    color={isActive ? '#111827' : '#9ca3af'} 
-                    style={{ marginRight: 6 }} 
-                  />
-                  <Text style={[styles.tagBtnText, isActive && styles.tagBtnTextActive]}>{tag}</Text>
-                </TouchableOpacity>
-              )
-            })}
-          </View>
+            <View style={styles.inputGroup}>
+              <Feather name="home" size={18} color="#ea580c" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="House / Flat / Plot No. *"
+                placeholderTextColor="#94a3b8"
+                value={addressForm.houseNumber}
+                onChangeText={(val) => handleFieldChange('houseNumber', val)}
+              />
+            </View>
 
-          <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Receiver details</Text>
-          <View style={styles.inputGroup}>
-            <TextInput
-              style={styles.input}
-              placeholder="Receiver's Name"
-              value={addressForm.receiverName || ''}
-              onChangeText={(val) => handleFieldChange('receiverName', val)}
-              placeholderTextColor="#9ca3af"
-            />
-            <Feather name="book-open" size={18} color="#111827" />
-          </View>
+            <View style={styles.inputGroup}>
+              <Feather name="layers" size={18} color="#94a3b8" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Building / Apartment / Society Name (Optional)"
+                placeholderTextColor="#94a3b8"
+                value={addressForm.buildingName || ''}
+                onChangeText={(val) => handleFieldChange('buildingName', val)}
+              />
+            </View>
 
-          <View style={[styles.inputGroup, { flexDirection: 'row', alignItems: 'center' }]}>
-            <Text style={styles.phonePrefix}>+91</Text>
-            <View style={styles.phoneDivider} />
-            <TextInput
-              style={[styles.input, { flex: 1, paddingLeft: 0, borderWidth: 0 }]}
-              placeholder="Receiver's Phone Number"
-              value={addressForm.receiverPhoneNumber || ''}
-              onChangeText={(val) => handleFieldChange('receiverPhoneNumber', val)}
-              keyboardType="numeric"
-              maxLength={10}
-              placeholderTextColor="#9ca3af"
-            />
-          </View>
-        </ScrollView>
+            <View style={styles.inputGroup}>
+              <Feather name="map-pin" size={18} color="#94a3b8" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Street / Sector / Area (e.g. Sector 62)"
+                placeholderTextColor="#94a3b8"
+                value={addressForm.street || ''}
+                onChangeText={(val) => handleFieldChange('street', val)}
+              />
+            </View>
 
-        <View style={styles.footer}>
-          <TouchableOpacity style={[styles.submitBtn, (!addressForm.houseNumber.trim() || saving) && styles.submitBtnDisabled]} onPress={handleSave} disabled={saving || !addressForm.houseNumber.trim()}>
-            {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>SAVE ADDRESS</Text>}
-          </TouchableOpacity>
-        </View>
-      </KeyboardAvoidingView>
+            <View style={styles.inputGroup}>
+              <Feather name="compass" size={18} color="#94a3b8" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Landmark (Optional e.g. Near Metro / Park)"
+                placeholderTextColor="#94a3b8"
+                value={addressForm.landmark || ''}
+                onChangeText={(val) => handleFieldChange('landmark', val)}
+              />
+            </View>
+
+            {/* City & Pincode Row */}
+            <View style={styles.twoColRow}>
+              <View style={[styles.inputGroup, { flex: 1 }]}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="City"
+                  placeholderTextColor="#94a3b8"
+                  value={addressForm.city || 'Noida'}
+                  onChangeText={(val) => handleFieldChange('city', val)}
+                />
+              </View>
+
+              <View style={[styles.inputGroup, { flex: 1 }]}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Pincode *"
+                  placeholderTextColor="#94a3b8"
+                  keyboardType="numeric"
+                  maxLength={6}
+                  value={addressForm.pincode}
+                  onChangeText={(val) => handleFieldChange('pincode', val)}
+                />
+              </View>
+            </View>
+
+            {/* Contact Person Details */}
+            <Text style={[styles.sectionTitle, { marginTop: 20 }]}>CONTACT PERSON DETAILS</Text>
+
+            <View style={styles.inputGroup}>
+              <Feather name="user" size={18} color="#94a3b8" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Receiver / Contact Name"
+                placeholderTextColor="#94a3b8"
+                value={addressForm.receiverName || ''}
+                onChangeText={(val) => handleFieldChange('receiverName', val)}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.phonePrefix}>+91</Text>
+              <View style={styles.phoneDivider} />
+              <TextInput
+                style={[styles.input, { flex: 1, paddingLeft: 0 }]}
+                placeholder="10-digit mobile number"
+                placeholderTextColor="#94a3b8"
+                keyboardType="phone-pad"
+                maxLength={10}
+                value={addressForm.receiverPhoneNumber || ''}
+                onChangeText={(val) => handleFieldChange('receiverPhoneNumber', val)}
+              />
+            </View>
+          </ScrollView>
+
+          {/* Bottom Save Action Button */}
+          <View style={styles.footer}>
+            <TouchableOpacity 
+              style={[
+                styles.submitBtn, 
+                (!addressForm.houseNumber.trim() || saving) && styles.submitBtnDisabled
+              ]} 
+              onPress={handleSave} 
+              disabled={saving || !addressForm.houseNumber.trim()}
+              activeOpacity={0.8}
+            >
+              {saving ? (
+                <ActivityIndicator color="#ffffff" size="small" />
+              ) : (
+                <View style={styles.btnRow}>
+                  <Ionicons name="checkmark-circle" size={20} color="#ffffff" />
+                  <Text style={styles.submitBtnText}>
+                    {initialAddress?.id ? 'UPDATE ADDRESS' : 'SAVE ADDRESS'}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
       </SafeAreaView>
-      </Animated.View>
-    </Modal>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#fff' },
+  container: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#f8fafc',
+    zIndex: 200,
+  },
+  safeArea: { 
+    flex: 1, 
+    backgroundColor: '#f8fafc',
+  },
   headerBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#fff',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 14,
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
   },
-  backBtn: { width: 40, height: 40, justifyContent: 'center', borderRadius: 20, borderWidth: 1, borderColor: '#e5e7eb', alignItems: 'center' },
-  headerTitle: { flex: 1, textAlign: 'center', fontSize: 16, fontWeight: '700', color: '#111827' },
-  addressPreviewBar: { paddingHorizontal: 20, paddingBottom: 16 },
-  addressPreviewText: { fontSize: 13, color: '#6b7280', textAlign: 'center' },
-  dividerLine: { height: 1, backgroundColor: '#e5e7eb', borderStyle: 'dashed', borderWidth: 1, borderColor: '#e5e7eb', marginHorizontal: 20 },
-  scrollContent: { padding: 20, paddingBottom: 100 },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 16 },
+  backBtn: { 
+    width: 38, 
+    height: 38, 
+    justifyContent: 'center', 
+    borderRadius: 19, 
+    borderWidth: 1, 
+    borderColor: '#e2e8f0', 
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+  },
+  headerTitle: { 
+    fontSize: 17, 
+    fontWeight: '800', 
+    color: '#0f172a',
+  },
+  scrollContent: { 
+    padding: 16, 
+    paddingBottom: 110,
+  },
+  sectionTitle: { 
+    fontSize: 11, 
+    fontWeight: '800', 
+    color: '#64748b', 
+    letterSpacing: 0.6,
+    marginBottom: 10,
+    marginLeft: 4,
+  },
+  tagsContainer: { 
+    flexDirection: 'row', 
+    gap: 10,
+  },
+  tagBtn: {
+    flex: 1,
+    flexDirection: 'row', 
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12, 
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    borderWidth: 1, 
+    borderColor: '#e2e8f0',
+    backgroundColor: '#ffffff',
+  },
+  tagBtnActive: {
+    borderColor: '#ea580c',
+    backgroundColor: '#fff7ed',
+  },
+  tagBtnText: { 
+    fontSize: 13, 
+    fontWeight: '600', 
+    color: '#64748b',
+  },
+  tagBtnTextActive: { 
+    color: '#ea580c', 
+    fontWeight: '800',
+  },
   inputGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 12,
-    paddingHorizontal: 16,
+    borderColor: '#e2e8f0',
+    borderRadius: 14,
+    paddingHorizontal: 14,
     height: 52,
-    backgroundColor: '#fff',
+    backgroundColor: '#ffffff',
   },
-  input: { flex: 1, fontSize: 14, color: '#111827' },
-  tagsContainer: { flexDirection: 'row', gap: 12 },
-  tagBtn: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingVertical: 10, paddingHorizontal: 16,
-    borderRadius: 8,
-    borderWidth: 1, borderColor: '#e5e7eb',
-    backgroundColor: '#fff',
+  inputIcon: {
+    marginRight: 10,
   },
-  tagBtnText: { fontSize: 14, fontWeight: '500', color: '#6b7280' },
-  tagBtnTextActive: { color: '#111827', fontWeight: '700' },
-  phonePrefix: { fontSize: 14, color: '#111827', fontWeight: '500' },
-  phoneDivider: { width: 1, height: 20, backgroundColor: '#e5e7eb', marginHorizontal: 12 },
+  input: { 
+    flex: 1, 
+    fontSize: 14, 
+    color: '#0f172a',
+  },
+  twoColRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  phonePrefix: { 
+    fontSize: 14, 
+    color: '#0f172a', 
+    fontWeight: '700',
+    marginRight: 8,
+  },
+  phoneDivider: { 
+    width: 1, 
+    height: 20, 
+    backgroundColor: '#e2e8f0', 
+    marginRight: 10,
+  },
   footer: {
     position: 'absolute',
-    bottom: 0, left: 0, right: 0,
+    bottom: 0, 
+    left: 0, 
+    right: 0,
     padding: 16,
-    backgroundColor: '#fff',
+    backgroundColor: '#ffffff',
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
   },
   submitBtn: {
-    backgroundColor: '#f3e8ff',
-    paddingVertical: 16,
-    borderRadius: 12,
+    backgroundColor: '#ea580c',
+    paddingVertical: 15,
+    borderRadius: 16,
     alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#ea580c',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
   },
   submitBtnDisabled: {
-    backgroundColor: '#f3f4f6',
+    backgroundColor: '#fdba74',
+    shadowOpacity: 0,
+    elevation: 0,
   },
-  submitBtnText: { color: '#9333ea', fontSize: 15, fontWeight: '700', letterSpacing: 0.5 },
+  btnRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  submitBtnText: {
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
 });
