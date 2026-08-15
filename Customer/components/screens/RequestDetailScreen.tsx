@@ -161,8 +161,19 @@ export default function RequestDetailScreen({
         ]);
         setRequest(req);
         
-        if (req.status === 'ON_THE_WAY') {
-          socketService.listenForLocation(requestId, (loc) => setMechanicLocation(loc));
+        if (['MECHANIC_ASSIGNED', 'ACCEPTED', 'ON_THE_WAY', 'ARRIVED'].includes(req.status)) {
+          socketService.listenForLocation(requestId, (loc) => {
+            if (loc && loc.latitude && loc.longitude) {
+              setMechanicLocation({ latitude: Number(loc.latitude), longitude: Number(loc.longitude) });
+            }
+          });
+          if (req.assignedMechanicId) {
+            vehicleService.getMechanicLocation(req.assignedMechanicId).then((loc) => {
+              if (loc && loc.latitude != null && loc.longitude != null) {
+                setMechanicLocation({ latitude: Number(loc.latitude), longitude: Number(loc.longitude) });
+              }
+            }).catch(() => {});
+          }
         }
 
         setSlots(slotsRes);

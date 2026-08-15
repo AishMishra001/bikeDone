@@ -14,4 +14,6 @@ public interface MechanicLocationService {
     EligibleMechanicsResponse findEligibleMechanics(EligibleMechanicSearchRequest request);
 
     MechanicLocationResponse getLocation(UUID mechanicId);
+
+    java.util.List<MechanicLocationResponse> getOnlineMechanics(BigDecimal latitude, BigDecimal longitude, Double radiusKm);
 }

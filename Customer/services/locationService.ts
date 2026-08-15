@@ -220,3 +220,98 @@ export async function fetchCurrentLocation(): Promise<LocationResult> {
     };
   }
 }
+
+/**
+ * Reverse geocodes any given latitude & longitude coordinates.
+ */
+export async function reverseGeocodeLocation(latitude: number, longitude: number): Promise<UserLocationData | null> {
+  const webResult = await reverseGeocodeWeb(latitude, longitude);
+  if (webResult && (webResult.area || webResult.city)) {
+    return {
+      latitude,
+      longitude,
+      area: webResult.area,
+      city: webResult.city,
+      region: webResult.region,
+      postalCode: webResult.postalCode,
+      shortAddress: webResult.shortAddress,
+      fullAddress: webResult.fullAddress,
+    };
+  }
+
+  try {
+    const places = await Location.reverseGeocodeAsync({ latitude, longitude });
+    if (places && places.length > 0) {
+      const place = places[0];
+      const area = place.name || place.subregion || place.district || place.street || '';
+      const city = place.city || place.subregion || place.region || '';
+      const region = place.region || place.country || '';
+      const postalCode = place.postalCode || '';
+
+      const areaStr = area && area !== city ? area : '';
+      const cityStr = city || region;
+      let shortAddress = cityStr || 'Selected Location';
+      if (areaStr && cityStr) shortAddress = `${areaStr}, ${cityStr}`;
+      else if (areaStr) shortAddress = areaStr;
+
+      const fullAddress = [place.name, place.street, place.subregion, place.city, place.region, place.postalCode]
+        .filter(Boolean)
+        .join(', ');
+
+      return {
+        latitude,
+        longitude,
+        area,
+        city,
+        region,
+        postalCode,
+        shortAddress,
+        fullAddress: fullAddress || shortAddress,
+      };
+    }
+  } catch (e) {}
+
+  return {
+    latitude,
+    longitude,
+    area: 'Selected Location',
+    city: 'Location',
+    region: '',
+    shortAddress: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
+    fullAddress: `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`,
+  };
+}
+
+/**
+ * Searches places by text query.
+ */
+export async function searchPlaces(query: string): Promise<Array<{
+  name: string;
+  shortAddress: string;
+  fullAddress: string;
+  latitude: number;
+  longitude: number;
+  postalCode?: string;
+  city?: string;
+}>> {
+  if (!query || query.trim().length < 2) return [];
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=in&q=${encodeURIComponent(query)}&limit=5`;
+    const res = await fetch(url);
+    if (res.ok) {
+      const list = await res.json();
+      return list.map((item: any) => ({
+        name: item.name || item.display_name.split(',')[0],
+        shortAddress: item.display_name.split(',').slice(0, 2).join(', '),
+        fullAddress: item.display_name,
+        latitude: parseFloat(item.lat),
+        longitude: parseFloat(item.lon),
+        city: item.address?.city || item.address?.town || item.address?.state_district,
+        postalCode: item.address?.postcode,
+      }));
+    }
+  } catch (e) {
+    console.warn('Place search failed:', e);
+  }
+  return [];
+}

@@ -3,18 +3,19 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import * as Location from "expo-location";
 import { tokenStorage, LoggedInMechanic, api } from "../../services/api";
 import { socketService } from "../../services/socketService";
+import { dispatchService } from "../../services/dispatchService";
+import { locationService } from "../../services/locationService";
 import { useBadge } from "../../context/BadgeContext";
 
 const updateJobStatus = async (jobId: string, status: string) => {
   try {
-    const response = await fetch(`http://192.168.1.100:8080/api/v1/service-requests/${jobId}/status?status=${status}`, {
-      method: 'PATCH',
-    });
-    if (!response.ok) throw new Error('Failed to update status');
-    return await response.json();
+    return await api.patch(
+      `/service-requests/${jobId}/status?status=${status}`,
+      undefined,
+      { targetService: 'OMS' }
+    );
   } catch (error) {
     console.error("Error updating status:", error);
     throw error;
@@ -37,27 +38,58 @@ export default function JobScreen() {
   const locationIntervalRef = useRef<any>(null);
 
   useEffect(() => {
-    setTimeout(() => {
-      setJob({
-        id,
-        customerName: "Rahul Sharma",
-        customerPhone: "9999999999",
-        vehicleMake: "Royal Enfield",
-        vehicleModel: "Classic 350",
-        issue: "Engine Start Issue & Chain Lube",
-        location: { lat: 28.6200, lng: 77.2100, address: "Sector 62, Near Metro Station, Noida" }
-      });
-      setLoading(false);
-    }, 1000);
+    let isMounted = true;
+
+    const fetchJobDetails = async () => {
+      try {
+        const res = await api.get<any>(`/service-requests/${id}`, { targetService: 'OMS' });
+        if (isMounted && res) {
+          setJob({
+            id: res.id || id,
+            customerName: res.customerName || "Customer",
+            customerPhone: res.customerMobile || res.customerPhone || "9999999999",
+            vehicleMake: res.vehicleMake || res.vehicleBrand || "Royal Enfield",
+            vehicleModel: res.vehicleModel || "Classic 350",
+            issue: res.issueDescription || "Bike Breakdown Service",
+            location: {
+              lat: Number(res.latitude) || 28.6200,
+              lng: Number(res.longitude) || 77.2100,
+              address: res.addressNote || res.locationAddress || "Customer Location"
+            }
+          });
+          if (res.status) {
+            setStatus(res.status);
+          }
+        }
+      } catch (e) {
+        // Fallback default
+        if (isMounted) {
+          setJob({
+            id,
+            customerName: "Rahul Sharma",
+            customerPhone: "9999999999",
+            vehicleMake: "Royal Enfield",
+            vehicleModel: "Classic 350",
+            issue: "Engine Start Issue & Chain Lube",
+            location: { lat: 28.6200, lng: 77.2100, address: "Sector 62, Near Metro Station, Noida" }
+          });
+        }
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    fetchJobDetails();
 
     return () => {
+      isMounted = false;
       if (locationIntervalRef.current) clearInterval(locationIntervalRef.current);
     };
   }, [id]);
 
-  // Start pushing location to Firebase when ON_THE_WAY
+  // Start pushing location when job is active
   useEffect(() => {
-    if (status === "ON_THE_WAY") {
+    if (["MECHANIC_ASSIGNED", "ACCEPTED", "ON_THE_WAY", "ARRIVED"].includes(status)) {
       startLiveTracking();
     } else {
       if (locationIntervalRef.current) clearInterval(locationIntervalRef.current);
@@ -65,18 +97,32 @@ export default function JobScreen() {
   }, [status]);
 
   const startLiveTracking = async () => {
-    const { status: perm } = await Location.requestForegroundPermissionsAsync();
-    if (perm !== "granted") return;
+    const hasPerm = await locationService.requestLocationPermission();
+    if (!hasPerm) return;
     
-    // Push every 5 seconds to Pusher via OMS API
-    locationIntervalRef.current = setInterval(async () => {
+    const pushLiveLocation = async () => {
       try {
-        const loc = await Location.getCurrentPositionAsync({});
-        await socketService.updateLocation(id, loc.coords.latitude, loc.coords.longitude);
+        const loc = await locationService.getCurrentLocation();
+        if (loc && loc.latitude && loc.longitude) {
+          // 1. Push to active job socket channel for instant customer tracking
+          await socketService.updateLocation(id, loc.latitude, loc.longitude);
+
+          // 2. Also keep UMS DB updated in real-time
+          const stored = await tokenStorage.getMechanic();
+          const mechId = stored?.id || (stored as any)?.mechanicId;
+          if (mechId) {
+            dispatchService.updateLocation(mechId, loc.latitude, loc.longitude, true).catch(() => {});
+          }
+        }
       } catch (e) {
         console.warn("Location tracking error", e);
       }
-    }, 5000);
+    };
+
+    // Push immediately then every 3 seconds for smooth real-time tracking
+    pushLiveLocation();
+    if (locationIntervalRef.current) clearInterval(locationIntervalRef.current);
+    locationIntervalRef.current = setInterval(pushLiveLocation, 3000);
   };
 
   const handleUpdateStatus = async (nextStatus: string) => {

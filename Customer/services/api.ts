@@ -185,7 +185,10 @@ export const createApiClient = (baseUrl: string) => ({
       }
 
       const resJson = await response.json();
-      return resJson.data as T;
+      if (resJson === null || resJson === undefined) {
+        return null as unknown as T;
+      }
+      return (resJson.data !== undefined ? resJson.data : resJson) as T;
     } catch (error) {
       throw error;
     }

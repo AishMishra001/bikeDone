@@ -94,7 +94,7 @@ export default function SignupScreen({ onNavigate }: SignupScreenProps) {
         <View style={styles.titleContainer}>
           <Text style={styles.headerTitle}>Create Account</Text>
           <Text style={styles.subtitleLeft}>
-            Join BIKEDONE for instant roadside & garage assistance.
+            Join MYKAARIGAR for instant roadside & garage assistance.
           </Text>
         </View>
 

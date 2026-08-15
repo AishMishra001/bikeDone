@@ -224,7 +224,34 @@ export const api = {
     });
   },
 
+  async patch<T>(path: string, body?: any, options: any = {}): Promise<T> {
+    return this.request<T>(path, {
+      ...options,
+      method: "PATCH",
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+  },
+
+  async put<T>(path: string, body?: any, options: any = {}): Promise<T> {
+    return this.request<T>(path, {
+      ...options,
+      method: "PUT",
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+  },
+
   async get<T>(path: string, options: any = {}): Promise<T> {
     return this.request<T>(path, { ...options, method: "GET" });
   },
+
+  async delete<T>(path: string, options: any = {}): Promise<T> {
+    return this.request<T>(path, { ...options, method: "DELETE" });
+  },
+};
+
+export const omsApi = {
+  get: <T>(path: string, options: any = {}): Promise<T> =>
+    api.get<T>(path, { ...options, targetService: "OMS" }),
+  post: <T>(path: string, body?: any, options: any = {}): Promise<T> =>
+    api.post<T>(path, body, { ...options, targetService: "OMS" }),
 };

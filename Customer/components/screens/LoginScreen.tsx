@@ -126,8 +126,8 @@ export default function LoginScreen({ onNavigate }: LoginScreenProps) {
           <View style={styles.logoIconBox}>
             <Feather name="tool" size={32} color="#f97316" />
           </View>
-          <Text style={styles.logoText}>BIKEDONE</Text>
-          <Text style={styles.subtitle}>Your trusted ride rescue partner.</Text>
+          <Text style={styles.logoText}>MYKAARIGAR</Text>
+          <Text style={styles.subtitle}>Your trusted ride & breakdown rescue partner.</Text>
         </View>
 
         <Text style={styles.headerTitle}>Welcome Back! 👋</Text>

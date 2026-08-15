@@ -80,4 +80,26 @@ public class MechanicLocationServiceImpl implements MechanicLocationService {
                 .isBusy(Boolean.TRUE.equals(location.getIsBusy()))
                 .build();
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MechanicLocationResponse> getOnlineMechanics(BigDecimal latitude, BigDecimal longitude, Double radiusKm) {
+        List<MechanicLocation> locations;
+        if (latitude != null && longitude != null) {
+            double radius = (radiusKm != null && radiusKm > 0) ? radiusKm : 25.0;
+            locations = mechanicLocationRepository.findOnlineMechanicsNearby(latitude, longitude, radius);
+        } else {
+            locations = mechanicLocationRepository.findByIsOnlineTrue();
+        }
+
+        return locations.stream()
+                .map(loc -> MechanicLocationResponse.builder()
+                        .mechanicId(loc.getMechanicId())
+                        .latitude(loc.getLatitude())
+                        .longitude(loc.getLongitude())
+                        .isOnline(Boolean.TRUE.equals(loc.getIsOnline()))
+                        .isBusy(Boolean.TRUE.equals(loc.getIsBusy()))
+                        .build())
+                .toList();
+    }
 }

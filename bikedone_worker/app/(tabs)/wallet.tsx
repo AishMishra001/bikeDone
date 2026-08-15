@@ -208,7 +208,7 @@ export default function WalletScreen() {
         </View>
       )}
 
-      <Text style={styles.effortlessFooterText}>🔒 100% Safe & Instant Wallet Topup powered by BikeDone PaaS</Text>
+      <Text style={styles.effortlessFooterText}>🔒 100% Safe & Instant Wallet Topup powered by MyKaarigar</Text>
     </ScrollView>
   );
 }

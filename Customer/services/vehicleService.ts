@@ -120,6 +120,7 @@ export interface CreateServiceRequestPayload {
   itemId?: string;
   assignedMechanicId?: string;
   servicePin?: string;
+  extraAmount?: number;
 }
 
 export interface CreateServiceRequestResponse {
@@ -144,6 +145,8 @@ export interface MyServiceRequest {
   latitude: number | null;
   longitude: number | null;
   totalPayableAmount: number | null;
+  extraAmount?: number | null;
+  baseCharge?: number | null;
   assignedMechanicId?: string | null;
   servicePin?: string | null;
   description: string | null;
@@ -180,6 +183,14 @@ export interface PublicMechanicProfileResponse {
   mobileNumber: string;
   profilePhotoUrl: string;
   rating: number;
+}
+
+export interface MechanicLocation {
+  mechanicId: string;
+  latitude: number;
+  longitude: number;
+  isOnline: boolean;
+  isBusy: boolean;
 }
 
 export const vehicleService = {
@@ -272,9 +283,41 @@ export const vehicleService = {
   getServiceRequestById: (requestId: string): Promise<MyServiceRequest> =>
     vmsApi.get<MyServiceRequest>(`/service-requests/${requestId}`),
 
+  /** Update extra tip / amount for faster mechanic acceptance */
+  updateExtraAmount: (
+    requestId: string,
+    extraAmount: number,
+  ): Promise<MyServiceRequest> =>
+    vmsApi.request<MyServiceRequest>(
+      `/service-requests/${requestId}/extra-amount?extraAmount=${extraAmount}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ extraAmount }),
+      },
+    ),
+
+  /** Fetch live online mechanics to render on customer map */
+  getOnlineMechanics: (
+    latitude?: number,
+    longitude?: number,
+    radiusKm?: number,
+  ): Promise<MechanicLocation[]> => {
+    const params: string[] = [];
+    if (latitude != null) params.push(`latitude=${latitude}`);
+    if (longitude != null) params.push(`longitude=${longitude}`);
+    if (radiusKm != null) params.push(`radiusKm=${radiusKm}`);
+    const query = params.length > 0 ? `?${params.join("&")}` : "";
+    return api.get<MechanicLocation[]>(`/mechanics/online${query}`);
+  },
+
   /** Fetch mechanic profile */
   getMechanicProfile: (mechanicId: string): Promise<PublicMechanicProfileResponse> =>
     api.get<PublicMechanicProfileResponse>(`/mechanics/${mechanicId}/profile/public`),
+
+  /** Fetch mechanic live location from UMS DB */
+  getMechanicLocation: (mechanicId: string): Promise<MechanicLocation> =>
+    api.get<MechanicLocation>(`/mechanics/${mechanicId}/location`),
 
   /** Cancel an existing service request */
   cancelServiceRequest: (
@@ -304,4 +347,24 @@ export const vehicleService = {
         body: JSON.stringify({ preferredServiceDate, preferredServiceTime }),
       },
     ),
+
+  /** Dynamic DB-driven Serviceability check */
+  checkServiceability: (
+    pincode?: string,
+    latitude?: number,
+    longitude?: number,
+    address?: string,
+  ): Promise<any> => {
+    const params: string[] = [];
+    if (pincode) params.push(`pincode=${encodeURIComponent(pincode)}`);
+    if (latitude != null) params.push(`latitude=${latitude}`);
+    if (longitude != null) params.push(`longitude=${longitude}`);
+    if (address) params.push(`address=${encodeURIComponent(address)}`);
+    const qs = params.length > 0 ? `?${params.join("&")}` : "";
+    return vmsApi.get<any>(`/serviceability/check${qs}`);
+  },
+
+  /** Fetch all active configured serviceable zones from DB */
+  getActiveServiceableZones: (): Promise<any[]> =>
+    vmsApi.get<any[]>("/serviceability/zones"),
 };

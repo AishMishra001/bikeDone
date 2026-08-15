@@ -27,7 +27,10 @@ import GarageScreen from '../../components/screens/GarageScreen';
 import SavedAddressesScreen from '../../components/screens/SavedAddressesScreen';
 import AddAddressScreen from '../../components/screens/AddAddressScreen';
 import InspectionScreen from '../../components/screens/InspectionScreen';
+import NotServiceableScreen from '../../components/screens/NotServiceableScreen';
 import AppBottomNavigation from '../../components/ui/AppBottomNavigation';
+import { checkServiceability, POPULAR_NOIDA_HUBS, ServiceabilityResult } from '../../utils/geoUtils';
+import { fetchCurrentLocation, UserLocationData } from '../../services/locationService';
 import { registerAuthFailureCallback } from '../../services/api';
 import { tokenStorage } from '../../services/tokenStorage';
 
@@ -41,6 +44,25 @@ export default function App() {
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const [editAddress, setEditAddress] = useState<any>(null);
 
+  const [userLocation, setUserLocation] = useState<UserLocationData | null>(null);
+  const [serviceability, setServiceability] = useState<ServiceabilityResult | null>(null);
+  const [hasChosenNoidaLocation, setHasChosenNoidaLocation] = useState<boolean>(false);
+
+  const checkCustomerServiceability = async (): Promise<ServiceabilityResult | null> => {
+    try {
+      const locResult = await fetchCurrentLocation();
+      if (locResult && locResult.success && locResult.location) {
+        setUserLocation(locResult.location);
+        const result = checkServiceability(locResult.location);
+        setServiceability(result);
+        return result;
+      }
+    } catch (e) {
+      console.warn('Serviceability check failed:', e);
+    }
+    return null;
+  };
+
   useEffect(() => {
     registerAuthFailureCallback(() => {
       setCurrentScreen('Login');
@@ -49,7 +71,12 @@ export default function App() {
     const checkExistingSession = async () => {
       const refreshToken = await tokenStorage.getRefreshToken();
       if (refreshToken) {
-        setCurrentScreen('Home');
+        const servResult = await checkCustomerServiceability();
+        if (servResult && !servResult.isServiceable && !hasChosenNoidaLocation) {
+          setCurrentScreen('NotServiceable');
+        } else {
+          setCurrentScreen('Home');
+        }
       } else {
         setCurrentScreen('Login');
       }
@@ -135,6 +162,40 @@ export default function App() {
     setCurrentScreen('RequestDetail');
   };
 
+  const handleSelectNoidaHub = (hub: typeof POPULAR_NOIDA_HUBS[0]) => {
+    const simulatedLoc: UserLocationData = {
+      latitude: hub.latitude,
+      longitude: hub.longitude,
+      shortAddress: hub.name,
+      fullAddress: `${hub.name}, ${hub.landmark}, Uttar Pradesh 201301`,
+      area: hub.name,
+      city: 'Noida',
+      region: 'Uttar Pradesh',
+      postalCode: '201301',
+    };
+    setUserLocation(simulatedLoc);
+    setHasChosenNoidaLocation(true);
+    setServiceability({
+      isServiceable: true,
+      city: 'Noida',
+      matchedZone: 'Noida & Greater Noida Zone',
+    });
+    setCurrentScreen('Home');
+  };
+
+  const handleRefreshLocation = async () => {
+    setHasChosenNoidaLocation(false);
+    const res = await checkCustomerServiceability();
+    if (res && res.isServiceable) {
+      setCurrentScreen('Home');
+    }
+  };
+
+  const handleLogout = async () => {
+    await tokenStorage.clear();
+    setCurrentScreen('Login');
+  };
+
   if (currentScreen === 'loading') {
     return (
       <View style={styles.loadingContainer}>
@@ -153,6 +214,15 @@ export default function App() {
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
+        {currentScreen === 'NotServiceable' && (
+          <NotServiceableScreen
+            detectedLocation={userLocation}
+            serviceabilityResult={serviceability}
+            onRefreshLocation={handleRefreshLocation}
+            onSelectNoidaHub={handleSelectNoidaHub}
+            onLogout={handleLogout}
+          />
+        )}
         {currentScreen === 'Login' && (
           <LoginScreen onNavigate={handleNavigate} />
         )}

@@ -112,7 +112,7 @@ export default function ResetPasswordScreen({
           </View>
           <Text style={styles.headerTitle}>Reset Password 🔒</Text>
           <Text style={styles.subtitle}>
-            Enter your new password to secure your BikeDone account.
+            Enter your new password to secure your MyKaarigar account.
           </Text>
         </View>
 

@@ -44,9 +44,16 @@ public class MechanicDispatchController {
     }
 
     @GetMapping("/{mechanicId}/location")
-    public ResponseEntity<MechanicLocationResponse> getLocation(@PathVariable UUID mechanicId) {
+    public ResponseEntity<com.bikedone.usermanagement.common.response.ApiResponse<MechanicLocationResponse>> getLocation(@PathVariable UUID mechanicId) {
         MechanicLocationResponse response = mechanicLocationService.getLocation(mechanicId);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(
+                com.bikedone.usermanagement.common.response.ApiResponse.<MechanicLocationResponse>builder()
+                        .success(true)
+                        .data(response)
+                        .message("Mechanic location fetched successfully.")
+                        .timestamp(java.time.LocalDateTime.now())
+                        .build()
+        );
     }
 
     @GetMapping("/{mechanicId}/profile/public")
@@ -80,6 +87,22 @@ public class MechanicDispatchController {
                 .data(response)
                 .timestamp(java.time.LocalDateTime.now())
                 .build()
+        );
+    }
+
+    @GetMapping("/online")
+    public ResponseEntity<com.bikedone.usermanagement.common.response.ApiResponse<java.util.List<MechanicLocationResponse>>> getOnlineMechanics(
+            @RequestParam(required = false) BigDecimal latitude,
+            @RequestParam(required = false) BigDecimal longitude,
+            @RequestParam(required = false) Double radiusKm) {
+        java.util.List<MechanicLocationResponse> online = mechanicLocationService.getOnlineMechanics(latitude, longitude, radiusKm);
+        return ResponseEntity.ok(
+                com.bikedone.usermanagement.common.response.ApiResponse.<java.util.List<MechanicLocationResponse>>builder()
+                        .success(true)
+                        .data(online)
+                        .message("Online mechanics fetched successfully.")
+                        .timestamp(java.time.LocalDateTime.now())
+                        .build()
         );
     }
 }

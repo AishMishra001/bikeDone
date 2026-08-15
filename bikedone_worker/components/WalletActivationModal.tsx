@@ -122,7 +122,7 @@ export const WalletActivationModal: React.FC<WalletActivationModalProps> = ({
           <View style={styles.activatedCardContainer}>
             {/* Header Close */}
             <View style={styles.activeHeaderRow}>
-              <Text style={styles.activeHeaderTagline}>BIKEDONE PARTNER WALLET</Text>
+              <Text style={styles.activeHeaderTagline}>MYKAARIGAR PARTNER WALLET</Text>
               <TouchableOpacity style={styles.closeCircleBtn} onPress={onDismiss}>
                 <Ionicons name="close" size={20} color="#FFFFFF" />
               </TouchableOpacity>
@@ -250,7 +250,7 @@ export const WalletActivationModal: React.FC<WalletActivationModalProps> = ({
                 </View>
               )}
 
-              <Text style={styles.effortlessFooterText}>🔒 100% Safe & Instant Wallet Topup powered by BikeDone PaaS</Text>
+              <Text style={styles.effortlessFooterText}>🔒 100% Safe & Instant Wallet Topup powered by MyKaarigar</Text>
             </ScrollView>
           </View>
         </View>
@@ -271,7 +271,7 @@ export const WalletActivationModal: React.FC<WalletActivationModalProps> = ({
 
             <Text style={styles.hurrayTitle}>Hurray! Wallet Activated! 🎉</Text>
             <Text style={styles.hurraySubtitle}>
-              Your BikeDone PaaS Wallet is now active & ready for receiving live bike repair requests!
+              Your MyKaarigar Partner Wallet is now active & ready for receiving live repair requests!
             </Text>
 
             <View style={styles.bonusBox}>
@@ -314,9 +314,9 @@ export const WalletActivationModal: React.FC<WalletActivationModalProps> = ({
             <Ionicons name="wallet" size={40} color="#FF6D00" />
           </View>
 
-          <Text style={styles.title}>Activate BikeDone Wallet</Text>
+          <Text style={styles.title}>Activate MyKaarigar Wallet</Text>
           <Text style={styles.subtitle}>
-            You must activate your wallet before going <Text style={styles.highlightText}>ON DUTY</Text> to receive live bike repair requests.
+            You must activate your wallet before going <Text style={styles.highlightText}>ON DUTY</Text> to receive live service requests.
           </Text>
 
           <View style={styles.joiningBonusCard}>
@@ -367,14 +367,17 @@ export const WalletActivationModal: React.FC<WalletActivationModalProps> = ({
                 {loading ? (
                   <ActivityIndicator color="#FFFFFF" />
                 ) : (
-                  <Text style={styles.primaryBtnText}>Verify OTP & Activate Wallet</Text>
+                  <View style={styles.btnContent}>
+                    <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+                    <Text style={styles.primaryBtnText}>Verify & Activate Wallet</Text>
+                  </View>
                 )}
               </TouchableOpacity>
             </View>
           )}
 
           <Text style={styles.footerNote}>
-            🔒 BikeDone Platform Fee model applies per service request.
+            🔒 MyKaarigar Platform Fee model applies per service request.
           </Text>
         </View>
       </View>

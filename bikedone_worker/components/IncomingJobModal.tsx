@@ -115,6 +115,15 @@ export const IncomingJobModal: React.FC<IncomingJobModalProps> = ({
 
           {/* Details Section */}
           <View style={styles.detailsBox}>
+            {job.extraAmount && Number(job.extraAmount) > 0 ? (
+              <View style={styles.tipBonusBanner}>
+                <Ionicons name="sparkles" size={18} color="#FF9100" />
+                <Text style={styles.tipBonusText}>
+                  +₹{job.extraAmount} Extra Tip Included!
+                </Text>
+              </View>
+            ) : null}
+
             <View style={styles.detailRow}>
               <Ionicons name="person-outline" size={18} color="#757575" />
               <Text style={styles.detailText}>
@@ -253,6 +262,22 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 12,
     marginBottom: 24,
+  },
+  tipBonusBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 145, 0, 0.15)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 145, 0, 0.4)",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    gap: 8,
+  },
+  tipBonusText: {
+    color: "#FF9100",
+    fontWeight: "800",
+    fontSize: 14,
   },
   detailRow: {
     flexDirection: "row",

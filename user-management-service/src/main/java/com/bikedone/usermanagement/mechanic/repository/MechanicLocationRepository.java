@@ -14,6 +14,23 @@ public interface MechanicLocationRepository extends JpaRepository<MechanicLocati
 
     Optional<MechanicLocation> findByMechanicId(UUID mechanicId);
 
+    List<MechanicLocation> findByIsOnlineTrue();
+
+    /**
+     * Native Haversine formula query to find online mechanics within radius (in KM)
+     */
+    @Query(value = "SELECT * FROM mechanic_locations ml " +
+            "WHERE ml.is_online = true " +
+            "AND (6371 * acos(cos(radians(:latitude)) * cos(radians(ml.latitude)) * " +
+            "cos(radians(ml.longitude) - radians(:longitude)) + " +
+            "sin(radians(:latitude)) * sin(radians(ml.latitude)))) <= :radiusKm", 
+            nativeQuery = true)
+    List<MechanicLocation> findOnlineMechanicsNearby(
+            @Param("latitude") BigDecimal latitude,
+            @Param("longitude") BigDecimal longitude,
+            @Param("radiusKm") double radiusKm
+    );
+
     /**
      * Native Haversine formula query to find online & available mechanics within radius (in KM)
      */

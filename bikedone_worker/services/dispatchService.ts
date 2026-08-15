@@ -10,6 +10,8 @@ export interface IncomingJobRequest {
   addressNote?: string;
   dispatchRound: number;
   timeoutSeconds: number;
+  extraAmount?: number;
+  totalPayableAmount?: number;
 }
 
 export const dispatchService = {

@@ -126,7 +126,7 @@ export default function ProfileScreen() {
           <Text style={styles.logoutText}>Log Out</Text>
         </TouchableOpacity>
         
-        <Text style={styles.versionText}>BikeDone PaaS Partner App • Version 1.0.0</Text>
+        <Text style={styles.versionText}>MyKaarigar Partner App • Version 1.0.0</Text>
       </ScrollView>
 
       {/* MODALS */}

@@ -15,6 +15,8 @@ import { useUserLocation } from '../../hooks/useUserLocation';
 import { api } from '../../services/api';
 import { vehicleService, MyServiceRequest } from '../../services/vehicleService';
 import ProfileSidebar from '../ui/ProfileSidebar';
+import LocationPickerModal from '../ui/LocationPickerModal';
+import { UserLocationData } from '../../services/locationService';
 
 interface HomeScreenProps {
   onNavigate: (screen: string, params?: any) => void;
@@ -36,11 +38,15 @@ interface FullUserProfile {
 export default function HomeScreen({ onNavigate, initialSidebarOpen = false }: HomeScreenProps) {
   const [user, setUser] = useState<LoggedInUser | null>(null);
   const [fullProfile, setFullProfile] = useState<FullUserProfile | null>(null);
-  const { loading: locationLoading, location, errorType, refreshLocation } = useUserLocation();
+  const { loading: locationLoading, location: gpsLocation, errorType, refreshLocation } = useUserLocation();
+  const [customLocation, setCustomLocation] = useState<UserLocationData | null>(null);
+  const [showLocationPicker, setShowLocationPicker] = useState<boolean>(false);
   const [hoveredCard, setHoveredCard] = useState<string | null>(null);
   const [sidebarVisible, setSidebarVisible] = useState(initialSidebarOpen);
   const [activeRequest, setActiveRequest] = useState<MyServiceRequest | null>(null);
   const sosOpacity = useRef(new Animated.Value(1)).current;
+
+  const activeLocation = customLocation || gpsLocation;
 
   useEffect(() => {
     const loadUser = async () => {
@@ -91,11 +97,11 @@ export default function HomeScreen({ onNavigate, initialSidebarOpen = false }: H
   }, [sosOpacity]);
 
   const renderLocationText = () => {
+    if (activeLocation) {
+      return <Text style={styles.locationText} numberOfLines={1}>{activeLocation.shortAddress || activeLocation.area || 'Location selected'}</Text>;
+    }
     if (locationLoading) {
       return <Text style={styles.locationText} numberOfLines={1}>Detecting...</Text>;
-    }
-    if (location) {
-      return <Text style={styles.locationText} numberOfLines={1}>{location.shortAddress || 'Location unknown'}</Text>;
     }
     if (errorType === 'DISABLED') {
       return <Text style={styles.locationText} numberOfLines={1}>Turn on location</Text>;
@@ -103,7 +109,7 @@ export default function HomeScreen({ onNavigate, initialSidebarOpen = false }: H
     if (errorType === 'DENIED') {
       return <Text style={styles.locationText} numberOfLines={1}>Enable location</Text>;
     }
-    return <Text style={styles.locationText} numberOfLines={1}>Tap to fetch location</Text>;
+    return <Text style={styles.locationText} numberOfLines={1}>Tap to select location</Text>;
   };
 
   const getGreetingName = () => {
@@ -145,7 +151,7 @@ export default function HomeScreen({ onNavigate, initialSidebarOpen = false }: H
           {/* Location Pill */}
           <TouchableOpacity 
             style={styles.locationPill} 
-            onPress={refreshLocation}
+            onPress={() => setShowLocationPicker(true)}
             activeOpacity={0.7}
           >
             <Feather name="map-pin" size={14} color="#ffedd5" />
@@ -234,37 +240,6 @@ export default function HomeScreen({ onNavigate, initialSidebarOpen = false }: H
         </TouchableOpacity>
       </ScrollView>
 
-      {activeRequest && (
-        <TouchableOpacity 
-          style={styles.activeRequestWidget} 
-          activeOpacity={0.9} 
-          onPress={() => onNavigate('FindingMechanic', { requestId: activeRequest.id, requestNumber: activeRequest.requestNumber })}
-        >
-          <View style={styles.widgetIconContainer}>
-            <Feather name="navigation" size={20} color="#ffffff" />
-          </View>
-          <View style={styles.widgetTextContainer}>
-            <View style={styles.widgetHeaderRow}>
-              <View style={styles.liveIndicatorDot} />
-              <Text style={styles.widgetTitle} numberOfLines={1}>
-                {activeRequest.vehicleName ? `${activeRequest.vehicleName} • #${activeRequest.requestNumber}` : `Request #${activeRequest.requestNumber}`}
-              </Text>
-            </View>
-            <Text style={styles.widgetSubtitle} numberOfLines={1}>
-              {["SEARCHING"].includes(activeRequest.status) 
-                ? "Connecting your mechanic..." 
-                : ["ON_THE_WAY", "ARRIVED"].includes(activeRequest.status)
-                ? "Mechanic on the way • Tap to track"
-                : "Mechanic assigned • Tap to track"}
-            </Text>
-          </View>
-          <View style={styles.trackBadge}>
-            <Text style={styles.trackBadgeText}>Track</Text>
-            <Feather name="chevron-right" size={14} color="#f97316" />
-          </View>
-        </TouchableOpacity>
-      )}
-
       <ProfileSidebar
         visible={sidebarVisible}
         onClose={() => {
@@ -276,6 +251,19 @@ export default function HomeScreen({ onNavigate, initialSidebarOpen = false }: H
         onNavigate={onNavigate}
         user={fullProfile || user}
         completionPercentage={completionPercentage}
+      />
+
+      {/* Interactive Handpick Location & Map Picker Modal */}
+      <LocationPickerModal
+        visible={showLocationPicker}
+        initialLocation={activeLocation || null}
+        onClose={() => setShowLocationPicker(false)}
+        onSelectLocation={(newLoc, isServ) => {
+          setCustomLocation(newLoc);
+          if (!isServ) {
+            onNavigate('NotServiceable');
+          }
+        }}
       />
     </View>
   );
@@ -289,7 +277,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 24,
-    paddingBottom: 220,
+    paddingBottom: 170,
   },
   topCard: {
     backgroundColor: '#f97316',
@@ -298,9 +286,9 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     shadowColor: '#f97316',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.2,
     shadowRadius: 10,
-    elevation: 4,
+    elevation: 8,
   },
   header: {
     flexDirection: 'row',
@@ -309,8 +297,8 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   greetingText: {
-    fontSize: 26,
-    fontWeight: '800',
+    fontSize: 22,
+    fontWeight: 'bold',
     color: '#ffffff',
   },
   profileIcon: {
@@ -329,22 +317,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
+    maxWidth: '100%',
   },
   locationTextContainer: {
     marginHorizontal: 8,
-    maxWidth: 200,
+    flexShrink: 1,
   },
   locationText: {
     color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 12,
+    fontWeight: '500',
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 18,
+    fontWeight: 'bold',
     color: '#111827',
     marginBottom: 16,
-    marginLeft: 4,
   },
   gridContainer: {
     flexDirection: 'row',
@@ -353,21 +341,29 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   gridCard: {
-    width: '47%',
+    width: '48%',
     backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 20,
+    borderRadius: 20,
+    padding: 16,
     alignItems: 'center',
-    justifyContent: 'center',
     marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
-    elevation: 3,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#f3f4f6',
   },
   gridCardHovered: {
-    backgroundColor: '#f3f4f6',
+    backgroundColor: '#ffffff',
+    borderColor: '#f97316',
+    shadowColor: '#f97316',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
+    transform: [{ translateY: -2 }],
   },
   iconCircle: {
     width: 56,
@@ -379,15 +375,12 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   iconCircleActive: {
-    backgroundColor: '#f97316',
+    backgroundColor: '#ffedd5',
   },
   gridCardText: {
     fontSize: 15,
     fontWeight: '700',
     color: '#374151',
-  },
-  emergencyCard: {
-    backgroundColor: '#fee2e2',
   },
   emergencyIconCircle: {
     width: 56,
@@ -398,59 +391,62 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
+  emergencyCard: {
+    backgroundColor: '#fee2e2',
+  },
+  emergencyText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1f2937',
+  },
   sosText: {
     color: '#ffffff',
     fontWeight: 'bold',
     fontSize: 16,
   },
-  emergencyText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#b91c1c',
-  },
   promoContainer: {
-    borderRadius: 20,
+    borderRadius: 24,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.1,
     shadowRadius: 12,
-    elevation: 5,
+    elevation: 4,
+    marginBottom: 20,
   },
   promoBackground: {
-    backgroundColor: '#1f2937',
-    padding: 24,
-    minHeight: 200,
+    backgroundColor: '#1e293b',
+    padding: 20,
+    borderRadius: 24,
   },
   offerBadge: {
     backgroundColor: '#10b981',
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
     alignSelf: 'flex-start',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   offerBadgeText: {
     color: '#ffffff',
-    fontSize: 12,
-    fontWeight: '800',
+    fontSize: 10,
+    fontWeight: 'bold',
     textTransform: 'uppercase',
   },
   promoTitle: {
     color: '#ffffff',
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 8,
-    lineHeight: 30,
   },
   promoSubtitle: {
-    color: '#9ca3af',
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 20,
+    color: '#94a3b8',
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 16,
   },
   bookNowBtn: {
-    backgroundColor: '#ea580c',
+    backgroundColor: '#f97316',
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 8,
@@ -460,79 +456,6 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontWeight: 'bold',
     fontSize: 15,
-  },
-  activeRequestWidget: {
-    position: 'absolute',
-    bottom: 112,
-    left: 16,
-    right: 16,
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    elevation: 10,
-    zIndex: 99,
-    borderLeftWidth: 4,
-    borderLeftColor: '#f97316',
-    borderWidth: 1,
-    borderColor: '#f3f4f6',
-  },
-  widgetIconContainer: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#f97316',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 10,
-  },
-  widgetTextContainer: {
-    flex: 1,
-  },
-  widgetHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 2,
-  },
-  liveIndicatorDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-    backgroundColor: '#22c55e',
-    marginRight: 6,
-  },
-  widgetTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  widgetSubtitle: {
-    fontSize: 11,
-    color: '#6b7280',
-    fontWeight: '500',
-  },
-  trackBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff7ed',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#ffedd5',
-    gap: 2,
-    marginLeft: 6,
-  },
-  trackBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#f97316',
   },
 });
 

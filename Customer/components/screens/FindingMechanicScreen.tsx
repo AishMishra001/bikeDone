@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { StyleSheet, Text, TouchableOpacity, View, ActivityIndicator, Modal, Dimensions, ScrollView, TextInput, Image, Linking } from "react-native";
 import { Feather, FontAwesome } from "@expo/vector-icons";
-import MapView, { Marker, PROVIDER_GOOGLE } from '../ui/MapView';
-import { vehicleService, MyServiceRequest, PublicMechanicProfileResponse } from "../../services/vehicleService";
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from '../ui/MapView';
+import { vehicleService, MyServiceRequest, PublicMechanicProfileResponse, MechanicLocation } from "../../services/vehicleService";
 import { socketService } from "../../services/socketService";
+import { getDistanceInKm, formatDistance, calculateETA, generateCurvedRoute } from "../../utils/routeUtils";
 
 interface FindingMechanicScreenProps {
   onNavigate: (screen: string, params?: any) => void;
@@ -35,6 +36,7 @@ export default function FindingMechanicScreen({ onNavigate, requestId, requestNu
   const [reqDetails, setReqDetails] = useState<MyServiceRequest | null>(null);
   
   const [mechanicProfile, setMechanicProfile] = useState<PublicMechanicProfileResponse | null>(null);
+  const [onlineMechanics, setOnlineMechanics] = useState<MechanicLocation[]>([]);
 
   const [cancelModalVisible, setCancelModalVisible] = useState(false);
   const [cancelling, setCancelling] = useState(false);
@@ -44,6 +46,8 @@ export default function FindingMechanicScreen({ onNavigate, requestId, requestNu
   
   const [selectedTip, setSelectedTip] = useState<number>(0);
   const [customTip, setCustomTip] = useState<string>("");
+  const tipInitializedRef = useRef<boolean>(false);
+  const customTipTimeoutRef = useRef<any>(null);
 
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [liveMechanicLat, setLiveMechanicLat] = useState<number | null>(null);
@@ -56,17 +60,39 @@ export default function FindingMechanicScreen({ onNavigate, requestId, requestNu
       if (!active) return;
       try {
         const req = await vehicleService.getServiceRequestById(requestId);
+        if (!active) return;
         setReqDetails(req);
         
+        // Sync initial tip from DB if not already initialized
+        if (!tipInitializedRef.current && req.extraAmount != null && req.extraAmount > 0) {
+          tipInitializedRef.current = true;
+          const amt = Number(req.extraAmount);
+          if (TIP_OPTIONS.includes(amt)) {
+            setSelectedTip(amt);
+          } else {
+            setCustomTip(amt.toString());
+            setSelectedTip(0);
+          }
+        }
+
         if (["MECHANIC_ASSIGNED", "ACCEPTED", "ON_THE_WAY", "ARRIVED"].includes(req.status)) {
           setStatus("accepted");
-          if (req.assignedMechanicId && !mechanicProfile) {
-            try {
-              const profile = await vehicleService.getMechanicProfile(req.assignedMechanicId);
-              if (active) setMechanicProfile(profile);
-            } catch (err) {
-              console.error("Failed to fetch mechanic profile:", err);
+          if (req.assignedMechanicId) {
+            // Fetch profile if not loaded
+            if (!mechanicProfile) {
+              vehicleService.getMechanicProfile(req.assignedMechanicId)
+                .then((profile) => { if (active) setMechanicProfile(profile); })
+                .catch((err) => console.error("Failed to fetch mechanic profile:", err));
             }
+            // Fetch live location from UMS DB if WebSocket hasn't delivered yet
+            vehicleService.getMechanicLocation(req.assignedMechanicId)
+              .then((loc) => {
+                if (active && loc && loc.latitude != null && loc.longitude != null) {
+                  setLiveMechanicLat(Number(loc.latitude));
+                  setLiveMechanicLng(Number(loc.longitude));
+                }
+              })
+              .catch(() => {});
           }
         } else if (req.status === "INSPECTION_STARTED" || req.status === "WORK_STARTED") {
            setStatus("accepted");
@@ -82,23 +108,46 @@ export default function FindingMechanicScreen({ onNavigate, requestId, requestNu
       }
     };
 
-    const interval = setInterval(checkStatus, 4000);
-    const timeout = setTimeout(checkStatus, 1000);
+    const fetchOnlineMechanics = async () => {
+      if (!active) return;
+      try {
+        const currentLat = reqDetails?.latitude || 28.5813412;
+        const currentLng = reqDetails?.longitude || 77.3399905;
+        const onlineList = await vehicleService.getOnlineMechanics(Number(currentLat), Number(currentLng), 25);
+        if (active && Array.isArray(onlineList)) {
+          setOnlineMechanics(onlineList);
+        }
+      } catch (err) {
+        // Silently catch if not available
+      }
+    };
+
+    const interval = setInterval(() => {
+      checkStatus();
+      if (status === "searching") {
+        fetchOnlineMechanics();
+      }
+    }, 3500);
+
+    const timeout = setTimeout(() => {
+      checkStatus();
+      fetchOnlineMechanics();
+    }, 600);
 
     let unsubscribeMessage: any = null;
     let unsubscribeLocation: any = null;
 
     if (status === "accepted") {
       unsubscribeMessage = socketService.listenForMessages(requestId, (msg) => {
-        if (msg.senderId !== "customer") { // simple check, normally use real customer ID
+        if (msg.senderId !== "customer") {
           setUnreadCount(prev => prev + 1);
         }
       });
 
       unsubscribeLocation = socketService.listenForLocation(requestId, (loc) => {
         if (loc.latitude && loc.longitude) {
-          setLiveMechanicLat(loc.latitude);
-          setLiveMechanicLng(loc.longitude);
+          setLiveMechanicLat(Number(loc.latitude));
+          setLiveMechanicLng(Number(loc.longitude));
         }
       });
     }
@@ -107,10 +156,11 @@ export default function FindingMechanicScreen({ onNavigate, requestId, requestNu
       active = false;
       clearInterval(interval);
       clearTimeout(timeout);
+      if (customTipTimeoutRef.current) clearTimeout(customTipTimeoutRef.current);
       if (unsubscribeMessage) unsubscribeMessage();
       if (unsubscribeLocation) unsubscribeLocation();
     };
-  }, [requestId, onNavigate, mechanicProfile, status]);
+  }, [requestId, onNavigate, mechanicProfile, status, reqDetails?.latitude, reqDetails?.longitude, reqDetails?.assignedMechanicId]);
 
   const handleCancel = async () => {
     if (!selectedReason) return;
@@ -126,9 +176,47 @@ export default function FindingMechanicScreen({ onNavigate, requestId, requestNu
     }
   };
 
-  const handleTipSelect = (amount: number) => {
-    setSelectedTip(amount);
+  const handleTipSelect = async (amount: number) => {
+    tipInitializedRef.current = true;
+    const newTip = (selectedTip === amount && !customTip) ? 0 : amount;
+    setSelectedTip(newTip);
     setCustomTip("");
+    
+    try {
+      const updated = await vehicleService.updateExtraAmount(requestId, newTip);
+      if (updated) {
+        setReqDetails(prev => prev ? {
+          ...prev,
+          totalPayableAmount: updated.totalPayableAmount,
+          extraAmount: updated.extraAmount
+        } : updated);
+      }
+    } catch (err) {
+      console.error("Failed to persist extra tip:", err);
+    }
+  };
+
+  const handleCustomTipChange = (val: string) => {
+    tipInitializedRef.current = true;
+    setCustomTip(val);
+    setSelectedTip(0);
+    const parsed = parseInt(val) || 0;
+
+    if (customTipTimeoutRef.current) clearTimeout(customTipTimeoutRef.current);
+    customTipTimeoutRef.current = setTimeout(async () => {
+      try {
+        const updated = await vehicleService.updateExtraAmount(requestId, parsed);
+        if (updated) {
+          setReqDetails(prev => prev ? {
+            ...prev,
+            totalPayableAmount: updated.totalPayableAmount,
+            extraAmount: updated.extraAmount
+          } : updated);
+        }
+      } catch (err) {
+        console.error("Failed to persist custom tip:", err);
+      }
+    }, 400);
   };
 
   if (status === "not_found" || status === "cancelled") {
@@ -153,21 +241,33 @@ export default function FindingMechanicScreen({ onNavigate, requestId, requestNu
     );
   }
 
-  const lat = reqDetails?.latitude || 28.5813412;
-  const lng = reqDetails?.longitude || 77.3399905;
-  const basePrice = reqDetails?.totalPayableAmount;
+  const lat = Number(reqDetails?.latitude) || 28.5813412;
+  const lng = Number(reqDetails?.longitude) || 77.3399905;
+  const totalDbAmount = reqDetails?.totalPayableAmount != null ? Number(reqDetails.totalPayableAmount) : null;
+  const dbExtra = reqDetails?.extraAmount != null ? Number(reqDetails.extraAmount) : 0;
+  const baseFare = totalDbAmount != null ? (totalDbAmount - dbExtra) : null;
+
   const activeTip = customTip ? parseInt(customTip) || 0 : selectedTip;
+  const displayTotal = baseFare != null ? (baseFare + activeTip) : null;
   
   let displayPriceText = "";
-  if (basePrice != null && basePrice > 0) {
-    displayPriceText = `₹${basePrice + activeTip}`;
+  if (displayTotal != null && displayTotal > 0) {
+    displayPriceText = `₹${displayTotal.toFixed(1)}`;
   } else {
     displayPriceText = activeTip > 0 ? `+₹${activeTip} Tip` : "To be decided";
   }
 
-  // Placeholder Mechanic live location - this would normally be streamed from WebSocket
-  const mechanicLat = liveMechanicLat || lat + 0.002;
-  const mechanicLng = liveMechanicLng || lng + 0.002;
+  // Mechanic live location (streamed from WebSocket / UMS fallback)
+  const mechanicLat = liveMechanicLat != null ? liveMechanicLat : lat;
+  const mechanicLng = liveMechanicLng != null ? liveMechanicLng : lng;
+
+  const distanceKm = getDistanceInKm(lat, lng, mechanicLat, mechanicLng);
+  const etaText = calculateETA(distanceKm);
+  const distanceText = formatDistance(distanceKm);
+  const routeCoords = generateCurvedRoute(
+    { latitude: mechanicLat, longitude: mechanicLng },
+    { latitude: lat, longitude: lng }
+  );
 
   return (
     <View style={styles.mapContainer}>
@@ -181,12 +281,22 @@ export default function FindingMechanicScreen({ onNavigate, requestId, requestNu
           longitudeDelta: 0.02,
         }}
         region={{
-          latitude: lat,
-          longitude: lng,
-          latitudeDelta: 0.02,
-          longitudeDelta: 0.02,
+          latitude: (lat + mechanicLat) / 2,
+          longitude: (lng + mechanicLng) / 2,
+          latitudeDelta: Math.max(Math.abs(lat - mechanicLat) * 1.8, 0.02),
+          longitudeDelta: Math.max(Math.abs(lng - mechanicLng) * 1.8, 0.02),
         }}
       >
+        {/* Live Route Polyline connecting Mechanic -> Customer (Rapido Style) */}
+        {status === "accepted" && routeCoords.length > 1 && (
+          <Polyline
+            coordinates={routeCoords}
+            strokeColor="#f97316"
+            strokeWidth={4}
+            lineDashPattern={[0]}
+          />
+        )}
+
         <Marker 
           coordinate={{ latitude: lat, longitude: lng }}
           title="You are here"
@@ -195,14 +305,37 @@ export default function FindingMechanicScreen({ onNavigate, requestId, requestNu
             <Feather name="user" size={16} color="#ffffff" />
           </View>
         </Marker>
+
+        {/* Display nearby mechanics who are ON DUTY (Online) */}
+        {status === "searching" && onlineMechanics.map((mech) => {
+          if (mech.latitude == null || mech.longitude == null) return null;
+          return (
+            <Marker 
+              key={mech.mechanicId}
+              coordinate={{ latitude: Number(mech.latitude), longitude: Number(mech.longitude) }}
+              title="MyKaarigar Mechanic (On Duty)"
+            >
+              <View style={styles.onlineMechanicMarkerContainer}>
+                <FontAwesome name="wrench" size={14} color="#ffffff" />
+                <View style={styles.onlineDot} />
+              </View>
+            </Marker>
+          );
+        })}
         
         {status === "accepted" && (
           <Marker 
             coordinate={{ latitude: mechanicLat, longitude: mechanicLng }}
-            title="Mechanic"
+            title={`Assigned Mechanic (${etaText})`}
           >
-            <View style={styles.mechanicMarkerContainer}>
-               <FontAwesome name="wrench" size={16} color="#ffffff" />
+            <View style={styles.mechanicMarkerWrapper}>
+              <View style={styles.etaBubble}>
+                <Text style={styles.etaBubbleText}>{etaText}</Text>
+              </View>
+              <View style={styles.mechanicMarkerContainer}>
+                 <FontAwesome name="wrench" size={16} color="#ffffff" />
+                 <View style={styles.onlineDot} />
+              </View>
             </View>
           </Marker>
         )}
@@ -228,7 +361,7 @@ export default function FindingMechanicScreen({ onNavigate, requestId, requestNu
               </TouchableOpacity>
             </View>
 
-            <Text style={[styles.priceHighlight, basePrice == null && !activeTip ? { fontSize: 22, color: "#6b7280" } : null]}>
+            <Text style={[styles.priceHighlight, baseFare == null && !activeTip ? { fontSize: 22, color: "#6b7280" } : null]}>
               {displayPriceText}
             </Text>
 
@@ -240,19 +373,18 @@ export default function FindingMechanicScreen({ onNavigate, requestId, requestNu
                     key={tip}
                     style={[styles.tipBadge, selectedTip === tip && !customTip ? styles.tipBadgeActive : null]}
                     onPress={() => handleTipSelect(tip)}
+                    activeOpacity={0.7}
                   >
                     <Text style={[styles.tipText, selectedTip === tip && !customTip ? styles.tipTextActive : null]}>+₹{tip}</Text>
                   </TouchableOpacity>
                 ))}
                 <TextInput
-                  style={styles.customTipInput}
+                  style={[styles.customTipInput, customTip ? styles.customTipInputActive : null]}
                   placeholder="Custom"
+                  placeholderTextColor="#9ca3af"
                   keyboardType="number-pad"
                   value={customTip}
-                  onChangeText={(val) => {
-                    setCustomTip(val);
-                    setSelectedTip(0);
-                  }}
+                  onChangeText={handleCustomTipChange}
                 />
               </ScrollView>
               <Text style={styles.tipDisclaimer}>100% of the extra amount goes to your mechanic.</Text>
@@ -282,9 +414,25 @@ export default function FindingMechanicScreen({ onNavigate, requestId, requestNu
           // MECHANIC ASSIGNED VIEW (Like Uber)
           <View style={styles.acceptedView}>
             
+            {/* Live Moving Route & ETA Banner */}
+            <View style={styles.liveTrackingBanner}>
+              <View style={styles.liveTrackingPulseDot} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.liveTrackingTitle}>
+                  {reqDetails?.status === "ON_THE_WAY" ? "Mechanic is on the way" : "Mechanic Assigned & Connected"}
+                </Text>
+                <Text style={styles.liveTrackingSub}>
+                  <Text style={{ fontWeight: '800', color: '#ea580c' }}>{distanceText}</Text> away • <Text style={{ fontWeight: '800', color: '#16a34a' }}>ETA {etaText}</Text>
+                </Text>
+              </View>
+              <View style={styles.liveBadgePill}>
+                <Text style={styles.liveBadgePillText}>LIVE GPS</Text>
+              </View>
+            </View>
+
             <View style={styles.topHeader}>
               <View style={styles.findingRow}>
-                <Text style={styles.findingText}>Mechanic Assigned</Text>
+                <Text style={styles.findingText}>Mechanic Details</Text>
               </View>
               <TouchableOpacity onPress={() => setDetailsModalVisible(true)} style={styles.detailsBtn}>
                 <Feather name="more-vertical" size={24} color="#4b5563" />
@@ -397,21 +545,21 @@ export default function FindingMechanicScreen({ onNavigate, requestId, requestNu
               </View>
               <View style={styles.divider} />
               
-              {basePrice != null && basePrice > 0 ? (
+              {baseFare != null && baseFare > 0 ? (
                 <>
                   <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Base Fare</Text>
-                    <Text style={styles.detailValue}>₹{basePrice}</Text>
+                    <Text style={styles.detailLabel}>Base Fare (Services & GST)</Text>
+                    <Text style={styles.detailValue}>₹{baseFare.toFixed(1)}</Text>
                   </View>
                   {activeTip > 0 && (
                     <View style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>Extra Tip</Text>
+                      <Text style={styles.detailLabel}>Extra Tip to Mechanic</Text>
                       <Text style={styles.detailValue}>+₹{activeTip}</Text>
                     </View>
                   )}
                   <View style={styles.detailRowTotal}>
                     <Text style={styles.detailLabelTotal}>Current Total</Text>
-                    <Text style={styles.detailValueTotal}>₹{basePrice + activeTip}</Text>
+                    <Text style={styles.detailValueTotal}>₹{displayTotal ? displayTotal.toFixed(1) : baseFare.toFixed(1)}</Text>
                   </View>
                 </>
               ) : (
@@ -422,7 +570,7 @@ export default function FindingMechanicScreen({ onNavigate, requestId, requestNu
                   </View>
                   {activeTip > 0 && (
                     <View style={styles.detailRowTotal}>
-                      <Text style={styles.detailLabelTotal}>Extra Tip</Text>
+                      <Text style={styles.detailLabelTotal}>Extra Tip to Mechanic</Text>
                       <Text style={styles.detailValueTotal}>+₹{activeTip}</Text>
                     </View>
                   )}
@@ -534,8 +682,71 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 4,
   },
+  mechanicMarkerWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  etaBubble: {
+    backgroundColor: '#111827',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 12,
+    marginBottom: 4,
+    borderWidth: 1,
+    borderColor: '#f97316',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 4,
+  },
+  etaBubbleText: {
+    color: '#ffffff',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  liveTrackingBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF7ED',
+    borderWidth: 1.5,
+    borderColor: '#FED7AA',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 14,
+    gap: 10,
+  },
+  liveTrackingPulseDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#ea580c',
+  },
+  liveTrackingTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#9a3412',
+  },
+  liveTrackingSub: {
+    fontSize: 12,
+    color: '#431407',
+    marginTop: 2,
+  },
+  liveBadgePill: {
+    backgroundColor: '#ea580c',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  liveBadgePillText: {
+    color: '#ffffff',
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
   mechanicMarkerContainer: {
-    backgroundColor: "#2563eb",
+    backgroundColor: "#ea580c",
     padding: 8,
     borderRadius: 20,
     borderWidth: 2,
@@ -545,6 +756,32 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 3,
     elevation: 4,
+  },
+  onlineMechanicMarkerContainer: {
+    backgroundColor: "#f97316",
+    padding: 8,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: "#ffffff",
+    shadowColor: "#f97316",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 4,
+    elevation: 6,
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  onlineDot: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#22c55e',
+    borderWidth: 1.5,
+    borderColor: '#ffffff',
   },
   bottomSheet: {
     position: "absolute",
@@ -639,6 +876,11 @@ const styles = StyleSheet.create({
     color: "#111827",
     minWidth: 80,
     textAlign: "center",
+  },
+  customTipInputActive: {
+    borderColor: "#f97316",
+    backgroundColor: "#fff7ed",
+    color: "#f97316",
   },
   tipDisclaimer: {
     fontSize: 12,

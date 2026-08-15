@@ -7,6 +7,8 @@ import {
   Switch,
   TouchableOpacity,
   Image,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Colors, Shadows } from '@/constants/theme';
@@ -17,6 +19,9 @@ import { IncomingJobModal } from '@/components/IncomingJobModal';
 import { WalletActivationModal } from '@/components/WalletActivationModal';
 import { dispatchService, IncomingJobRequest } from '@/services/dispatchService';
 import { walletService, WalletData } from '@/services/walletService';
+import { locationService, Coordinates } from '@/services/locationService';
+import { ServiceZoneModal } from '@/components/ServiceZoneModal';
+import { isWithinNoidaServiceZone } from '@/utils/geoUtils';
 
 export default function DashboardHomeScreen() {
   const router = useRouter();
@@ -28,22 +33,46 @@ export default function DashboardHomeScreen() {
   const [activeAcceptedJob, setActiveAcceptedJob] = useState<any>(null);
   const [wallet, setWallet] = useState<WalletData | null>(null);
   const [showWalletModal, setShowWalletModal] = useState<boolean>(false);
+  const [showServiceZoneModal, setShowServiceZoneModal] = useState<boolean>(false);
+  const [currentCoords, setCurrentCoords] = useState<Coordinates | null>(null);
+  const [gpsLoading, setGpsLoading] = useState<boolean>(false);
 
   useEffect(() => {
     fetchProfile();
     fetchActiveJob();
+    // Warm up GPS location on mount
+    locationService.getCurrentLocation().then((loc) => {
+      if (loc) setCurrentCoords(loc);
+    }).catch(() => {});
   }, []);
 
   const getMechanicId = () => {
     return mechanicData?.id || mechanicData?.mechanicId || '4043b9cd-bb8d-495d-af42-6305d72133c6';
   };
 
+  const syncLocationWithUMS = async (onlineStatus: boolean) => {
+    const mechanicId = getMechanicId();
+    if (!mechanicId) return;
+
+    try {
+      const loc = await locationService.getCurrentLocation();
+      if (loc && loc.latitude && loc.longitude) {
+        setCurrentCoords(loc);
+        await dispatchService.updateLocation(mechanicId, loc.latitude, loc.longitude, onlineStatus);
+      } else if (currentCoords) {
+        await dispatchService.updateLocation(mechanicId, currentCoords.latitude, currentCoords.longitude, onlineStatus);
+      }
+    } catch (err) {
+      console.warn('Location sync failed:', err);
+    }
+  };
+
   useEffect(() => {
     if (!isOnline) return;
     const mechanicId = getMechanicId();
 
-    const sendLocationPing = () => {
-      dispatchService.updateLocation(mechanicId, 28.6139, 77.2090, true).catch(() => {});
+    const sendLocationPing = async () => {
+      await syncLocationWithUMS(true);
     };
 
     const checkPendingNotifications = async () => {
@@ -57,7 +86,7 @@ export default function DashboardHomeScreen() {
     sendLocationPing();
     checkPendingNotifications();
 
-    const locInterval = setInterval(sendLocationPing, 15000);
+    const locInterval = setInterval(sendLocationPing, 10000);
     const notifInterval = setInterval(checkPendingNotifications, 3000);
     const activeJobInterval = setInterval(fetchActiveJob, 5000);
 
@@ -121,14 +150,64 @@ export default function DashboardHomeScreen() {
         setShowWalletModal(true);
         return;
       }
-    }
 
-    setIsOnline(newValue);
-    try {
-      await dispatchService.updateLocation(mechanicId, 28.6139, 77.2090, newValue);
-      console.log(`Duty status updated to ${newValue ? 'ONLINE' : 'OFFLINE'} in UMS`);
-    } catch (e) {
-      console.warn('Failed to update location/duty status:', e);
+      setGpsLoading(true);
+      const permGranted = await locationService.requestLocationPermission();
+      if (!permGranted) {
+        setGpsLoading(false);
+        Alert.alert(
+          "Location Permission Required",
+          "Please enable GPS location permissions on your device so nearby customers can find your garage / service."
+        );
+        setIsOnline(false);
+        return;
+      }
+
+      const loc = await locationService.getCurrentLocation();
+      setGpsLoading(false);
+
+      if (loc && loc.latitude && loc.longitude) {
+        setCurrentCoords(loc);
+        const zoneCheck = isWithinNoidaServiceZone(loc);
+        if (!zoneCheck.isServiceable) {
+          Alert.alert(
+            "Outside Noida Service Zone",
+            `Your current location is outside the active Noida operational area (${zoneCheck.message}). Please move inside Noida & Greater Noida to receive customer breakdown dispatches.`,
+            [
+              { text: "View Service Zone", onPress: () => setShowServiceZoneModal(true) },
+              { text: "Continue Online (Testing)", onPress: () => {} }
+            ]
+          );
+        }
+
+        setIsOnline(true);
+        try {
+          await dispatchService.updateLocation(mechanicId, loc.latitude, loc.longitude, true);
+          console.log(`Duty status updated to ONLINE at (${loc.latitude}, ${loc.longitude}) in UMS`);
+        } catch (e) {
+          console.warn('Failed to update location/duty status:', e);
+        }
+      } else {
+        Alert.alert(
+          "GPS Location Notice",
+          "Could not detect high accuracy GPS. Using best available device location."
+        );
+        setIsOnline(true);
+        if (currentCoords) {
+          await dispatchService.updateLocation(mechanicId, currentCoords.latitude, currentCoords.longitude, true).catch(() => {});
+        }
+      }
+    } else {
+      setIsOnline(false);
+      try {
+        const loc = currentCoords || locationService.getCachedLocation();
+        if (loc) {
+          await dispatchService.updateLocation(mechanicId, loc.latitude, loc.longitude, false);
+        }
+        console.log(`Duty status updated to OFFLINE in UMS`);
+      } catch (e) {
+        console.warn('Failed to update duty status:', e);
+      }
     }
   };
 
@@ -155,7 +234,7 @@ export default function DashboardHomeScreen() {
             </Text>
             <View style={styles.verifiedBadge}>
               <Ionicons name="checkmark-circle" size={14} color="#00E676" />
-              <Text style={styles.verifiedText}>BikeDone Certified Mechanic</Text>
+              <Text style={styles.verifiedText}>MyKaarigar Certified Mechanic</Text>
             </View>
           </View>
         </View>
@@ -163,11 +242,15 @@ export default function DashboardHomeScreen() {
         {/* Online / Offline Duty Switch Header */}
         <View style={[styles.onlineStatusRow, isOnline ? styles.onlineRowBg : styles.offlineRowBg]}>
           <View style={styles.dutyStatusMeta}>
-            <Ionicons
-              name={isOnline ? 'radio-button-on' : 'radio-button-off'}
-              size={18}
-              color={isOnline ? Colors.success : Colors.gray500}
-            />
+            {gpsLoading ? (
+              <ActivityIndicator size="small" color={Colors.primary} />
+            ) : (
+              <Ionicons
+                name={isOnline ? 'radio-button-on' : 'radio-button-off'}
+                size={18}
+                color={isOnline ? Colors.success : Colors.gray500}
+              />
+            )}
             <Text style={[styles.onlineText, { color: isOnline ? Colors.success : Colors.gray600 }]}>
               {isOnline ? 'ON DUTY (Online)' : 'OFF DUTY (Offline)'}
             </Text>
@@ -179,6 +262,29 @@ export default function DashboardHomeScreen() {
             thumbColor={isOnline ? Colors.success : Colors.gray100}
           />
         </View>
+
+        {/* GPS Live Tracking Info Pill */}
+        <TouchableOpacity 
+          style={[styles.gpsPill, isOnline ? styles.gpsPillOnline : styles.gpsPillOffline]}
+          onPress={() => syncLocationWithUMS(isOnline)}
+          activeOpacity={0.7}
+        >
+          <Ionicons
+            name={currentCoords ? "navigate" : "location-outline"}
+            size={13}
+            color={isOnline && currentCoords ? Colors.success : Colors.gray600}
+          />
+          <Text style={[styles.gpsPillText, isOnline && currentCoords ? { color: Colors.success, fontWeight: '700' } : null]} numberOfLines={1}>
+            {currentCoords
+              ? `GPS: ${currentCoords.latitude.toFixed(4)}, ${currentCoords.longitude.toFixed(4)}`
+              : (isOnline ? 'Detecting device GPS...' : 'Location tracking off')}
+          </Text>
+          {isOnline && (
+            <View style={styles.gpsSyncBadge}>
+              <Text style={styles.gpsSyncText}>Tap to sync</Text>
+            </View>
+          )}
+        </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -189,7 +295,7 @@ export default function DashboardHomeScreen() {
             <View style={[styles.earningsCard, Shadows.medium]}>
               <View style={styles.earningsTop}>
                 <View>
-                  <Text style={styles.earningsLabel}>BIKEDONE WALLET BALANCE</Text>
+                  <Text style={styles.earningsLabel}>MYKAARIGAR WALLET BALANCE</Text>
                   <Text style={styles.earningsAmount}>₹ {wallet?.balance ?? '0.00'}</Text>
                   <Text style={styles.jobsCompletedText}>
                     {isWalletActive
@@ -292,7 +398,7 @@ export default function DashboardHomeScreen() {
         {/* Quick Partner Tools */}
         <Text style={styles.sectionHeading}>Partner Quick Tools</Text>
         <View style={styles.toolsRow}>
-          <TouchableOpacity style={styles.toolItem}>
+          <TouchableOpacity style={styles.toolItem} onPress={() => setShowServiceZoneModal(true)}>
             <View style={styles.toolIconBox}>
               <Ionicons name="map-outline" size={24} color={Colors.primary} />
             </View>
@@ -367,6 +473,19 @@ export default function DashboardHomeScreen() {
           }
         }}
         onDismiss={() => setShowWalletModal(false)}
+      />
+
+      {/* BikeDone Service Zone Modal */}
+      <ServiceZoneModal
+        visible={showServiceZoneModal}
+        coords={currentCoords}
+        onDismiss={() => setShowServiceZoneModal(false)}
+        onRefreshGps={async () => {
+          setGpsLoading(true);
+          const loc = await locationService.getCurrentLocation();
+          setGpsLoading(false);
+          if (loc) setCurrentCoords(loc);
+        }}
       />
     </View>
   );
@@ -471,6 +590,42 @@ const styles = StyleSheet.create({
   onlineText: {
     fontSize: 14,
     fontWeight: '800',
+  },
+  gpsPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 8,
+    marginTop: 8,
+    gap: 6,
+  },
+  gpsPillOnline: {
+    backgroundColor: 'rgba(46, 125, 50, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(46, 125, 50, 0.2)',
+  },
+  gpsPillOffline: {
+    backgroundColor: Colors.gray100,
+    borderWidth: 1,
+    borderColor: Colors.gray200,
+  },
+  gpsPillText: {
+    flex: 1,
+    fontSize: 12,
+    color: Colors.gray600,
+    fontWeight: '600',
+  },
+  gpsSyncBadge: {
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  gpsSyncText: {
+    fontSize: 10,
+    color: '#FFF',
+    fontWeight: '700',
   },
   scrollContent: {
     padding: 20,
