@@ -186,7 +186,7 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
         }
         try {
             pricingService.createOrderBillSnapshot(
-                    savedRequest.getId(), customerId, itemId, request.getRequestTypeId(), request.getCouponCode());
+                    savedRequest.getId(), customerId, itemId, request.getRequestTypeId(), request.getCouponCode(), request.getExtraAmount());
         } catch (Exception e) {
             Logger.printLog(LogLevel.ERROR, LogStep.SERVICE_REQUEST, "Failed to save order bill snapshot", e.getMessage(), customerId.toString(), savedRequest.getId().toString());
         }
@@ -414,5 +414,37 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
         
         ServiceRequest updatedRequest = serviceRequestRepository.save(serviceRequest);
         return serviceRequestMapper.toResponse(updatedRequest);
+    }
+
+    @Override
+    public MyServiceRequestResponse updateExtraAmount(UUID requestId, java.math.BigDecimal extraAmount) {
+        UUID customerId = null;
+        try {
+            customerId = authenticationFacade.getCurrentUserId();
+        } catch (Exception ignored) {
+        }
+
+        Logger.printLog(
+                LogLevel.INFO,
+                LogStep.SERVICE_REQUEST,
+                "Updating extra amount on service request",
+                "requestId=" + requestId + ", extraAmount=" + extraAmount + ", customerId=" + customerId,
+                customerId != null ? customerId.toString() : null,
+                requestId.toString()
+        );
+
+        ServiceRequest serviceRequest;
+        if (customerId != null) {
+            serviceRequest = serviceRequestRepository.findByIdAndCustomerIdAndIsActiveTrue(requestId, customerId)
+                    .orElseGet(() -> serviceRequestRepository.findById(requestId)
+                            .orElseThrow(() -> new ResourceNotFoundException("Service request not found: " + requestId)));
+        } else {
+            serviceRequest = serviceRequestRepository.findById(requestId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Service request not found: " + requestId));
+        }
+
+        pricingService.updateExtraAmount(requestId, extraAmount);
+
+        return serviceRequestMapper.toMyServiceRequestResponse(serviceRequest);
     }
 }

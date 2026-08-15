@@ -69,4 +69,6 @@ public class CreateServiceRequestRequest {
     private String couponCode;
 
     private UUID itemId;
+
+    private java.math.BigDecimal extraAmount;
 }

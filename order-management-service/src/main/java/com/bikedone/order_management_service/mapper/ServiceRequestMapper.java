@@ -122,11 +122,14 @@ public class ServiceRequestMapper {
         // Resolve service address from current_location_note (set for both saved & live address)
         String serviceAddress = serviceRequest.getCurrentLocationNote();
 
-        // Resolve total payable amount
-        java.math.BigDecimal totalPayableAmount = orderBillBreakdownRepository
+        // Resolve bill breakdown details (total, extra tip, base)
+        com.bikedone.order_management_service.entity.OrderBillBreakdown billBreakdown = orderBillBreakdownRepository
                 .findByServiceRequestId(serviceRequest.getId())
-                .map(com.bikedone.order_management_service.entity.OrderBillBreakdown::getFinalPayableAmount)
                 .orElse(null);
+
+        java.math.BigDecimal totalPayableAmount = billBreakdown != null ? billBreakdown.getFinalPayableAmount() : null;
+        java.math.BigDecimal extraAmount = billBreakdown != null ? billBreakdown.getExtraAmount() : java.math.BigDecimal.ZERO;
+        java.math.BigDecimal baseCharge = billBreakdown != null ? billBreakdown.getBaseCharge() : null;
 
         return MyServiceRequestResponse.builder()
                 .id(serviceRequest.getId())
@@ -146,6 +149,8 @@ public class ServiceRequestMapper {
                 .latitude(serviceRequest.getCurrentLocationLatitude())
                 .longitude(serviceRequest.getCurrentLocationLongitude())
                 .totalPayableAmount(totalPayableAmount)
+                .extraAmount(extraAmount)
+                .baseCharge(baseCharge)
                 .assignedMechanicId(serviceRequest.getAssignedMechanicId())
                 .servicePin(serviceRequest.getServicePin())
                 .description(serviceRequest.getDescription())

@@ -220,12 +220,23 @@ public class PricingServiceImpl implements PricingService {
     @Transactional
     public OrderBillBreakdown createOrderBillSnapshot(
             UUID serviceRequestId, UUID userId, UUID itemId, Long requestTypeId, String couponCode) {
+        return createOrderBillSnapshot(serviceRequestId, userId, itemId, requestTypeId, couponCode, BigDecimal.ZERO);
+    }
+
+    @Override
+    @Transactional
+    public OrderBillBreakdown createOrderBillSnapshot(
+            UUID serviceRequestId, UUID userId, UUID itemId, Long requestTypeId, String couponCode, BigDecimal extraAmount) {
+
+        BigDecimal sanitizedExtra = (extraAmount != null && extraAmount.compareTo(BigDecimal.ZERO) >= 0)
+                ? extraAmount
+                : BigDecimal.ZERO;
 
         Logger.printLog(
                 LogLevel.INFO,
                 LogStep.SERVICE_REQUEST,
                 "Creating immutable order bill snapshot",
-                "serviceRequestId=" + serviceRequestId + ", userId=" + userId + ", couponCode=" + couponCode,
+                "serviceRequestId=" + serviceRequestId + ", userId=" + userId + ", couponCode=" + couponCode + ", extraAmount=" + sanitizedExtra,
                 userId != null ? userId.toString() : null,
                 serviceRequestId.toString()
         );
@@ -245,7 +256,8 @@ public class PricingServiceImpl implements PricingService {
         billBreakdown.setGstAmount(estimate.getGstAmount());
         billBreakdown.setCgstAmount(estimate.getCgstAmount());
         billBreakdown.setSgstAmount(estimate.getSgstAmount());
-        billBreakdown.setFinalPayableAmount(estimate.getTotalPayableAmount());
+        billBreakdown.setExtraAmount(sanitizedExtra);
+        billBreakdown.setFinalPayableAmount(estimate.getTotalPayableAmount().add(sanitizedExtra));
 
         Map<String, Object> jsonSnapshot = new HashMap<>();
         jsonSnapshot.put("itemCode", estimate.getItemCode());
@@ -255,6 +267,7 @@ public class PricingServiceImpl implements PricingService {
         jsonSnapshot.put("gstPercentage", estimate.getGstPercentage());
         jsonSnapshot.put("couponTitle", estimate.getCouponTitle());
         jsonSnapshot.put("subtotal", estimate.getSubtotal());
+        jsonSnapshot.put("extraAmount", sanitizedExtra);
 
         billBreakdown.setPriceBreakdownJson(jsonSnapshot);
 
@@ -275,6 +288,56 @@ public class PricingServiceImpl implements PricingService {
         }
 
         return savedBreakdown;
+    }
+
+    @Override
+    @Transactional
+    public OrderBillBreakdown updateExtraAmount(UUID serviceRequestId, BigDecimal extraAmount) {
+        BigDecimal sanitizedExtra = (extraAmount != null && extraAmount.compareTo(BigDecimal.ZERO) >= 0)
+                ? extraAmount
+                : BigDecimal.ZERO;
+
+        Logger.printLog(
+                LogLevel.INFO,
+                LogStep.SERVICE_REQUEST,
+                "Updating extra tip / amount for service request",
+                "serviceRequestId=" + serviceRequestId + ", extraAmount=" + sanitizedExtra,
+                null,
+                serviceRequestId.toString()
+        );
+
+        OrderBillBreakdown breakdown = orderBillBreakdownRepository.findByServiceRequestId(serviceRequestId)
+                .orElseGet(() -> {
+                    OrderBillBreakdown newBreakdown = new OrderBillBreakdown();
+                    newBreakdown.setServiceRequestId(serviceRequestId);
+                    newBreakdown.setBaseCharge(BigDecimal.ZERO);
+                    newBreakdown.setConvenienceFee(BigDecimal.ZERO);
+                    newBreakdown.setPlatformFee(BigDecimal.ZERO);
+                    newBreakdown.setDiscountAmount(BigDecimal.ZERO);
+                    newBreakdown.setTaxableAmount(BigDecimal.ZERO);
+                    newBreakdown.setGstAmount(BigDecimal.ZERO);
+                    newBreakdown.setCgstAmount(BigDecimal.ZERO);
+                    newBreakdown.setSgstAmount(BigDecimal.ZERO);
+                    newBreakdown.setFinalPayableAmount(sanitizedExtra);
+                    newBreakdown.setExtraAmount(sanitizedExtra);
+                    Map<String, Object> json = new HashMap<>();
+                    json.put("extraAmount", sanitizedExtra);
+                    newBreakdown.setPriceBreakdownJson(json);
+                    return orderBillBreakdownRepository.save(newBreakdown);
+                });
+
+        breakdown.setExtraAmount(sanitizedExtra);
+        BigDecimal baseTaxAndGst = (breakdown.getTaxableAmount() != null ? breakdown.getTaxableAmount() : BigDecimal.ZERO)
+                .add(breakdown.getGstAmount() != null ? breakdown.getGstAmount() : BigDecimal.ZERO);
+        breakdown.setFinalPayableAmount(baseTaxAndGst.add(sanitizedExtra));
+
+        Map<String, Object> json = breakdown.getPriceBreakdownJson() != null
+                ? new HashMap<>(breakdown.getPriceBreakdownJson())
+                : new HashMap<>();
+        json.put("extraAmount", sanitizedExtra);
+        breakdown.setPriceBreakdownJson(json);
+
+        return orderBillBreakdownRepository.save(breakdown);
     }
 
     private Item resolveItem(UUID itemId, String itemCode) {

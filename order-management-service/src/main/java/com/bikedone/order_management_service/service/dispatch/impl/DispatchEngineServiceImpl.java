@@ -38,6 +38,7 @@ public class DispatchEngineServiceImpl implements DispatchEngineService {
     private final NotificationService notificationService;
     private final DispatchQueueProducer queueProducer;
     private final NotificationQueueProducer notificationQueueProducer;
+    private final com.bikedone.order_management_service.repository.OrderBillBreakdownRepository orderBillBreakdownRepository;
 
     private static final int DEFAULT_ROUND_WAIT_SECONDS = 30;
     private static final int DEFAULT_MAX_ROUNDS = 10;
@@ -205,6 +206,10 @@ public class DispatchEngineServiceImpl implements DispatchEngineService {
         }
         int remainingSeconds = Math.max(1, 30 - (int) elapsedSeconds);
 
+        var billBreakdown = orderBillBreakdownRepository.findByServiceRequestId(sr.getId()).orElse(null);
+        java.math.BigDecimal extra = billBreakdown != null ? billBreakdown.getExtraAmount() : java.math.BigDecimal.ZERO;
+        java.math.BigDecimal total = billBreakdown != null ? billBreakdown.getFinalPayableAmount() : null;
+
         return com.bikedone.order_management_service.dto.response.PendingJobNotificationResponse.builder()
                 .requestId(sr.getId())
                 .customerName("Bike Customer")
@@ -214,6 +219,8 @@ public class DispatchEngineServiceImpl implements DispatchEngineService {
                 .addressNote(sr.getCurrentLocationNote())
                 .dispatchRound(notif.getRoundNumber())
                 .timeoutSeconds(remainingSeconds)
+                .extraAmount(extra)
+                .totalPayableAmount(total)
                 .build();
     }
 }

@@ -48,6 +48,10 @@ public record MyServiceRequestResponse(
 
         java.math.BigDecimal totalPayableAmount,
         
+        java.math.BigDecimal extraAmount,
+
+        java.math.BigDecimal baseCharge,
+        
         UUID assignedMechanicId,
         
         String servicePin,

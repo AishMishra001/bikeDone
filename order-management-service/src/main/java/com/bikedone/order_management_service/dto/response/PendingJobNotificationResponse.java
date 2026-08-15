@@ -22,4 +22,6 @@ public class PendingJobNotificationResponse {
     private String addressNote;
     private Integer dispatchRound;
     private Integer timeoutSeconds;
+    private BigDecimal extraAmount;
+    private BigDecimal totalPayableAmount;
 }

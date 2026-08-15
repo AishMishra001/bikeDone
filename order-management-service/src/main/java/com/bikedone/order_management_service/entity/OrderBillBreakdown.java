@@ -60,6 +60,9 @@ public class OrderBillBreakdown {
     @Column(name = "final_payable_amount", nullable = false, precision = 10, scale = 2)
     private BigDecimal finalPayableAmount;
 
+    @Column(name = "extra_amount", nullable = false, precision = 10, scale = 2)
+    private BigDecimal extraAmount = BigDecimal.ZERO;
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "price_breakdown_json", columnDefinition = "jsonb")
     private Map<String, Object> priceBreakdownJson;

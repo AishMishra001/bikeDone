@@ -11,4 +11,6 @@ public interface PricingService {
     List<ItemResponse> getAllActiveItems();
     PricingEstimateResponse calculatePricingEstimate(UUID itemId, String itemCode, Long requestTypeId, String requestTypeCode, String couponCode);
     OrderBillBreakdown createOrderBillSnapshot(UUID serviceRequestId, UUID userId, UUID itemId, Long requestTypeId, String couponCode);
+    OrderBillBreakdown createOrderBillSnapshot(UUID serviceRequestId, UUID userId, UUID itemId, Long requestTypeId, String couponCode, java.math.BigDecimal extraAmount);
+    OrderBillBreakdown updateExtraAmount(UUID serviceRequestId, java.math.BigDecimal extraAmount);
 }

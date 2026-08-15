@@ -35,4 +35,9 @@ public interface ServiceRequestService {
             UUID requestId,
             com.bikedone.order_management_service.enums.ServiceRequestStatus status
     );
+
+    MyServiceRequestResponse updateExtraAmount(
+            UUID requestId,
+            java.math.BigDecimal extraAmount
+    );
 }

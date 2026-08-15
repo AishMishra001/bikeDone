@@ -26,6 +26,7 @@ public class CreateServiceRequestValidator {
     private final ServiceSlotRepository serviceSlotRepository;
     private final ServiceIssueRepository serviceIssueRepository;
     private final DateTimeProvider dateTimeProvider;
+    private final com.bikedone.order_management_service.service.ServiceabilityService serviceabilityService;
 
     /**
      * Validate Request Type
@@ -129,6 +130,19 @@ public class CreateServiceRequestValidator {
 
         if (hasSavedAddress && hasCurrentLocation) {
             throw new BadRequestException("Provide either address or current location, not both.");
+        }
+
+        // Configurable DB-Driven Serviceability Check
+        if (hasCurrentLocation && request.getCurrentLocation() != null) {
+            var loc = request.getCurrentLocation();
+            Double lat = loc.getLatitude() != null ? loc.getLatitude().doubleValue() : null;
+            Double lng = loc.getLongitude() != null ? loc.getLongitude().doubleValue() : null;
+            String note = loc.getNote();
+
+            var result = serviceabilityService.checkServiceability(null, lat, lng, note);
+            if (!result.isServiceable()) {
+                throw new BadRequestException(result.getMessage() != null ? result.getMessage() : "BikeDone is currently serviceable only in active Noida & Greater Noida zones.");
+            }
         }
     }
 }

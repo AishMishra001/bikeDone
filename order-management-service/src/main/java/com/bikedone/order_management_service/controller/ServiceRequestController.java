@@ -139,4 +139,27 @@ public class ServiceRequestController {
                 )
         );
     }
+
+    @RequestMapping(value = "/{requestId}/extra-amount", method = {RequestMethod.PATCH, RequestMethod.POST})
+    public ResponseEntity<ApiResponse<MyServiceRequestResponse>> updateExtraAmount(
+            @PathVariable UUID requestId,
+            @RequestParam(required = false) java.math.BigDecimal extraAmount,
+            @RequestBody(required = false) com.bikedone.order_management_service.dto.request.UpdateExtraAmountRequest bodyRequest) {
+
+        java.math.BigDecimal amount = extraAmount;
+        if (amount == null && bodyRequest != null) {
+            amount = bodyRequest.getExtraAmount();
+        }
+        if (amount == null) {
+            amount = java.math.BigDecimal.ZERO;
+        }
+
+        Logger.printLog(LogLevel.INFO, LogStep.SERVICE_REQUEST, "Extra tip / amount update received", "requestId=" + requestId + ", amount=" + amount, null, requestId.toString());
+
+        MyServiceRequestResponse response = serviceRequestService.updateExtraAmount(requestId, amount);
+
+        return ResponseEntity.ok(
+                ApiResponse.success(response, "Extra amount updated successfully.")
+        );
+    }
 }
