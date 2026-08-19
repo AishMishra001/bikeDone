@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { Header } from '@/components/ui/Header';
 import { InputField } from '@/components/ui/InputField';
@@ -10,7 +10,9 @@ import { api } from '@/services/api';
 
 export default function BankDetailsScreen() {
   const router = useRouter();
-  const { data, updateBankDetails } = useOnboarding();
+  const { edit } = useLocalSearchParams<{ edit?: string }>();
+  const isEditing = edit === 'true';
+  const { data, updateBankDetails, goToNextStep } = useOnboarding();
   const [loading, setLoading] = useState(false);
 
   const handleContinue = async () => {
@@ -22,13 +24,13 @@ export default function BankDetailsScreen() {
     try {
       setLoading(true);
       await api.post('/mechanics/onboarding/bank-details', {
-        accountHolderName: data.bankDetails.accountHolderName,
-        accountNumber: data.bankDetails.accountNumber,
-        ifscCode: data.bankDetails.ifscCode,
-        bankName: data.bankDetails.bankName,
+        accountHolderName: data.bankDetails.accountHolderName.trim(),
+        accountNumber: data.bankDetails.accountNumber.trim(),
+        ifscCode: data.bankDetails.ifscCode.trim(),
+        bankName: data.bankDetails.bankName.trim(),
       });
 
-      router.push('/onboarding/review' as any);
+      goToNextStep('BANK_DETAILS', router, isEditing);
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to save bank details');
     } finally {
@@ -38,14 +40,14 @@ export default function BankDetailsScreen() {
 
   return (
     <View style={styles.container}>
-      <Header title="Bank Details" showBack step={7} totalSteps={7} />
+      <Header title="Bank & Payout Details" showBack stepCode="BANK_DETAILS" />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.subtitle}>Add bank details for payout (All compulsory)</Text>
+        <Text style={styles.subtitle}>Add bank details for direct payout settlements</Text>
 
         <InputField
           label="Account Holder Name *"
-          placeholder="Rahul Kumar"
+          placeholder="e.g. Rahul Sharma"
           value={data.bankDetails.accountHolderName}
           onChangeText={(val) => updateBankDetails({ accountHolderName: val })}
           icon="person-outline"
@@ -53,7 +55,7 @@ export default function BankDetailsScreen() {
 
         <InputField
           label="Account Number *"
-          placeholder="123456789012"
+          placeholder="e.g. 01234567890123"
           keyboardType="number-pad"
           value={data.bankDetails.accountNumber}
           onChangeText={(val) => updateBankDetails({ accountNumber: val })}
@@ -62,7 +64,7 @@ export default function BankDetailsScreen() {
 
         <InputField
           label="IFSC Code *"
-          placeholder="PUNB0123456"
+          placeholder="e.g. SBIN0001234"
           autoCapitalize="characters"
           value={data.bankDetails.ifscCode}
           onChangeText={(val) => updateBankDetails({ ifscCode: val.toUpperCase() })}
@@ -71,7 +73,7 @@ export default function BankDetailsScreen() {
 
         <InputField
           label="Bank Name *"
-          placeholder="Punjab National Bank"
+          placeholder="e.g. State Bank of India"
           value={data.bankDetails.bankName}
           onChangeText={(val) => updateBankDetails({ bankName: val })}
           icon="business-outline"

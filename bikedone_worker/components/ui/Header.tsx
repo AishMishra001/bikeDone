@@ -3,11 +3,13 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/theme';
+import { useOnboarding } from '@/context/OnboardingContext';
 
 interface HeaderProps {
   title?: string;
   showBack?: boolean;
   onBack?: () => void;
+  stepCode?: string;
   step?: number;
   totalSteps?: number;
   rightAction?: React.ReactNode;
@@ -17,21 +19,30 @@ export const Header: React.FC<HeaderProps> = ({
   title,
   showBack = true,
   onBack,
+  stepCode,
   step,
-  totalSteps = 13,
+  totalSteps = 8,
   rightAction,
 }) => {
   const router = useRouter();
+  const { getMetrics, goToPrevStep } = useOnboarding();
+
+  const metrics = stepCode ? getMetrics(stepCode) : null;
+  const currentStep = metrics ? metrics.stepIndex : step;
+  const stepCount = metrics ? metrics.totalSteps : totalSteps;
+  const progressPercent = metrics ? metrics.progressPercent : (step ? Math.min(100, Math.max(0, (step / stepCount) * 100)) : 0);
 
   const handleBack = () => {
     if (onBack) {
       onBack();
+    } else if (stepCode) {
+      goToPrevStep(stepCode, router);
     } else if (router.canGoBack()) {
       router.back();
     }
   };
 
-  const progressPercent = step ? Math.min(100, Math.max(0, (step / totalSteps) * 100)) : 0;
+  const displayTitle = title || (metrics?.currentStep?.title ?? '');
 
   return (
     <View style={styles.container}>
@@ -44,17 +55,17 @@ export const Header: React.FC<HeaderProps> = ({
           <View style={styles.placeholder} />
         )}
 
-        <Text style={styles.titleText}>{title || ''}</Text>
+        <Text style={styles.titleText}>{displayTitle}</Text>
 
         <View style={styles.rightSlot}>{rightAction || <View style={styles.placeholder} />}</View>
       </View>
 
-      {step ? (
+      {currentStep ? (
         <View style={styles.progressContainer}>
           <View style={styles.progressBarBg}>
             <View style={[styles.progressBarFill, { width: `${progressPercent}%` }]} />
           </View>
-          <Text style={styles.stepText}>Step {step} of {totalSteps}</Text>
+          <Text style={styles.stepText}>Step {currentStep} of {stepCount}</Text>
         </View>
       ) : null}
     </View>

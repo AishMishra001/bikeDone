@@ -1,4 +1,12 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
+import { api } from '@/services/api';
+import {
+  ServerStepDetail,
+  getNextStepRoute,
+  getPrevStepRoute,
+  getStepMetrics,
+  resolveActiveSteps,
+} from '@/config/onboardingSteps';
 
 export interface OnboardingData {
   mobileNumber: string;
@@ -25,39 +33,42 @@ export interface OnboardingData {
     ifscCode: string;
     bankName: string;
   };
+  sopAccepted: boolean;
   status: 'pending' | 'under_review' | 'approved';
 }
 
 const DEFAULT_DATA: OnboardingData = {
   mobileNumber: '',
   otp: '',
-  fullName: 'Rahul Kumar',
-  experience: '5 Years',
-  profilePhoto: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=250&auto=format&fit=crop',
+  fullName: '',
+  experience: '1 Year',
+  profilePhoto: null,
   hasShop: true,
-  shopName: 'Rahul Bike Garage',
-  shopAddress: '123, Sharma Market, Laxmi Nagar, Delhi - 110092',
-  workingHours: '10:00 AM To 8:00 PM',
-  services: ['Routine Service', 'Repair', 'Inspection', 'Breakdown Assistance'],
-  expertise: ['Engine', 'Brakes', 'Battery', 'Electrical'],
-  serviceRadius: '5 KM',
+  shopName: '',
+  shopAddress: '',
+  workingHours: '09:00 AM To 08:30 PM (Mon - Sat)',
+  services: [],
+  expertise: [],
+  serviceRadius: '10 KM',
   documents: {
-    aadhaar: true,
-    drivingLicense: true,
-    shopPhoto: true,
-    profilePhoto: true,
+    aadhaar: false,
+    drivingLicense: false,
+    shopPhoto: false,
+    profilePhoto: false,
   },
   bankDetails: {
-    accountHolderName: 'Rahul Kumar',
-    accountNumber: '123456789012',
-    ifscCode: 'PUNB0123456',
-    bankName: 'Punjab National Bank',
+    accountHolderName: '',
+    accountNumber: '',
+    ifscCode: '',
+    bankName: '',
   },
+  sopAccepted: false,
   status: 'pending',
 };
 
 interface OnboardingContextType {
   data: OnboardingData;
+  activeSteps: ServerStepDetail[];
   updateData: (partial: Partial<OnboardingData>) => void;
   updateBankDetails: (partialBank: Partial<OnboardingData['bankDetails']>) => void;
   updateDocuments: (docKey: keyof OnboardingData['documents'], status: boolean) => void;
@@ -67,12 +78,25 @@ interface OnboardingContextType {
   setConfirmationResult: (res: any) => void;
   resetData: () => void;
   prefillDummyData: () => void;
+  fetchProgress: () => Promise<any>;
+  goToNextStep: (currentCode: string, router: any, isEditing?: boolean) => void;
+  goToPrevStep: (currentCode: string, router: any) => void;
+  getMetrics: (currentCode: string) => {
+    stepIndex: number;
+    totalSteps: number;
+    progressPercent: number;
+    isFirst: boolean;
+    isLast: boolean;
+    currentStep: any;
+  };
 }
 
 const OnboardingContext = createContext<OnboardingContextType | undefined>(undefined);
 
 export const OnboardingProvider = ({ children }: { children: ReactNode }) => {
   const [data, setData] = useState<OnboardingData>(DEFAULT_DATA);
+  const [activeSteps, setActiveSteps] = useState<ServerStepDetail[]>([]);
+  const [confirmationResult, setConfirmationResult] = useState<any>(null);
 
   const updateData = (partial: Partial<OnboardingData>) => {
     setData((prev) => ({ ...prev, ...partial }));
@@ -116,6 +140,41 @@ export const OnboardingProvider = ({ children }: { children: ReactNode }) => {
     });
   };
 
+  const fetchProgress = async () => {
+    try {
+      const res: any = await api.get('/mechanics/onboarding');
+      if (res && Array.isArray(res.steps)) {
+        setActiveSteps(res.steps);
+      }
+      return res;
+    } catch (err) {
+      console.warn('Failed to fetch onboarding progress:', err);
+      return null;
+    }
+  };
+
+  const goToNextStep = (currentCode: string, router: any, isEditing?: boolean) => {
+    if (isEditing) {
+      router.push('/onboarding/review' as any);
+      return;
+    }
+    const nextRoute = getNextStepRoute(currentCode, activeSteps);
+    router.push(nextRoute as any);
+  };
+
+  const goToPrevStep = (currentCode: string, router: any) => {
+    const prevRoute = getPrevStepRoute(currentCode, activeSteps);
+    if (prevRoute) {
+      router.push(prevRoute as any);
+    } else if (router.canGoBack()) {
+      router.back();
+    }
+  };
+
+  const getMetrics = (currentCode: string) => {
+    return getStepMetrics(currentCode, activeSteps);
+  };
+
   const resetData = () => {
     setData({
       mobileNumber: '',
@@ -129,7 +188,7 @@ export const OnboardingProvider = ({ children }: { children: ReactNode }) => {
       workingHours: '10:00 AM To 8:00 PM',
       services: [],
       expertise: [],
-      serviceRadius: '5 KM',
+      serviceRadius: '10 KM',
       documents: {
         aadhaar: false,
         drivingLicense: false,
@@ -142,6 +201,7 @@ export const OnboardingProvider = ({ children }: { children: ReactNode }) => {
         ifscCode: '',
         bankName: '',
       },
+      sopAccepted: false,
       status: 'pending',
     });
   };
@@ -150,12 +210,11 @@ export const OnboardingProvider = ({ children }: { children: ReactNode }) => {
     setData(DEFAULT_DATA);
   };
 
-  const [confirmationResult, setConfirmationResult] = useState<any>(null);
-
   return (
     <OnboardingContext.Provider
       value={{
         data,
+        activeSteps,
         updateData,
         updateBankDetails,
         updateDocuments,
@@ -165,6 +224,10 @@ export const OnboardingProvider = ({ children }: { children: ReactNode }) => {
         setConfirmationResult,
         resetData,
         prefillDummyData,
+        fetchProgress,
+        goToNextStep,
+        goToPrevStep,
+        getMetrics,
       }}
     >
       {children}
@@ -179,3 +242,4 @@ export const useOnboarding = () => {
   }
   return context;
 };
+

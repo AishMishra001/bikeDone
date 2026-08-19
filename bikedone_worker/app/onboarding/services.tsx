@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { Header } from '@/components/ui/Header';
 import { ChipTag } from '@/components/ui/ChipTag';
@@ -22,7 +22,9 @@ const ALL_SERVICES = [
 
 export default function ServicesScreen() {
   const router = useRouter();
-  const { data, updateData, toggleService } = useOnboarding();
+  const { edit } = useLocalSearchParams<{ edit?: string }>();
+  const isEditing = edit === 'true';
+  const { data, updateData, toggleService, goToNextStep } = useOnboarding();
   const [loading, setLoading] = useState(false);
 
   const isAllSelected = ALL_SERVICES.every((s) => data.services.includes(s));
@@ -48,8 +50,7 @@ export default function ServicesScreen() {
         services: data.services,
       });
 
-      // Skip expertise (as per requirement), jump straight to radius
-      router.push('/onboarding/radius' as any);
+      goToNextStep('SERVICE_CATEGORIES', router, isEditing);
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to save service categories');
     } finally {
@@ -59,7 +60,7 @@ export default function ServicesScreen() {
 
   return (
     <View style={styles.container}>
-      <Header title="Services Offered" showBack step={4} totalSteps={7} />
+      <Header title="Services Offered" showBack stepCode="SERVICE_CATEGORIES" />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.headerRow}>

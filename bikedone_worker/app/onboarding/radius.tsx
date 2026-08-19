@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { Header } from '@/components/ui/Header';
 import { SelectionCard } from '@/components/ui/SelectionCard';
@@ -12,7 +12,9 @@ const RADIUS_OPTIONS = ['3 KM', '5 KM', '10 KM', '15 KM', '20 KM'];
 
 export default function ServiceRadiusScreen() {
   const router = useRouter();
-  const { data, updateData } = useOnboarding();
+  const { edit } = useLocalSearchParams<{ edit?: string }>();
+  const isEditing = edit === 'true';
+  const { data, updateData, goToNextStep } = useOnboarding();
   const [loading, setLoading] = useState(false);
 
   const handleContinue = async () => {
@@ -23,7 +25,7 @@ export default function ServiceRadiusScreen() {
         radiusKm: Math.min(numericRadius, 20),
       });
 
-      router.push('/onboarding/documents' as any);
+      goToNextStep('SERVICE_RADIUS', router, isEditing);
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to save service radius');
     } finally {
@@ -33,7 +35,7 @@ export default function ServiceRadiusScreen() {
 
   return (
     <View style={styles.container}>
-      <Header title="Service Radius" showBack step={5} totalSteps={7} />
+      <Header title="Service Radius" showBack stepCode="SERVICE_RADIUS" />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Text style={styles.heading}>How far are you willing to travel?</Text>

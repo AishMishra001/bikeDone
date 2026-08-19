@@ -7,12 +7,13 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Colors, Shadows } from '@/constants/theme';
 import { Header } from '@/components/ui/Header';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { useOnboarding } from '@/context/OnboardingContext';
 import { api } from '@/services/api';
+import { uploadSingleImage } from '@/services/imageUploadService';
 import * as DocumentPicker from 'expo-document-picker';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -28,8 +29,11 @@ interface DocItem {
 
 export default function DocumentsUploadScreen() {
   const router = useRouter();
-  const { data } = useOnboarding();
+  const { edit } = useLocalSearchParams<{ edit?: string }>();
+  const isEditing = edit === 'true';
+  const { data, goToNextStep } = useOnboarding();
   const [loading, setLoading] = useState(false);
+  const [uploadingDocKey, setUploadingDocKey] = useState<string | null>(null);
 
   const [documents, setDocuments] = useState<Record<string, { uri: string; name: string } | null>>({
     aadhaar: null,
@@ -47,12 +51,25 @@ export default function DocumentsUploadScreen() {
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const file = result.assets[0];
-        setDocuments((prev) => ({
-          ...prev,
-          [key]: { uri: file.uri, name: file.name },
-        }));
+        setUploadingDocKey(key);
+        try {
+          const cloudinaryUrl = await uploadSingleImage(file.uri, file.name, file.mimeType || 'image/jpeg');
+          setDocuments((prev) => ({
+            ...prev,
+            [key]: { uri: cloudinaryUrl, name: file.name },
+          }));
+        } catch (uploadErr) {
+          console.warn('Cloudinary upload fallback to local URI:', uploadErr);
+          setDocuments((prev) => ({
+            ...prev,
+            [key]: { uri: file.uri, name: file.name },
+          }));
+        } finally {
+          setUploadingDocKey(null);
+        }
       }
     } catch (err: any) {
+      setUploadingDocKey(null);
       Alert.alert('File Selection Error', err.message || 'Could not pick file');
     }
   };
@@ -70,8 +87,8 @@ export default function DocumentsUploadScreen() {
       Alert.alert('Compulsory Document', 'Please upload your Driving License (PDF or Image)');
       return;
     }
-    if (data.hasShop && !documents.shopPhoto) {
-      Alert.alert('Compulsory Document', 'Please upload your Shop Photo');
+    if (!documents.shopPhoto) {
+      Alert.alert('Compulsory Document', 'Please upload your Workshop / Garage Storefront Photo');
       return;
     }
 
@@ -81,11 +98,11 @@ export default function DocumentsUploadScreen() {
         aadhaarUrl: documents.aadhaar.uri,
         panUrl: documents.pan.uri,
         drivingLicenseUrl: documents.drivingLicense.uri,
-        shopPhotoUrl: (data.hasShop && documents.shopPhoto) ? documents.shopPhoto.uri : null,
-        profilePhotoUrl: data.profilePhoto || 'https://dummy-storage.bikedone.com/docs/profile.jpg',
+        shopPhotoUrl: documents.shopPhoto.uri,
+        profilePhotoUrl: data.profilePhoto || null,
       });
 
-      router.push('/onboarding/bank-details' as any);
+      goToNextStep('DOCUMENTS', router, isEditing);
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to save documents');
     } finally {
@@ -121,24 +138,20 @@ export default function DocumentsUploadScreen() {
       name: documents.drivingLicense?.name,
       isMandatory: true,
     },
-    ...(data.hasShop
-      ? [
-          {
-            id: 'shopPhoto',
-            title: 'Shop Photo *',
-            subtitle: 'Upload clear storefront photo with name banner',
-            icon: 'image-outline' as keyof typeof Ionicons.glyphMap,
-            uri: documents.shopPhoto?.uri,
-            name: documents.shopPhoto?.name,
-            isMandatory: true,
-          },
-        ]
-      : []),
+    {
+      id: 'shopPhoto',
+      title: 'Shop / Garage Photo *',
+      subtitle: 'Upload clear storefront photo with name board banner',
+      icon: 'image-outline' as keyof typeof Ionicons.glyphMap,
+      uri: documents.shopPhoto?.uri,
+      name: documents.shopPhoto?.name,
+      isMandatory: true,
+    },
   ];
 
   return (
     <View style={styles.container}>
-      <Header title="Documents Upload" showBack step={6} totalSteps={7} />
+      <Header title="Documents & KYC" showBack stepCode="DOCUMENTS" />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.bannerContainer}>
@@ -215,7 +228,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     gap: 12,
     borderWidth: 1,
-    borderColor: 'rgba(242, 86, 29, 0.2)',
+    borderColor: 'rgba(249, 115, 22, 0.25)',
   },
   bannerText: {
     flex: 1,

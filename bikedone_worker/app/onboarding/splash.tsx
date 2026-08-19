@@ -24,10 +24,21 @@ export default function SplashScreen() {
       // Token exists -> Fetch mechanic onboarding status
       const res: any = await api.get('/mechanics/onboarding');
 
-      if (res && res.overallStatus === 'ACTIVE') {
+      const isManualVerificationCompleted = res?.steps?.some(
+        (s: any) => s.stepCode === 'MANUAL_VERIFICATION' && (s.status === 'COMPLETED' || s.status === 'UNDER_REVIEW')
+      );
+      const isUnderReview =
+        isManualVerificationCompleted ||
+        res?.progressPercentage === 100 ||
+        res?.overallStatus === 'UNDER_REVIEW' ||
+        res?.overallStatus === 'SUBMITTED' ||
+        res?.overallStatus === 'MANUAL_VERIFICATION' ||
+        res?.overallStatus === 'PENDING_APPROVAL';
+
+      if (res && (res.overallStatus === 'ACTIVE' || res.overallStatus === 'APPROVED')) {
         // Fully approved mechanic -> Go to Dashboard (Tabs)
         router.replace('/(tabs)' as any);
-      } else if (res && res.overallStatus === 'MANUAL_VERIFICATION') {
+      } else if (isUnderReview) {
         // Submitted & Waiting for Admin Approval
         router.replace('/onboarding/approval' as any);
       } else {
@@ -54,9 +65,9 @@ export default function SplashScreen() {
         </View>
 
         <Text style={styles.brandTitle}>
-          BIKE <Text style={{ color: Colors.primary }}>DONE</Text>
+          MyKaarigar <Text style={{ color: Colors.primary }}>Partner</Text>
         </Text>
-        <Text style={styles.partnerSubtitle}>PARTNER</Text>
+        <Text style={styles.partnerSubtitle}>EXPERT WORKSHOP NETWORK</Text>
       </View>
 
       <View style={styles.footer}>
@@ -85,7 +96,7 @@ const styles = StyleSheet.create({
     width: 110,
     height: 110,
     borderRadius: 55,
-    backgroundColor: 'rgba(242, 86, 29, 0.1)',
+    backgroundColor: Colors.primaryGlow,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,

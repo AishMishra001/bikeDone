@@ -20,5 +20,9 @@ public interface MechanicOnboardingService {
 
     MechanicOnboardingProgressResponse saveServiceRadius(MechanicUser mechanic, ServiceRadiusRequest request);
 
+    MechanicOnboardingProgressResponse saveTrainingSop(MechanicUser mechanic);
+
+    MechanicOnboardingProgressResponse completeStep(MechanicUser mechanic, String stepCode);
+
     MechanicOnboardingProgressResponse submitForManualVerification(MechanicUser mechanic);
 }

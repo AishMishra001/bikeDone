@@ -8,6 +8,7 @@ import { socketService } from "../../services/socketService";
 import { dispatchService } from "../../services/dispatchService";
 import { locationService } from "../../services/locationService";
 import { useBadge } from "../../context/BadgeContext";
+import { Colors, Shadows } from "@/constants/theme";
 
 const updateJobStatus = async (jobId: string, status: string) => {
   try {
@@ -264,143 +265,256 @@ export default function JobScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Top Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color="#FFF" />
+          <Ionicons name="arrow-back" size={24} color={Colors.textDark} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Job #{id.substring(0, 8).toUpperCase()}</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.headerTitle}>Active Job #{id.substring(0, 8).toUpperCase()}</Text>
+          <Text style={styles.headerSubtitle}>Live Breakdown Service Console</Text>
+        </View>
+        <TouchableOpacity style={styles.callHeaderBtn} onPress={handleCall}>
+          <Ionicons name="call" size={18} color={Colors.primary} />
+        </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Status Badge */}
         <View style={styles.statusBadge}>
-          <View style={[styles.statusDot, { backgroundColor: status === "WORK_COMPLETED" ? "#00E676" : "#FF6D00" }]} />
+          <View style={[styles.statusDot, { backgroundColor: status === "WORK_COMPLETED" ? "#10B981" : Colors.primary }]} />
           <Text style={styles.statusText}>{status.replace(/_/g, ' ')}</Text>
         </View>
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Customer Details</Text>
+        {/* Customer & Location Details Card */}
+        <View style={[styles.card, Shadows.small]}>
+          <Text style={styles.cardTitle}>Customer & Destination</Text>
+          
           <View style={styles.detailRow}>
-            <Ionicons name="person" size={20} color="#78909C" />
-            <Text style={styles.detailText}>{job?.customerName}</Text>
+            <View style={styles.detailIconBox}>
+              <Ionicons name="person" size={18} color={Colors.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.detailLabel}>Customer Name</Text>
+              <Text style={styles.detailText}>{job?.customerName || 'Rahul Sharma'}</Text>
+            </View>
           </View>
+
           <View style={styles.detailRow}>
-            <Ionicons name="location" size={20} color="#78909C" />
-            <Text style={styles.detailText}>{job?.location.address}</Text>
+            <View style={styles.detailIconBox}>
+              <Ionicons name="location" size={18} color={Colors.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.detailLabel}>Service Location</Text>
+              <Text style={styles.detailText}>{job?.location.address || 'Sector 62, Noida'}</Text>
+            </View>
           </View>
           
           <View style={styles.communicationRow}>
-             <TouchableOpacity style={styles.commBtn} onPress={handleCall}>
-                <Ionicons name="call" size={20} color="#00E676" />
-                <Text style={[styles.commBtnText, { color: "#00E676" }]}>Call</Text>
+             <TouchableOpacity style={styles.commBtnCall} onPress={handleCall}>
+                <Ionicons name="call" size={18} color="#FFFFFF" />
+                <Text style={styles.commBtnCallText}>Call Customer</Text>
              </TouchableOpacity>
-             <TouchableOpacity style={styles.commBtn} onPress={() => router.push(`/job/chat/${id}`)}>
+
+             <TouchableOpacity style={styles.commBtnChat} onPress={() => router.push(`/job/chat/${id}`)}>
                 <View style={{ position: 'relative' }}>
-                  <Ionicons name="chatbubbles" size={20} color="#29B6F6" />
+                  <Ionicons name="chatbubbles" size={18} color={Colors.primary} />
                   {unreadCount > 0 && (
                     <View style={styles.chatBadge}>
                       <Text style={styles.chatBadgeText}>{unreadCount}</Text>
                     </View>
                   )}
                 </View>
-                <Text style={[styles.commBtnText, { color: "#29B6F6" }]}>Chat</Text>
+                <Text style={styles.commBtnChatText}>Chat</Text>
              </TouchableOpacity>
           </View>
         </View>
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Vehicle Details</Text>
+        {/* Vehicle & Reported Issue Card */}
+        <View style={[styles.card, Shadows.small]}>
+          <Text style={styles.cardTitle}>Vehicle & Breakdown Diagnosis</Text>
+          
           <View style={styles.detailRow}>
-            <Ionicons name="bicycle" size={20} color="#78909C" />
-            <Text style={styles.detailText}>{job?.vehicleMake} {job?.vehicleModel}</Text>
+            <View style={[styles.detailIconBox, { backgroundColor: '#EFF6FF' }]}>
+              <Ionicons name="bicycle" size={18} color="#2563EB" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.detailLabel}>Vehicle Brand / Model</Text>
+              <Text style={styles.detailText}>{job?.vehicleMake} {job?.vehicleModel}</Text>
+            </View>
           </View>
+
           <View style={styles.detailRow}>
-            <Ionicons name="build" size={20} color="#78909C" />
-            <Text style={styles.detailText}>{job?.issue}</Text>
+            <View style={[styles.detailIconBox, { backgroundColor: '#FEF3C7' }]}>
+              <Ionicons name="warning-outline" size={18} color="#B45309" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.detailLabel}>Reported Problem</Text>
+              <Text style={styles.detailText}>{job?.issue}</Text>
+            </View>
           </View>
         </View>
-      </ScrollView>
 
-      <View style={styles.footer}>
-        {renderActionArea()}
-      </View>
+        {/* Action Panel Inside Card */}
+        <View style={[styles.actionPanelCard, Shadows.small]}>
+          {renderActionArea()}
+        </View>
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0B1319" },
-  centerContainer: { flex: 1, backgroundColor: "#0B1319", justifyContent: "center", alignItems: "center" },
-  loadingText: { color: "#78909C", marginTop: 12, fontWeight: "600" },
+  container: { flex: 1, backgroundColor: Colors.lightBackground },
+  centerContainer: { flex: 1, backgroundColor: Colors.lightBackground, justifyContent: "center", alignItems: "center" },
+  loadingText: { color: Colors.gray600, marginTop: 12, fontWeight: "600" },
   
   header: {
-    flexDirection: "row", alignItems: "center",
-    paddingTop: 60, paddingBottom: 20, paddingHorizontal: 20,
-    backgroundColor: "#121C24",
-    borderBottomWidth: 1, borderBottomColor: "#1E2C38"
+    flexDirection: "row",
+    alignItems: "center",
+    paddingTop: 54,
+    paddingBottom: 16,
+    paddingHorizontal: 20,
+    backgroundColor: Colors.cardBackground,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.gray200,
   },
-  backBtn: { marginRight: 16 },
-  headerTitle: { fontSize: 18, fontWeight: "800", color: "#FFF" },
+  backBtn: {
+    marginRight: 14,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.gray100,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitle: { fontSize: 17, fontWeight: "900", color: Colors.textDark },
+  headerSubtitle: { fontSize: 12, color: Colors.gray500, marginTop: 1 },
+  callHeaderBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: Colors.primaryLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   
-  content: { padding: 20 },
+  content: { padding: 20, paddingBottom: 40 },
   
   statusBadge: {
-    flexDirection: "row", alignItems: "center", alignSelf: "flex-start",
-    backgroundColor: "rgba(255, 109, 0, 0.15)",
-    paddingHorizontal: 12, paddingVertical: 6,
-    borderRadius: 16, marginBottom: 24,
-    borderWidth: 1, borderColor: "rgba(255, 109, 0, 0.3)"
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    backgroundColor: Colors.primaryLight,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
+    marginBottom: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(249, 115, 22, 0.25)',
   },
   statusDot: { width: 8, height: 8, borderRadius: 4, marginRight: 8 },
-  statusText: { color: "#FF6D00", fontWeight: "800", fontSize: 12 },
+  statusText: { color: Colors.primaryDark, fontWeight: "800", fontSize: 12 },
   
   card: {
-    backgroundColor: "#121C24",
-    borderRadius: 16, padding: 16, marginBottom: 16,
-    borderWidth: 1, borderColor: "#1E2C38"
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 18,
+    padding: 18,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: Colors.gray200,
   },
-  cardTitle: { fontSize: 14, fontWeight: "700", color: "#78909C", marginBottom: 16, textTransform: "uppercase" },
-  detailRow: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
-  detailText: { color: "#FFF", fontSize: 16, fontWeight: "600", marginLeft: 12, flex: 1 },
+  cardTitle: { fontSize: 11, fontWeight: "800", color: Colors.gray500, marginBottom: 14, letterSpacing: 0.8 },
+  detailRow: { flexDirection: "row", alignItems: "center", marginBottom: 14, gap: 12 },
+  detailIconBox: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: Colors.primaryLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  detailLabel: { fontSize: 11, color: Colors.gray500, fontWeight: '600', marginBottom: 2 },
+  detailText: { color: Colors.textDark, fontSize: 15, fontWeight: "700" },
   
-  communicationRow: { flexDirection: "row", marginTop: 16, borderTopWidth: 1, borderTopColor: "#1E2C38", paddingTop: 16, gap: 12 },
-  commBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", paddingVertical: 12, backgroundColor: "#1A2530", borderRadius: 12, borderWidth: 1, borderColor: "#2C3E50" },
-  commBtnText: { fontWeight: "700", fontSize: 15, marginLeft: 8 },
+  communicationRow: { flexDirection: "row", marginTop: 6, borderTopWidth: 1, borderTopColor: Colors.gray100, paddingTop: 14, gap: 10 },
+  commBtnCall: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    backgroundColor: Colors.primary,
+    borderRadius: 12,
+    gap: 6,
+  },
+  commBtnCallText: { color: "#FFFFFF", fontWeight: "800", fontSize: 14 },
+  commBtnChat: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    backgroundColor: Colors.primaryLight,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(249, 115, 22, 0.25)',
+    gap: 6,
+  },
+  commBtnChatText: { color: Colors.primaryDark, fontWeight: "800", fontSize: 14 },
 
-  footer: {
-    padding: 20, paddingBottom: 40,
-    backgroundColor: "#121C24",
-    borderTopWidth: 1, borderTopColor: "#1E2C38"
+  actionPanelCard: {
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 18,
+    padding: 18,
+    borderWidth: 1.5,
+    borderColor: Colors.primary,
+    marginTop: 4,
   },
   primaryBtn: {
-    backgroundColor: "#FF6D00",
-    flexDirection: "row", justifyContent: "center", alignItems: "center",
-    paddingVertical: 16, borderRadius: 14,
+    backgroundColor: Colors.primary,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 15,
+    borderRadius: 14,
+    gap: 8,
   },
-  primaryBtnText: { color: "#FFF", fontSize: 16, fontWeight: "800", marginLeft: 8 },
+  primaryBtnText: { color: "#FFF", fontSize: 15, fontWeight: "800" },
   
   secondaryBtn: {
-    backgroundColor: "#1A2530",
-    flexDirection: "row", justifyContent: "center", alignItems: "center",
-    paddingVertical: 16, borderRadius: 14,
-    borderWidth: 1, borderColor: "#2C3E50"
+    backgroundColor: Colors.lightBackground,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 15,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: Colors.gray300,
   },
-  secondaryBtnText: { color: "#FFF", fontSize: 16, fontWeight: "700" },
+  secondaryBtnText: { color: Colors.textDark, fontSize: 15, fontWeight: "700" },
   
   estimateBox: {
-    backgroundColor: "#1A2530", padding: 16, borderRadius: 14,
-    borderWidth: 1, borderColor: "#2C3E50"
+    padding: 4,
   },
-  estimateTitle: { color: "#FFF", fontSize: 16, fontWeight: "700", marginBottom: 12 },
-  estimateSub: { color: "#90A4AE", fontSize: 13, marginBottom: 12 },
+  estimateTitle: { color: Colors.textDark, fontSize: 16, fontWeight: "800", marginBottom: 6 },
+  estimateSub: { color: Colors.gray600, fontSize: 13, marginBottom: 14 },
   estimateInput: {
-    backgroundColor: "#0B1319", color: "#FFF", fontSize: 18, fontWeight: "700",
-    padding: 14, borderRadius: 10, borderWidth: 1, borderColor: "#37474F",
+    backgroundColor: Colors.lightBackground,
+    color: Colors.textDark,
+    fontSize: 18,
+    fontWeight: "800",
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.gray200,
+    marginBottom: 8,
   },
   chatBadge: {
     position: 'absolute',
     top: -5,
     right: -10,
-    backgroundColor: '#FF3B30',
+    backgroundColor: '#EF4444',
     borderRadius: 10,
     minWidth: 18,
     height: 18,

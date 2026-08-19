@@ -1,57 +1,57 @@
 export const Colors = {
-  primary: '#F2561D', // Vibrant Orange
-  primaryDark: '#D9440C',
-  primaryLight: '#FFF0EA',
-  primaryGlow: 'rgba(242, 86, 29, 0.15)',
+  primary: '#f97316', // BikeDone Brand Vibrant Orange (Matches Customer App)
+  primaryDark: '#ea580c',
+  primaryLight: '#fff3eb',
+  primaryGlow: 'rgba(249, 115, 22, 0.15)',
   
   // Backgrounds
   splashBackground: '#0B0E14',
-  darkBackground: '#121620',
-  lightBackground: '#F8FAF9',
+  darkBackground: '#111827',
+  lightBackground: '#F9FAFB',
   cardBackground: '#FFFFFF',
   
   // Text Colors
-  textDark: '#0F172A',
-  textSecondary: '#475569',
-  textMuted: '#94A3B8',
+  textDark: '#111827',
+  textSecondary: '#4B5563',
+  textMuted: '#9CA3AF',
   textWhite: '#FFFFFF',
   
   // Accents & Borders
-  border: '#E2E8F0',
-  borderActive: '#F2561D',
+  border: '#E5E7EB',
+  borderActive: '#f97316',
   accentBlue: '#2563EB',
   accentBlueLight: '#EFF6FF',
   success: '#10B981',
-  successLight: '#D1FAE5',
+  successLight: '#ECFDF5',
   warning: '#F59E0B',
   
   // Neutral Gray scale
-  gray50: '#F8FAFC',
-  gray100: '#F1F5F9',
-  gray200: '#E2E8F0',
-  gray300: '#CBD5E1',
-  gray400: '#94A3B8',
-  gray500: '#64748B',
-  gray600: '#475569',
-  gray700: '#334155',
-  gray800: '#1E293B',
-  gray900: '#0F172A',
+  gray50: '#F9FAFB',
+  gray100: '#F3F4F6',
+  gray200: '#E5E7EB',
+  gray300: '#D1D5DB',
+  gray400: '#9CA3AF',
+  gray500: '#6B7280',
+  gray600: '#4B5563',
+  gray700: '#374151',
+  gray800: '#1F2937',
+  gray900: '#111827',
 
   light: {
-    text: '#0F172A',
+    text: '#111827',
     background: '#FFFFFF',
-    tint: '#F2561D',
-    icon: '#64748B',
-    tabIconDefault: '#94A3B8',
-    tabIconSelected: '#F2561D',
+    tint: '#f97316',
+    icon: '#6B7280',
+    tabIconDefault: '#9CA3AF',
+    tabIconSelected: '#f97316',
   },
   dark: {
     text: '#ECEDEE',
     background: '#151718',
-    tint: '#F2561D',
+    tint: '#f97316',
     icon: '#9BA1A6',
     tabIconDefault: '#9BA1A6',
-    tabIconSelected: '#F2561D',
+    tabIconSelected: '#f97316',
   },
 };
 

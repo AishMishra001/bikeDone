@@ -5,6 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { socketService } from "../../../services/socketService";
 import { tokenStorage, LoggedInMechanic } from "../../../services/api";
 import { useBadge } from "../../../context/BadgeContext";
+import { Colors } from "@/constants/theme";
 
 export default function ChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -87,16 +88,18 @@ export default function ChatScreen() {
     >
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color="#FFF" />
+          <Ionicons name="arrow-back" size={24} color={Colors.textDark} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Chat with Customer</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.headerTitle}>Customer Direct Chat</Text>
+          <Text style={styles.headerSubtitle}>Order #{id.substring(0, 8).toUpperCase()}</Text>
+        </View>
       </View>
 
       {loading ? (
         <View style={styles.centerContainer}>
-           <ActivityIndicator size="small" color="#FF6D00" />
-           <Text style={styles.warningText}>Connecting to Chat...</Text>
-           <Text style={styles.smallNote}>(Requires valid Firebase Config)</Text>
+           <ActivityIndicator size="small" color={Colors.primary} />
+           <Text style={styles.warningText}>Connecting to Real-time Chat...</Text>
         </View>
       ) : (
         <FlatList
@@ -111,8 +114,8 @@ export default function ChatScreen() {
       <View style={styles.inputArea}>
         <TextInput
           style={styles.textInput}
-          placeholder="Type a message..."
-          placeholderTextColor="#78909C"
+          placeholder="Type a message to customer..."
+          placeholderTextColor={Colors.gray400}
           value={inputText}
           onChangeText={setInputText}
           multiline
@@ -122,7 +125,7 @@ export default function ChatScreen() {
           onPress={sendMessage}
           disabled={!inputText.trim()}
         >
-          <Ionicons name="send" size={20} color="#FFF" />
+          <Ionicons name="send" size={18} color="#FFF" />
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
@@ -130,16 +133,29 @@ export default function ChatScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0B1319" },
+  container: { flex: 1, backgroundColor: Colors.lightBackground },
   centerContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
   header: {
-    flexDirection: "row", alignItems: "center",
-    paddingTop: 60, paddingBottom: 20, paddingHorizontal: 20,
-    backgroundColor: "#121C24",
-    borderBottomWidth: 1, borderBottomColor: "#1E2C38"
+    flexDirection: "row",
+    alignItems: "center",
+    paddingTop: 54,
+    paddingBottom: 16,
+    paddingHorizontal: 20,
+    backgroundColor: Colors.cardBackground,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.gray200,
   },
-  backBtn: { marginRight: 16 },
-  headerTitle: { fontSize: 18, fontWeight: "800", color: "#FFF" },
+  backBtn: {
+    marginRight: 14,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.gray100,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitle: { fontSize: 17, fontWeight: "900", color: Colors.textDark },
+  headerSubtitle: { fontSize: 12, color: Colors.gray500, marginTop: 1 },
   
   chatContainer: { padding: 16, paddingBottom: 24 },
   
@@ -151,52 +167,56 @@ const styles = StyleSheet.create({
   },
   myBubble: {
     alignSelf: "flex-end",
-    backgroundColor: "#FF6D00",
+    backgroundColor: Colors.primary,
     borderBottomRightRadius: 4,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
   },
   theirBubble: {
     alignSelf: "flex-start",
-    backgroundColor: "#1E2C38",
+    backgroundColor: Colors.cardBackground,
     borderBottomLeftRadius: 4,
     borderWidth: 1,
-    borderColor: "#2C3E50"
+    borderColor: Colors.gray200,
   },
   messageText: { fontSize: 15, lineHeight: 20 },
-  myMessageText: { color: "#FFF" },
-  theirMessageText: { color: "#FFF" },
+  myMessageText: { color: "#FFF", fontWeight: '600' },
+  theirMessageText: { color: Colors.textDark, fontWeight: '500' },
   
   inputArea: {
     flexDirection: "row",
-    padding: 16,
-    paddingBottom: Platform.OS === "ios" ? 32 : 16,
-    backgroundColor: "#121C24",
+    padding: 14,
+    paddingBottom: Platform.OS === "ios" ? 32 : 14,
+    backgroundColor: Colors.cardBackground,
     borderTopWidth: 1,
-    borderTopColor: "#1E2C38",
-    alignItems: "flex-end"
+    borderTopColor: Colors.gray200,
+    alignItems: "flex-end",
+    gap: 10,
   },
   textInput: {
     flex: 1,
-    backgroundColor: "#1A2530",
-    color: "#FFF",
-    minHeight: 48,
+    backgroundColor: Colors.lightBackground,
+    color: Colors.textDark,
+    minHeight: 46,
     maxHeight: 120,
-    borderRadius: 24,
+    borderRadius: 20,
     paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 14,
-    fontSize: 16,
+    paddingTop: 12,
+    paddingBottom: 12,
+    fontSize: 15,
     borderWidth: 1,
-    borderColor: "#2C3E50"
+    borderColor: Colors.gray200,
   },
   sendBtn: {
-    width: 48, height: 48,
-    backgroundColor: "#FF6D00",
-    borderRadius: 24,
+    width: 46,
+    height: 46,
+    backgroundColor: Colors.primary,
+    borderRadius: 23,
     justifyContent: "center",
     alignItems: "center",
-    marginLeft: 12,
-    marginBottom: 0
   },
-  warningText: { color: "#FF5252", marginTop: 12, fontWeight: "600" },
-  smallNote: { color: "#78909C", fontSize: 12, marginTop: 4 }
+  warningText: { color: Colors.gray600, marginTop: 12, fontWeight: "600" },
 });

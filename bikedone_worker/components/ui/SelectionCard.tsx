@@ -83,7 +83,7 @@ const styles = StyleSheet.create({
     marginRight: 14,
   },
   selectedIconContainer: {
-    backgroundColor: 'rgba(242, 86, 29, 0.15)',
+    backgroundColor: Colors.primaryGlow,
   },
   textContainer: {
     flex: 1,

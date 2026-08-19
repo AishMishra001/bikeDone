@@ -9,7 +9,7 @@ import { api } from '@/services/api';
 
 export default function ReviewScreen() {
   const router = useRouter();
-  const { data, updateData } = useOnboarding();
+  const { data, updateData, goToNextStep } = useOnboarding();
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
@@ -27,16 +27,16 @@ export default function ReviewScreen() {
 
   return (
     <View style={styles.container}>
-      <Header title="Review & Submit" showBack step={7} totalSteps={7} />
+      <Header title="Review & Submit" showBack stepCode="MANUAL_VERIFICATION" />
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.subtitle}>Please review your details before submitting</Text>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <Text style={styles.subtitle}>Please review all application details before final submission</Text>
 
         {/* Section 1: Basic Details */}
         <View style={[styles.card, Shadows.small]}>
           <View style={styles.cardHeader}>
             <Text style={styles.cardTitle}>Basic Details</Text>
-            <TouchableOpacity onPress={() => router.push('/onboarding/basic-details' as any)}>
+            <TouchableOpacity onPress={() => router.push('/onboarding/basic-details?edit=true' as any)}>
               <Text style={styles.editBtn}>Edit</Text>
             </TouchableOpacity>
           </View>
@@ -45,34 +45,34 @@ export default function ReviewScreen() {
               <Image source={{ uri: data.profilePhoto }} style={styles.avatarImg} />
             ) : null}
             <View>
-              <Text style={styles.primaryVal}>{data.fullName || 'Rahul Kumar'}</Text>
-              <Text style={styles.secondaryVal}>{data.experience || '5 Years'} Experience</Text>
+              <Text style={styles.primaryVal}>{data.fullName || 'Not Provided'}</Text>
+              <Text style={styles.secondaryVal}>{data.experience || '1 Year'} Experience</Text>
             </View>
           </View>
         </View>
 
-        {/* Section 2: Shop Details */}
+        {/* Section 2: Shop / Garage Details */}
         <View style={[styles.card, Shadows.small]}>
           <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>Shop Details</Text>
-            <TouchableOpacity onPress={() => router.push('/onboarding/shop-type' as any)}>
+            <Text style={styles.cardTitle}>Shop / Garage Details</Text>
+            <TouchableOpacity onPress={() => router.push('/onboarding/shop-info?edit=true' as any)}>
               <Text style={styles.editBtn}>Edit</Text>
             </TouchableOpacity>
           </View>
-          <Text style={styles.primaryVal}>{data.hasShop ? data.shopName : 'Mobile Mechanic'}</Text>
-          {data.hasShop ? <Text style={styles.secondaryVal}>{data.shopAddress}</Text> : null}
+          <Text style={styles.primaryVal}>{data.shopName || 'Workshop Details'}</Text>
+          <Text style={styles.secondaryVal}>{data.shopAddress || 'Address not provided'}</Text>
         </View>
 
         {/* Section 3: Services Offered */}
         <View style={[styles.card, Shadows.small]}>
           <View style={styles.cardHeader}>
             <Text style={styles.cardTitle}>Services Offered</Text>
-            <TouchableOpacity onPress={() => router.push('/onboarding/services' as any)}>
+            <TouchableOpacity onPress={() => router.push('/onboarding/services?edit=true' as any)}>
               <Text style={styles.editBtn}>Edit</Text>
             </TouchableOpacity>
           </View>
           <Text style={styles.primaryVal}>
-            {data.services.length > 0
+            {data.services && data.services.length > 0
               ? data.services.slice(0, 3).join(', ') + (data.services.length > 3 ? ` +${data.services.length - 3} more` : '')
               : 'No services selected'}
           </Text>
@@ -82,7 +82,7 @@ export default function ReviewScreen() {
         <View style={[styles.card, Shadows.small]}>
           <View style={styles.cardHeader}>
             <Text style={styles.cardTitle}>Service Radius</Text>
-            <TouchableOpacity onPress={() => router.push('/onboarding/radius' as any)}>
+            <TouchableOpacity onPress={() => router.push('/onboarding/radius?edit=true' as any)}>
               <Text style={styles.editBtn}>Edit</Text>
             </TouchableOpacity>
           </View>
@@ -93,19 +93,31 @@ export default function ReviewScreen() {
         <View style={[styles.card, Shadows.small]}>
           <View style={styles.cardHeader}>
             <Text style={styles.cardTitle}>Bank Details</Text>
-            <TouchableOpacity onPress={() => router.push('/onboarding/bank-details' as any)}>
+            <TouchableOpacity onPress={() => router.push('/onboarding/bank-details?edit=true' as any)}>
               <Text style={styles.editBtn}>Edit</Text>
             </TouchableOpacity>
           </View>
-          <Text style={styles.primaryVal}>{data.bankDetails.bankName || 'Punjab National Bank'}</Text>
+          <Text style={styles.primaryVal}>{data.bankDetails.bankName || 'Bank Account'}</Text>
           <Text style={styles.secondaryVal}>
-            A/C: **** {data.bankDetails.accountNumber ? data.bankDetails.accountNumber.slice(-4) : '9012'} | IFSC: {data.bankDetails.ifscCode || 'PUNB0123456'}
+            A/C: {data.bankDetails.accountNumber ? `**** ${data.bankDetails.accountNumber.slice(-4)}` : 'Not provided'} | IFSC: {data.bankDetails.ifscCode || 'N/A'}
           </Text>
+        </View>
+
+        {/* Section 6: Quality SOP Training */}
+        <View style={[styles.card, Shadows.small]}>
+          <View style={styles.cardHeader}>
+            <Text style={styles.cardTitle}>Quality & SOP Training</Text>
+            <TouchableOpacity onPress={() => router.push('/onboarding/training-sop?edit=true' as any)}>
+              <Text style={styles.editBtn}>Review</Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={[styles.primaryVal, { color: Colors.success }]}>✓ Service Standards & Pledge Accepted</Text>
+          <Text style={styles.secondaryVal}>Committed to 4.7+ star rating & doorstep cleanliness.</Text>
         </View>
       </ScrollView>
 
       <View style={styles.footer}>
-        <PrimaryButton title={loading ? "Submitting..." : "Submit for Review"} onPress={handleSubmit} />
+        <PrimaryButton title={loading ? "Submitting..." : "Submit Application"} onPress={handleSubmit} />
       </View>
     </View>
   );

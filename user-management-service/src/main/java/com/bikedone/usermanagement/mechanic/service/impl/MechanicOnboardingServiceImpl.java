@@ -76,6 +76,21 @@ public class MechanicOnboardingServiceImpl implements MechanicOnboardingService 
 
         double progressPercentage = masterSteps.isEmpty() ? 0.0 : ((double) completedCount / masterSteps.size()) * 100.0;
 
+        boolean isManualVerificationDone = journeys.stream()
+                .anyMatch(j -> j.getOnboardingStep().getStepCode() == OnboardingStepCode.MANUAL_VERIFICATION
+                        && j.getStatus() == OnboardingStepStatus.COMPLETED);
+
+        String overallStatus;
+        if (mechanic.getStatus() == UserStatus.ACTIVE) {
+            overallStatus = "ACTIVE";
+        } else if (isManualVerificationDone || completedCount >= masterSteps.size()) {
+            overallStatus = "UNDER_REVIEW";
+        } else if (completedCount > 0) {
+            overallStatus = "IN_PROGRESS";
+        } else {
+            overallStatus = "PENDING";
+        }
+
         return MechanicOnboardingProgressResponse.builder()
                 .mechanicId(mechanic.getId().toString())
                 .currentStepCode(currentStep != null ? currentStep.getStepCode().name() : null)
@@ -83,7 +98,7 @@ public class MechanicOnboardingServiceImpl implements MechanicOnboardingService 
                 .currentStepOrder(currentStep != null ? currentStep.getStepOrder() : 1)
                 .totalSteps(masterSteps.size())
                 .progressPercentage(Math.round(progressPercentage * 100.0) / 100.0)
-                .overallStatus(mechanic.getStatus().name())
+                .overallStatus(overallStatus)
                 .steps(stepDetails)
                 .build();
     }
@@ -117,17 +132,16 @@ public class MechanicOnboardingServiceImpl implements MechanicOnboardingService 
         MechanicProfile profile = profileRepository.findByMechanic(mechanic)
                 .orElseGet(() -> MechanicProfile.builder().mechanic(mechanic).build());
 
-        profile.setHasShop(request.getHasShop());
-        if (Boolean.TRUE.equals(request.getHasShop())) {
-            if (request.getShopName() == null || request.getShopName().isBlank()) {
-                throw new BadRequestException("Shop name is compulsory when hasShop is true.");
-            }
-            if (request.getShopAddress() == null || request.getShopAddress().isBlank()) {
-                throw new BadRequestException("Shop address is compulsory when hasShop is true.");
-            }
-            profile.setShopName(request.getShopName());
-            profile.setShopAddress(request.getShopAddress());
+        if (request.getShopName() == null || request.getShopName().isBlank()) {
+            throw new BadRequestException("Shop name is compulsory.");
         }
+        if (request.getShopAddress() == null || request.getShopAddress().isBlank()) {
+            throw new BadRequestException("Shop address is compulsory.");
+        }
+
+        profile.setHasShop(true);
+        profile.setShopName(request.getShopName().trim());
+        profile.setShopAddress(request.getShopAddress().trim());
         profileRepository.save(profile);
 
         markStepCompleted(mechanic, OnboardingStepCode.SHOP_DETAILS);
@@ -138,6 +152,7 @@ public class MechanicOnboardingServiceImpl implements MechanicOnboardingService 
     @Transactional
     public MechanicOnboardingProgressResponse saveServiceCategories(MechanicUser mechanic, ServiceCategoriesRequest request) {
         serviceRepository.deleteByMechanic(mechanic);
+        serviceRepository.flush();
 
         List<String> selectedServices = request.getServices();
         if (Boolean.TRUE.equals(request.getSelectAll())) {
@@ -205,6 +220,31 @@ public class MechanicOnboardingServiceImpl implements MechanicOnboardingService 
         profile.setServiceRadiusKm(request.getRadiusKm());
         profileRepository.save(profile);
 
+        if (masterOnboardingStepRepository.findByStepCode(OnboardingStepCode.SERVICE_RADIUS).isPresent()) {
+            markStepCompleted(mechanic, OnboardingStepCode.SERVICE_RADIUS);
+        }
+
+        return getOnboardingProgress(mechanic);
+    }
+
+    @Override
+    @Transactional
+    public MechanicOnboardingProgressResponse saveTrainingSop(MechanicUser mechanic) {
+        if (masterOnboardingStepRepository.findByStepCode(OnboardingStepCode.TRAINING_SOP).isPresent()) {
+            markStepCompleted(mechanic, OnboardingStepCode.TRAINING_SOP);
+        }
+        return getOnboardingProgress(mechanic);
+    }
+
+    @Override
+    @Transactional
+    public MechanicOnboardingProgressResponse completeStep(MechanicUser mechanic, String stepCode) {
+        try {
+            OnboardingStepCode code = OnboardingStepCode.valueOf(stepCode.toUpperCase());
+            markStepCompleted(mechanic, code);
+        } catch (IllegalArgumentException ex) {
+            throw new BadRequestException("Invalid onboarding step code: " + stepCode);
+        }
         return getOnboardingProgress(mechanic);
     }
 

@@ -31,6 +31,7 @@ export default function RootLayout() {
             <Stack.Screen name="onboarding/radius" />
             <Stack.Screen name="onboarding/documents" />
             <Stack.Screen name="onboarding/bank-details" />
+            <Stack.Screen name="onboarding/training-sop" />
             <Stack.Screen name="onboarding/review" />
             <Stack.Screen name="onboarding/approval" />
             <Stack.Screen name="(tabs)" />

@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Modal, Tex
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
+import { Colors, Shadows } from "@/constants/theme";
 import { tokenStorage, LoggedInMechanic } from "../../services/api";
 
 export default function ProfileScreen() {
@@ -17,7 +18,7 @@ export default function ProfileScreen() {
   }, []);
 
   const handleLogout = async () => {
-    Alert.alert("Logout", "Are you sure you want to log out?", [
+    Alert.alert("Logout", "Are you sure you want to log out of your MyKaarigar Partner account?", [
       { text: "Cancel", style: "cancel" },
       {
         text: "Logout",
@@ -30,103 +31,141 @@ export default function ProfileScreen() {
     ]);
   };
 
-  const name = mechanic?.firstName ? `${mechanic.firstName} ${mechanic.lastName || ""}` : "Mechanic Partner";
-  const phone = mechanic?.mobileNumber || "+91 99999 99999";
+  const name = mechanic?.firstName ? `${mechanic.firstName} ${mechanic.lastName || ""}` : "Rahul Kumar";
+  const phone = mechanic?.mobileNumber || "+91 98765 43210";
 
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
+        {/* Header Profile Hero Card */}
+        <View style={[styles.heroProfileCard, Shadows.medium]}>
           <View style={styles.avatarPlaceholder}>
-            <Ionicons name="person" size={44} color="#FF6D00" />
+            <Ionicons name="person" size={44} color={Colors.primary} />
             <View style={styles.verifiedBadge}>
-              <Ionicons name="checkmark" size={12} color="#fff" />
+              <Ionicons name="shield-checkmark" size={14} color="#FFFFFF" />
             </View>
           </View>
           <Text style={styles.name}>{name}</Text>
           <Text style={styles.phone}>{phone}</Text>
-          <View style={styles.ratingBadge}>
-            <Ionicons name="star" size={14} color="#FFD54F" />
-            <Text style={styles.ratingText}>4.8</Text>
-            <Text style={styles.ratingCount}>(124 Jobs)</Text>
+          
+          <View style={styles.badgeRow}>
+            <View style={styles.ratingBadge}>
+              <Ionicons name="star" size={14} color="#F59E0B" />
+              <Text style={styles.ratingText}>4.9</Text>
+              <Text style={styles.ratingCount}>• 124 Orders</Text>
+            </View>
+            <View style={styles.expBadge}>
+              <Ionicons name="ribbon-outline" size={14} color={Colors.primary} />
+              <Text style={styles.expText}>5+ Yrs Exp</Text>
+            </View>
           </View>
         </View>
 
+        {/* Section 1: Profile & Workshop */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Profile & Details</Text>
-          <TouchableOpacity style={styles.menuItem} onPress={() => { Haptics.selectionAsync(); setActiveModal("personal"); }}>
+          <Text style={styles.sectionTitle}>WORKSHOP & PARTNER DETAILS</Text>
+          
+          <TouchableOpacity
+            style={[styles.menuItem, Shadows.small]}
+            onPress={() => { Haptics.selectionAsync(); setActiveModal("personal"); }}
+          >
             <View style={styles.menuIconBox}>
-              <Ionicons name="person-outline" size={22} color="#FFFFFF" />
+              <Ionicons name="person-outline" size={22} color={Colors.primary} />
             </View>
             <View style={styles.menuTextContainer}>
-              <Text style={styles.menuText}>Personal Information</Text>
-              <Text style={styles.menuSubtext}>Name, Phone, Experience</Text>
+              <Text style={styles.menuText}>Personal Profile</Text>
+              <Text style={styles.menuSubtext}>Name, Phone, KYC Documents</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#78909C" />
+            <Ionicons name="chevron-forward" size={18} color={Colors.gray400} />
           </TouchableOpacity>
           
-          <TouchableOpacity style={styles.menuItem} onPress={() => { Haptics.selectionAsync(); setActiveModal("shop"); }}>
+          <TouchableOpacity
+            style={[styles.menuItem, Shadows.small]}
+            onPress={() => { Haptics.selectionAsync(); setActiveModal("shop"); }}
+          >
             <View style={styles.menuIconBox}>
-              <Ionicons name="storefront-outline" size={22} color="#FFFFFF" />
+              <Ionicons name="business-outline" size={22} color={Colors.primary} />
             </View>
             <View style={styles.menuTextContainer}>
-              <Text style={styles.menuText}>Shop Details</Text>
-              <Text style={styles.menuSubtext}>Shop Name, Address, Service Radius</Text>
+              <Text style={styles.menuText}>Workshop & Garage Info</Text>
+              <Text style={styles.menuSubtext}>Shop Name, Address, Working Hours</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#78909C" />
+            <Ionicons name="chevron-forward" size={18} color={Colors.gray400} />
           </TouchableOpacity>
         </View>
 
+        {/* Section 2: Payouts & Quality */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Payments & Performance</Text>
-          <TouchableOpacity style={styles.menuItem} onPress={() => { Haptics.selectionAsync(); setActiveModal("bank"); }}>
+          <Text style={styles.sectionTitle}>PAYMENTS & REPUTATION</Text>
+          
+          <TouchableOpacity
+            style={[styles.menuItem, Shadows.small]}
+            onPress={() => { Haptics.selectionAsync(); setActiveModal("bank"); }}
+          >
             <View style={styles.menuIconBox}>
-              <Ionicons name="business-outline" size={22} color="#FFFFFF" />
+              <Ionicons name="card-outline" size={22} color={Colors.primary} />
             </View>
             <View style={styles.menuTextContainer}>
-              <Text style={styles.menuText}>Bank Account Details</Text>
-              <Text style={styles.menuSubtext}>Account for weekly payouts</Text>
+              <Text style={styles.menuText}>Bank Account & Payouts</Text>
+              <Text style={styles.menuSubtext}>Direct weekly bank settlement details</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#78909C" />
+            <Ionicons name="chevron-forward" size={18} color={Colors.gray400} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem} onPress={() => { Haptics.selectionAsync(); setActiveModal("ratings"); }}>
+          <TouchableOpacity
+            style={[styles.menuItem, Shadows.small]}
+            onPress={() => { Haptics.selectionAsync(); setActiveModal("ratings"); }}
+          >
             <View style={styles.menuIconBox}>
-              <Ionicons name="star-outline" size={22} color="#FFFFFF" />
+              <Ionicons name="star-outline" size={22} color={Colors.primary} />
             </View>
             <View style={styles.menuTextContainer}>
-              <Text style={styles.menuText}>Ratings & Feedback</Text>
-              <Text style={styles.menuSubtext}>View customer reviews</Text>
+              <Text style={styles.menuText}>Customer Reviews & Ratings</Text>
+              <Text style={styles.menuSubtext}>4.9 ★ Partner Score</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#78909C" />
+            <Ionicons name="chevron-forward" size={18} color={Colors.gray400} />
           </TouchableOpacity>
         </View>
 
+        {/* Section 3: Support */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Support & Legal</Text>
-          <TouchableOpacity style={styles.menuItem}>
+          <Text style={styles.sectionTitle}>HELP & LEGAL</Text>
+          
+          <TouchableOpacity
+            style={[styles.menuItem, Shadows.small]}
+            onPress={() => Alert.alert('MyKaarigar Partner Support', 'Call helpline: 1800-123-KAARIGAR\nEmail: partners@mykaarigar.com')}
+          >
             <View style={styles.menuIconBox}>
-              <Ionicons name="headset-outline" size={22} color="#FFFFFF" />
+              <Ionicons name="headset-outline" size={22} color={Colors.primary} />
             </View>
-            <Text style={styles.menuText}>Help Center</Text>
-            <Ionicons name="chevron-forward" size={20} color="#78909C" />
+            <View style={styles.menuTextContainer}>
+              <Text style={styles.menuText}>Partner Helpline (24/7)</Text>
+              <Text style={styles.menuSubtext}>Immediate breakdown dispatch support</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={Colors.gray400} />
           </TouchableOpacity>
           
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity
+            style={[styles.menuItem, Shadows.small]}
+            onPress={() => Alert.alert('Quality SOP Guidelines', '• Keep uniform and tools clean.\n• Take pre/post service photos.\n• Use zero-stain floor mats.')}
+          >
             <View style={styles.menuIconBox}>
-              <Ionicons name="shield-checkmark-outline" size={22} color="#FFFFFF" />
+              <Ionicons name="shield-checkmark-outline" size={22} color={Colors.primary} />
             </View>
-            <Text style={styles.menuText}>Terms & Privacy</Text>
-            <Ionicons name="chevron-forward" size={20} color="#78909C" />
+            <View style={styles.menuTextContainer}>
+              <Text style={styles.menuText}>MyKaarigar Quality SOPs</Text>
+              <Text style={styles.menuSubtext}>Service standards & safety rules</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={Colors.gray400} />
           </TouchableOpacity>
         </View>
 
         <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={22} color="#FF5252" />
-          <Text style={styles.logoutText}>Log Out</Text>
+          <Ionicons name="log-out-outline" size={20} color="#EF4444" />
+          <Text style={styles.logoutText}>Log Out Account</Text>
         </TouchableOpacity>
         
-        <Text style={styles.versionText}>MyKaarigar Partner App • Version 1.0.0</Text>
+        <Text style={styles.versionText}>MyKaarigar Partner Application • Version 2.4.0</Text>
       </ScrollView>
 
       {/* MODALS */}
@@ -135,7 +174,7 @@ export default function ProfileScreen() {
           <View style={styles.modalCard}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Personal Information</Text>
-              <TouchableOpacity onPress={() => setActiveModal(null)}><Ionicons name="close" size={24} color="#FFF" /></TouchableOpacity>
+              <TouchableOpacity onPress={() => setActiveModal(null)}><Ionicons name="close" size={24} color={Colors.textDark} /></TouchableOpacity>
             </View>
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Full Name</Text>
@@ -158,20 +197,20 @@ export default function ProfileScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Shop Details</Text>
-              <TouchableOpacity onPress={() => setActiveModal(null)}><Ionicons name="close" size={24} color="#FFF" /></TouchableOpacity>
+              <Text style={styles.modalTitle}>Shop / Garage Details</Text>
+              <TouchableOpacity onPress={() => setActiveModal(null)}><Ionicons name="close" size={24} color={Colors.textDark} /></TouchableOpacity>
             </View>
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Shop Name</Text>
-              <TextInput style={styles.input} value="Bike Masters Garage" editable={false} />
+              <Text style={styles.inputLabel}>Shop / Garage Name</Text>
+              <TextInput style={styles.input} value="Rahul Auto Care & Garage" editable={false} />
             </View>
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Shop Address</Text>
-              <TextInput style={styles.input} value="Sector 62, Noida" editable={false} multiline />
+              <TextInput style={styles.input} value="123, Main Market, Laxmi Nagar, Delhi - 110092" editable={false} multiline />
             </View>
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Service Radius (km)</Text>
-              <TextInput style={styles.input} value="10 km" editable={false} />
+              <Text style={styles.inputLabel}>Service Radius</Text>
+              <TextInput style={styles.input} value="10 KM" editable={false} />
             </View>
             <TouchableOpacity style={styles.saveBtn} onPress={() => setActiveModal(null)}><Text style={styles.saveBtnText}>Done</Text></TouchableOpacity>
           </View>
@@ -182,20 +221,20 @@ export default function ProfileScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Bank Account Details</Text>
-              <TouchableOpacity onPress={() => setActiveModal(null)}><Ionicons name="close" size={24} color="#FFF" /></TouchableOpacity>
+              <Text style={styles.modalTitle}>Bank Payout Details</Text>
+              <TouchableOpacity onPress={() => setActiveModal(null)}><Ionicons name="close" size={24} color={Colors.textDark} /></TouchableOpacity>
             </View>
             <View style={styles.infoBanner}>
-              <Ionicons name="information-circle" size={20} color="#29B6F6" />
-              <Text style={styles.infoText}>This account is used for your weekly PaaS payouts.</Text>
+              <Ionicons name="information-circle" size={20} color={Colors.primary} />
+              <Text style={styles.infoText}>Payouts are automatically settled weekly into this verified account.</Text>
             </View>
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Bank Name</Text>
-              <TextInput style={styles.input} value="HDFC Bank" editable={false} />
+              <TextInput style={styles.input} value="Punjab National Bank" editable={false} />
             </View>
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Account Number</Text>
-              <TextInput style={styles.input} value="XXXX-XXXX-1234" editable={false} />
+              <TextInput style={styles.input} value="XXXX-XXXX-9012" editable={false} />
             </View>
             <TouchableOpacity style={styles.saveBtn} onPress={() => setActiveModal(null)}><Text style={styles.saveBtnText}>Done</Text></TouchableOpacity>
           </View>
@@ -206,24 +245,24 @@ export default function ProfileScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Ratings & Feedback</Text>
-              <TouchableOpacity onPress={() => setActiveModal(null)}><Ionicons name="close" size={24} color="#FFF" /></TouchableOpacity>
+              <Text style={styles.modalTitle}>Customer Ratings</Text>
+              <TouchableOpacity onPress={() => setActiveModal(null)}><Ionicons name="close" size={24} color={Colors.textDark} /></TouchableOpacity>
             </View>
             
             <View style={styles.reviewCard}>
               <View style={styles.reviewHeader}>
-                <Text style={styles.reviewName}>Rahul S.</Text>
-                <View style={{flexDirection: "row"}}><Ionicons name="star" color="#FFD54F" size={14} /><Ionicons name="star" color="#FFD54F" size={14} /><Ionicons name="star" color="#FFD54F" size={14} /><Ionicons name="star" color="#FFD54F" size={14} /><Ionicons name="star" color="#FFD54F" size={14} /></View>
+                <Text style={styles.reviewName}>Vikram S. • Royal Enfield 350</Text>
+                <View style={{flexDirection: "row"}}><Ionicons name="star" color="#F59E0B" size={14} /><Ionicons name="star" color="#F59E0B" size={14} /><Ionicons name="star" color="#F59E0B" size={14} /><Ionicons name="star" color="#F59E0B" size={14} /><Ionicons name="star" color="#F59E0B" size={14} /></View>
               </View>
-              <Text style={styles.reviewText}>"Great service! Fixed my bike's chain issue in 10 minutes."</Text>
+              <Text style={styles.reviewText}>"Punctual arrival! Handled bike breakdown very cleanly with floor mat protection."</Text>
             </View>
 
             <View style={styles.reviewCard}>
               <View style={styles.reviewHeader}>
-                <Text style={styles.reviewName}>Amit K.</Text>
-                <View style={{flexDirection: "row"}}><Ionicons name="star" color="#FFD54F" size={14} /><Ionicons name="star" color="#FFD54F" size={14} /><Ionicons name="star" color="#FFD54F" size={14} /><Ionicons name="star" color="#FFD54F" size={14} /><Ionicons name="star-half" color="#FFD54F" size={14} /></View>
+                <Text style={styles.reviewName}>Ankit K. • Honda Activa 6G</Text>
+                <View style={{flexDirection: "row"}}><Ionicons name="star" color="#F59E0B" size={14} /><Ionicons name="star" color="#F59E0B" size={14} /><Ionicons name="star" color="#F59E0B" size={14} /><Ionicons name="star" color="#F59E0B" size={14} /><Ionicons name="star" color="#F59E0B" size={14} /></View>
               </View>
-              <Text style={styles.reviewText}>"Very professional mechanic. Punctual."</Text>
+              <Text style={styles.reviewText}>"Fast battery jumpstart and genuine engine oil replacement."</Text>
             </View>
 
             <TouchableOpacity style={styles.saveBtn} onPress={() => setActiveModal(null)}><Text style={styles.saveBtnText}>Close</Text></TouchableOpacity>
@@ -238,237 +277,265 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0B1319",
+    backgroundColor: Colors.lightBackground,
   },
   content: {
     padding: 20,
-    paddingTop: 60,
+    paddingTop: 54,
     paddingBottom: 40,
   },
-  header: {
+  heroProfileCard: {
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 20,
+    padding: 22,
     alignItems: "center",
-    marginBottom: 35,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: Colors.gray200,
   },
   avatarPlaceholder: {
-    width: 86,
-    height: 86,
-    borderRadius: 43,
-    backgroundColor: "rgba(255, 109, 0, 0.15)",
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    backgroundColor: Colors.primaryLight,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: 12,
     borderWidth: 2,
-    borderColor: "#FF6D00",
+    borderColor: Colors.primary,
     position: "relative",
   },
   verifiedBadge: {
     position: "absolute",
     bottom: 0,
     right: 0,
-    backgroundColor: "#00E676",
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    backgroundColor: Colors.primary,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 2,
-    borderColor: "#0B1319",
+    borderColor: Colors.cardBackground,
   },
   name: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: "#FFFFFF",
-    marginBottom: 4,
+    fontSize: 20,
+    fontWeight: "900",
+    color: Colors.textDark,
+    marginBottom: 3,
+    letterSpacing: -0.3,
   },
   phone: {
-    fontSize: 14,
-    color: "#B0BEC5",
+    fontSize: 13,
+    color: Colors.gray500,
+    fontWeight: "500",
     marginBottom: 12,
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   ratingBadge: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#1E2C38",
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
+    backgroundColor: '#FFFBEB',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#37474F",
+    borderColor: '#FEF3C7',
+    gap: 4,
   },
   ratingText: {
-    color: "#FFFFFF",
-    fontWeight: "bold",
-    marginLeft: 6,
-    fontSize: 15,
+    color: "#B45309",
+    fontWeight: "800",
+    fontSize: 13,
   },
   ratingCount: {
-    color: "#90A4AE",
-    marginLeft: 6,
+    color: "#92400E",
     fontSize: 12,
+    fontWeight: '600',
+  },
+  expBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: Colors.primaryLight,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(249, 115, 22, 0.2)',
+    gap: 4,
+  },
+  expText: {
+    color: Colors.primaryDark,
+    fontSize: 12,
+    fontWeight: '700',
   },
   section: {
-    marginBottom: 28,
+    marginBottom: 24,
   },
   sectionTitle: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: "800",
-    color: "#78909C",
-    marginBottom: 14,
-    textTransform: "uppercase",
-    letterSpacing: 1.5,
+    color: Colors.gray500,
+    marginBottom: 10,
+    letterSpacing: 1,
   },
   menuItem: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#121C24",
+    backgroundColor: Colors.cardBackground,
     padding: 16,
     borderRadius: 16,
-    marginBottom: 12,
+    marginBottom: 10,
     borderWidth: 1,
-    borderColor: "#1E2C38",
+    borderColor: Colors.gray200,
   },
   menuIconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: "#1A2530",
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    backgroundColor: Colors.primaryLight,
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 16,
+    marginRight: 14,
   },
   menuTextContainer: {
     flex: 1,
   },
   menuText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "700",
-    color: "#FFFFFF",
+    color: Colors.textDark,
     marginBottom: 2,
   },
   menuSubtext: {
     fontSize: 12,
-    color: "#90A4AE",
+    color: Colors.gray500,
   },
   logoutBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(255, 82, 82, 0.1)",
+    backgroundColor: "#FEF2F2",
     padding: 16,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "rgba(255, 82, 82, 0.3)",
-    marginBottom: 24,
+    borderColor: "#FECACA",
+    marginBottom: 16,
+    gap: 8,
   },
   logoutText: {
-    color: "#FF5252",
-    fontSize: 16,
-    fontWeight: "bold",
-    marginLeft: 8,
+    color: "#EF4444",
+    fontSize: 15,
+    fontWeight: "800",
   },
   versionText: {
     textAlign: "center",
-    color: "#546E7A",
-    fontSize: 12,
+    color: Colors.gray400,
+    fontSize: 11,
     marginBottom: 20,
+    fontWeight: '500',
   },
 
   // Modal Styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.7)",
+    backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "flex-end",
   },
   modalCard: {
-    backgroundColor: "#121C24",
+    backgroundColor: Colors.cardBackground,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 24,
     borderWidth: 1,
-    borderColor: "#2C3E50",
+    borderColor: Colors.gray200,
     maxHeight: "80%",
   },
   modalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 24,
+    marginBottom: 20,
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: "#FFF",
+    fontSize: 18,
+    fontWeight: "900",
+    color: Colors.textDark,
   },
   infoBanner: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(41, 182, 246, 0.1)",
+    backgroundColor: Colors.primaryLight,
     padding: 12,
     borderRadius: 12,
-    marginBottom: 20,
+    marginBottom: 18,
     borderWidth: 1,
-    borderColor: "rgba(41, 182, 246, 0.3)",
+    borderColor: 'rgba(249, 115, 22, 0.25)',
+    gap: 8,
   },
   infoText: {
-    color: "#29B6F6",
-    fontSize: 13,
-    marginLeft: 8,
+    color: Colors.textDark,
+    fontSize: 12,
     flex: 1,
+    fontWeight: '500',
   },
   inputGroup: {
-    marginBottom: 16,
+    marginBottom: 14,
   },
   inputLabel: {
     fontSize: 12,
-    color: "#90A4AE",
-    marginBottom: 8,
-    fontWeight: "600",
-    letterSpacing: 0.5,
+    color: Colors.gray600,
+    marginBottom: 6,
+    fontWeight: "700",
   },
   input: {
-    backgroundColor: "#1A2530",
+    backgroundColor: Colors.lightBackground,
     borderWidth: 1,
-    borderColor: "#2C3E50",
+    borderColor: Colors.gray200,
     borderRadius: 12,
-    padding: 14,
-    color: "#FFF",
-    fontSize: 16,
-    fontWeight: "500",
+    padding: 12,
+    color: Colors.textDark,
+    fontSize: 15,
+    fontWeight: "600",
   },
   saveBtn: {
-    backgroundColor: "#FF6D00",
+    backgroundColor: Colors.primary,
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 14,
     alignItems: "center",
     marginTop: 10,
   },
   saveBtnText: {
     color: "#FFF",
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "800",
   },
   reviewCard: {
-    backgroundColor: "#1A2530",
-    padding: 16,
+    backgroundColor: Colors.lightBackground,
+    padding: 14,
     borderRadius: 12,
-    marginBottom: 12,
+    marginBottom: 10,
     borderWidth: 1,
-    borderColor: "#2C3E50",
+    borderColor: Colors.gray200,
   },
   reviewHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 8,
+    alignItems: 'center',
+    marginBottom: 6,
   },
   reviewName: {
-    color: "#FFF",
+    color: Colors.textDark,
     fontWeight: "700",
-    fontSize: 15,
+    fontSize: 13,
   },
   reviewText: {
-    color: "#B0BEC5",
-    fontSize: 14,
-    fontStyle: "italic",
-    lineHeight: 20,
+    color: Colors.gray600,
+    fontSize: 13,
+    lineHeight: 18,
   },
 });

@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Activi
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
+import { Colors, Shadows } from '@/constants/theme';
 import { walletService, WalletData } from "../../services/walletService";
 import { tokenStorage } from "../../services/api";
 
@@ -84,50 +85,83 @@ export default function WalletScreen() {
   if (!isWalletActive) {
     return (
       <View style={styles.centerContainer}>
-        <Ionicons name="wallet-outline" size={64} color="#FF6D00" />
+        <View style={styles.inactiveIconCircle}>
+          <Ionicons name="wallet-outline" size={48} color={Colors.primary} />
+        </View>
         <Text style={styles.inactiveTitle}>Wallet Not Activated</Text>
-        <Text style={styles.inactiveSub}>Please activate your wallet from the Home screen to view balance and add money.</Text>
+        <Text style={styles.inactiveSub}>
+          Activate your BikeDone Partner Wallet to receive real-time customer repair requests and instant payouts.
+        </Text>
+        <TouchableOpacity
+          style={styles.activateBtn}
+          onPress={() => router.push('/(tabs)')}
+        >
+          <Text style={styles.activateBtnText}>Go to Dashboard to Activate</Text>
+        </TouchableOpacity>
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.headerTitle}>Partner Wallet</Text>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      {/* Header */}
+      <View style={styles.headerRow}>
+        <View>
+          <Text style={styles.headerTitle}>Partner Wallet</Text>
+          <Text style={styles.headerSubtitle}>Manage earnings, dispatches & instant top-ups</Text>
+        </View>
+        <TouchableOpacity
+          style={styles.historyIconBtn}
+          onPress={() => router.push("/(tabs)/history")}
+        >
+          <Ionicons name="time-outline" size={20} color={Colors.textDark} />
+        </TouchableOpacity>
+      </View>
       
-      <View style={styles.leatherWalletCard}>
-        <View style={styles.walletCutoutNotch} />
-        <View style={styles.walletContentInner}>
-          <Text style={styles.leatherBalanceValue}>₹ {currentBalance.toFixed(2)}</Text>
-          <Text style={styles.leatherBalanceLabel}>WALLET BALANCE</Text>
+      {/* Modern Partner Wallet Card */}
+      <View style={[styles.modernWalletCard, Shadows.medium]}>
+        <View style={styles.walletCardHeader}>
+          <View style={styles.brandRow}>
+            <View style={styles.brandCircle}>
+              <Ionicons name="bicycle" size={16} color="#FFFFFF" />
+            </View>
+            <Text style={styles.walletBrandText}>BIKEDONE PARTNER</Text>
+          </View>
           <View style={styles.activePaaSBadge}>
-            <Ionicons name="checkmark-circle" size={14} color="#00E676" />
+            <Ionicons name="checkmark-circle" size={12} color="#10B981" />
             <Text style={styles.activePaaSBadgeText}>Active PaaS Account</Text>
           </View>
+        </View>
+
+        <View style={styles.walletContentInner}>
+          <Text style={styles.leatherBalanceLabel}>AVAILABLE WALLET BALANCE</Text>
+          <Text style={styles.leatherBalanceValue}>₹ {currentBalance.toFixed(2)}</Text>
+          <Text style={styles.balanceSubtext}>Auto-deducted per dispatch completion • No hidden fee</Text>
         </View>
       </View>
 
       {topupSuccessMsg && (
         <View style={styles.topupSuccessBanner}>
-          <Ionicons name="checkmark-done-circle" size={24} color="#00E676" />
+          <Ionicons name="checkmark-circle" size={22} color="#10B981" />
           <Text style={styles.topupSuccessText}>{topupSuccessMsg}</Text>
         </View>
       )}
 
-      <Text style={styles.addMoneyMethodHeading}>ADD MONEY TO YOUR WALLET USING</Text>
+      {/* Accepted Payment Modes */}
+      <Text style={styles.addMoneyMethodHeading}>SUPPORTED PAYMENT METHODS</Text>
       <View style={styles.paymentLogosRow}>
-        <View style={styles.logoBadge}><Text style={styles.logoTextUPI}>UPI</Text></View>
-        <View style={styles.logoBadge}><Text style={styles.logoTextRuPay}>RuPay</Text></View>
-        <View style={styles.logoBadge}><Text style={styles.logoTextVisa}>VISA</Text></View>
-        <View style={styles.logoBadge}><Text style={styles.logoTextMaster}>MasterCard</Text></View>
+        <View style={styles.logoBadge}><Text style={styles.logoTextUPI}>UPI / GPay</Text></View>
+        <View style={styles.logoBadge}><Text style={styles.logoTextRuPay}>Paytm</Text></View>
+        <View style={styles.logoBadge}><Text style={styles.logoTextVisa}>Debit / Cards</Text></View>
+        <View style={styles.logoBadge}><Text style={styles.logoTextMaster}>NetBanking</Text></View>
       </View>
 
       {showAddMoney ? (
-        <View style={styles.addMoneySection}>
-          <Text style={styles.inputLabelText}>Select or Enter Top-Up Amount (₹)</Text>
+        <View style={[styles.addMoneySection, Shadows.small]}>
+          <Text style={styles.inputLabelText}>Select Top-Up Amount</Text>
           
           <View style={styles.presetPillsRow}>
-            {["100", "200", "500", "1000"].map((preset) => (
+            {["200", "500", "1000", "2000"].map((preset) => (
               <TouchableOpacity
                 key={preset}
                 style={[
@@ -142,7 +176,7 @@ export default function WalletScreen() {
                     topupAmount === preset && styles.presetPillTextActive,
                   ]}
                 >
-                  + ₹{preset}
+                  ₹{preset}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -155,8 +189,8 @@ export default function WalletScreen() {
               keyboardType="numeric"
               value={topupAmount}
               onChangeText={setTopupAmount}
-              placeholder="Enter Amount"
-              placeholderTextColor="#757575"
+              placeholder="Enter Custom Amount"
+              placeholderTextColor={Colors.gray400}
             />
           </View>
 
@@ -168,12 +202,12 @@ export default function WalletScreen() {
             {isProcessingRazorpay ? (
               <View style={styles.loadingRow}>
                 <ActivityIndicator size="small" color="#FFFFFF" />
-                <Text style={styles.razorpayPayBtnText}>Opening Razorpay Gateway...</Text>
+                <Text style={styles.razorpayPayBtnText}>Opening Secure Gateway...</Text>
               </View>
             ) : (
               <View style={styles.loadingRow}>
-                <Ionicons name="card" size={20} color="#FFFFFF" />
-                <Text style={styles.razorpayPayBtnText}>Pay ₹{topupAmount || "0"} via Razorpay</Text>
+                <Ionicons name="lock-closed" size={16} color="#FFFFFF" />
+                <Text style={styles.razorpayPayBtnText}>Pay ₹{topupAmount || "0"} Securely</Text>
               </View>
             )}
           </TouchableOpacity>
@@ -185,83 +219,210 @@ export default function WalletScreen() {
       ) : (
         <View style={styles.walletActionsRow}>
           <TouchableOpacity
-            style={styles.addMoneyPrimaryBtn}
+            style={[styles.addMoneyPrimaryBtn, Shadows.small]}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
               setShowAddMoney(true);
             }}
           >
-            <Ionicons name="add-circle" size={22} color="#FFFFFF" />
-            <Text style={styles.addMoneyPrimaryText}>Add money</Text>
+            <Ionicons name="add-circle" size={20} color="#FFFFFF" />
+            <Text style={styles.addMoneyPrimaryText}>Add Money</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.sendMoneyOutlineBtn}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.push("/history");
+              router.push("/(tabs)/history");
             }}
           >
-            <Ionicons name="time-outline" size={20} color="#FFFFFF" />
-            <Text style={styles.sendMoneyOutlineText}>History</Text>
+            <Ionicons name="receipt-outline" size={18} color={Colors.textDark} />
+            <Text style={styles.sendMoneyOutlineText}>Passbook</Text>
           </TouchableOpacity>
         </View>
       )}
 
-      <Text style={styles.effortlessFooterText}>🔒 100% Safe & Instant Wallet Topup powered by MyKaarigar</Text>
+      <Text style={styles.effortlessFooterText}>🔒 100% Safe & Instant Wallet Top-up powered by BikeDone</Text>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0B1319" },
-  content: { padding: 20, paddingTop: 60, paddingBottom: 40, alignItems: "center" },
-  centerContainer: { flex: 1, backgroundColor: "#0B1319", justifyContent: "center", alignItems: "center", padding: 20 },
-  headerTitle: { fontSize: 24, fontWeight: "bold", color: "#FFFFFF", marginBottom: 30, alignSelf: "flex-start" },
-  inactiveTitle: { fontSize: 20, fontWeight: "bold", color: "#FFFFFF", marginTop: 16, marginBottom: 8 },
-  inactiveSub: { fontSize: 14, color: "#90A4AE", textAlign: "center" },
-  
-  leatherWalletCard: {
-    width: "100%", backgroundColor: "#1A2530", borderRadius: 20, padding: 24, alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: "#2C3E50", shadowColor: "#000", shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.4, shadowRadius: 10, elevation: 8, marginBottom: 30, position: "relative", overflow: "hidden"
+  container: { flex: 1, backgroundColor: Colors.lightBackground },
+  content: { padding: 20, paddingTop: 54, paddingBottom: 40 },
+  centerContainer: { flex: 1, backgroundColor: Colors.lightBackground, justifyContent: "center", alignItems: "center", padding: 24 },
+  inactiveIconCircle: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: Colors.primaryLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+    borderWidth: 1.5,
+    borderColor: 'rgba(249, 115, 22, 0.25)',
   },
-  walletCutoutNotch: { position: "absolute", top: 0, width: 120, height: 18, backgroundColor: "#0B1319", borderBottomLeftRadius: 12, borderBottomRightRadius: 12 },
-  walletContentInner: { alignItems: "center", marginTop: 10 },
-  leatherBalanceValue: { fontSize: 38, fontWeight: "900", color: "#FFFFFF", letterSpacing: 0.5, marginBottom: 4 },
-  leatherBalanceLabel: { fontSize: 12, fontWeight: "800", color: "#78909C", letterSpacing: 2, marginBottom: 10 },
-  activePaaSBadge: { flexDirection: "row", alignItems: "center", backgroundColor: "rgba(0, 230, 118, 0.12)", paddingVertical: 4, paddingHorizontal: 12, borderRadius: 20, borderWidth: 1, borderColor: "rgba(0, 230, 118, 0.3)" },
-  activePaaSBadgeText: { fontSize: 11, fontWeight: "700", color: "#00E676", marginLeft: 6 },
+  inactiveTitle: { fontSize: 20, fontWeight: "800", color: Colors.textDark, marginBottom: 8 },
+  inactiveSub: { fontSize: 13, color: Colors.gray600, textAlign: "center", lineHeight: 20, marginBottom: 24 },
+  activateBtn: {
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 14,
+  },
+  activateBtnText: { color: '#FFF', fontWeight: '800', fontSize: 14 },
+  
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  headerTitle: { fontSize: 22, fontWeight: "900", color: Colors.textDark, letterSpacing: -0.3 },
+  headerSubtitle: { fontSize: 12, color: Colors.gray500, marginTop: 2 },
+  historyIconBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.cardBackground,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.gray200,
+  },
 
-  topupSuccessBanner: { flexDirection: "row", alignItems: "center", backgroundColor: "rgba(0, 230, 118, 0.15)", padding: 12, borderRadius: 14, width: "100%", marginBottom: 16, borderWidth: 1, borderColor: "#00E676" },
-  topupSuccessText: { color: "#00E676", fontWeight: "700", fontSize: 13, marginLeft: 10 },
+  modernWalletCard: {
+    width: "100%",
+    backgroundColor: '#111827',
+    borderRadius: 20,
+    padding: 22,
+    marginBottom: 22,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  walletCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  brandCircle: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: Colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  walletBrandText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 1,
+  },
+  activePaaSBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(16, 185, 129, 0.15)",
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(16, 185, 129, 0.3)",
+    gap: 4,
+  },
+  activePaaSBadgeText: { fontSize: 11, fontWeight: "700", color: "#34D399" },
+  walletContentInner: {
+    marginTop: 4,
+  },
+  leatherBalanceLabel: { fontSize: 11, fontWeight: "800", color: '#FDBA74', letterSpacing: 1, marginBottom: 4 },
+  leatherBalanceValue: { fontSize: 34, fontWeight: "900", color: "#FFFFFF", letterSpacing: -0.5, marginBottom: 6 },
+  balanceSubtext: { fontSize: 11, color: '#9CA3AF' },
 
-  addMoneyMethodHeading: { fontSize: 11, fontWeight: "800", color: "#90A4AE", letterSpacing: 1, marginBottom: 12, alignSelf: "flex-start" },
-  paymentLogosRow: { flexDirection: "row", justifyContent: "flex-start", width: "100%", alignItems: "center", gap: 8, marginBottom: 30 },
-  logoBadge: { backgroundColor: "#1E2C38", paddingVertical: 6, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, borderColor: "#2A3B4D" },
-  logoTextUPI: { color: "#FF9100", fontWeight: "800", fontSize: 11 },
-  logoTextRuPay: { color: "#00E676", fontWeight: "800", fontSize: 11 },
-  logoTextVisa: { color: "#29B6F6", fontWeight: "800", fontSize: 11 },
-  logoTextMaster: { color: "#FF5252", fontWeight: "800", fontSize: 11 },
+  topupSuccessBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#ECFDF5",
+    padding: 12,
+    borderRadius: 14,
+    width: "100%",
+    marginBottom: 18,
+    borderWidth: 1,
+    borderColor: "#A7F3D0",
+    gap: 10,
+  },
+  topupSuccessText: { color: "#065F46", fontWeight: "700", fontSize: 13, flex: 1 },
+
+  addMoneyMethodHeading: { fontSize: 11, fontWeight: "800", color: Colors.gray500, letterSpacing: 0.8, marginBottom: 10 },
+  paymentLogosRow: { flexDirection: "row", width: "100%", alignItems: "center", gap: 8, marginBottom: 24 },
+  logoBadge: { backgroundColor: Colors.cardBackground, paddingVertical: 6, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1, borderColor: Colors.gray200 },
+  logoTextUPI: { color: Colors.primary, fontWeight: "800", fontSize: 11 },
+  logoTextRuPay: { color: "#2563EB", fontWeight: "800", fontSize: 11 },
+  logoTextVisa: { color: "#059669", fontWeight: "800", fontSize: 11 },
+  logoTextMaster: { color: "#DC2626", fontWeight: "800", fontSize: 11 },
 
   walletActionsRow: { flexDirection: "row", width: "100%", gap: 12, marginBottom: 16 },
-  addMoneyPrimaryBtn: { flex: 1, height: 52, backgroundColor: "#FF6D00", borderRadius: 14, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8, elevation: 3 },
+  addMoneyPrimaryBtn: {
+    flex: 1,
+    height: 50,
+    backgroundColor: Colors.primary,
+    borderRadius: 14,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 8,
+  },
   addMoneyPrimaryText: { color: "#FFFFFF", fontSize: 15, fontWeight: "800" },
-  sendMoneyOutlineBtn: { flex: 1, height: 52, backgroundColor: "#1E2C38", borderRadius: 14, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8, borderWidth: 1, borderColor: "#37474F" },
-  sendMoneyOutlineText: { color: "#FFFFFF", fontSize: 15, fontWeight: "700" },
+  sendMoneyOutlineBtn: {
+    flex: 1,
+    height: 50,
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 14,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 8,
+    borderWidth: 1.5,
+    borderColor: Colors.gray200,
+  },
+  sendMoneyOutlineText: { color: Colors.textDark, fontSize: 15, fontWeight: "700" },
 
-  addMoneySection: { width: "100%", backgroundColor: "#1E2C38", borderRadius: 18, padding: 18, marginBottom: 16, borderWidth: 1, borderColor: "rgba(255, 109, 0, 0.4)" },
-  inputLabelText: { fontSize: 12, fontWeight: "700", color: "#B0BEC5", marginBottom: 12 },
+  addMoneySection: {
+    width: "100%",
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 18,
+    padding: 18,
+    marginBottom: 16,
+    borderWidth: 1.5,
+    borderColor: 'rgba(249, 115, 22, 0.3)',
+  },
+  inputLabelText: { fontSize: 13, fontWeight: "700", color: Colors.textDark, marginBottom: 12 },
   presetPillsRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 14 },
-  presetPill: { paddingVertical: 8, paddingHorizontal: 12, backgroundColor: "#121C24", borderRadius: 10, borderWidth: 1, borderColor: "#37474F" },
-  presetPillActive: { backgroundColor: "rgba(255, 109, 0, 0.2)", borderColor: "#FF6D00" },
-  presetPillText: { color: "#B0BEC5", fontWeight: "700", fontSize: 12 },
-  presetPillTextActive: { color: "#FF6D00" },
-  amountInputRow: { flexDirection: "row", alignItems: "center", backgroundColor: "#121C24", borderRadius: 12, paddingHorizontal: 14, borderWidth: 1, borderColor: "#37474F", marginBottom: 16 },
-  currencyPrefix: { fontSize: 22, fontWeight: "800", color: "#FF6D00", marginRight: 8 },
-  amountInput: { flex: 1, height: 48, color: "#FFFFFF", fontSize: 20, fontWeight: "800" },
-  razorpayPayBtn: { width: "100%", height: 50, backgroundColor: "#FF6D00", borderRadius: 12, justifyContent: "center", alignItems: "center", marginBottom: 8 },
+  presetPill: { paddingVertical: 10, paddingHorizontal: 14, backgroundColor: Colors.lightBackground, borderRadius: 12, borderWidth: 1, borderColor: Colors.gray200 },
+  presetPillActive: { backgroundColor: Colors.primaryLight, borderColor: Colors.primary },
+  presetPillText: { color: Colors.textDark, fontWeight: "700", fontSize: 13 },
+  presetPillTextActive: { color: Colors.primaryDark, fontWeight: '800' },
+  amountInputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: Colors.lightBackground,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: Colors.gray200,
+    marginBottom: 16,
+  },
+  currencyPrefix: { fontSize: 22, fontWeight: "800", color: Colors.primary, marginRight: 8 },
+  amountInput: { flex: 1, height: 48, color: Colors.textDark, fontSize: 20, fontWeight: "800" },
+  razorpayPayBtn: { width: "100%", height: 50, backgroundColor: Colors.primary, borderRadius: 12, justifyContent: "center", alignItems: "center", marginBottom: 8 },
   loadingRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   razorpayPayBtnText: { color: "#FFFFFF", fontSize: 15, fontWeight: "800" },
   cancelTopupBtn: { alignItems: "center", paddingVertical: 8 },
-  cancelTopupText: { color: "#90A4AE", fontSize: 13, fontWeight: "600" },
-  effortlessFooterText: { fontSize: 11, color: "#78909C", textAlign: "center", marginTop: 16 },
+  cancelTopupText: { color: Colors.gray500, fontSize: 13, fontWeight: "600" },
+  effortlessFooterText: { fontSize: 11, color: Colors.gray500, textAlign: "center", marginTop: 20 },
 });

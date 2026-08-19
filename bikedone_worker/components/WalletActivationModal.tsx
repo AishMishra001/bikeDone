@@ -122,7 +122,7 @@ export const WalletActivationModal: React.FC<WalletActivationModalProps> = ({
           <View style={styles.activatedCardContainer}>
             {/* Header Close */}
             <View style={styles.activeHeaderRow}>
-              <Text style={styles.activeHeaderTagline}>MYKAARIGAR PARTNER WALLET</Text>
+              <Text style={styles.activeHeaderTagline}>BIKEDONE PARTNER WALLET</Text>
               <TouchableOpacity style={styles.closeCircleBtn} onPress={onDismiss}>
                 <Ionicons name="close" size={20} color="#FFFFFF" />
               </TouchableOpacity>

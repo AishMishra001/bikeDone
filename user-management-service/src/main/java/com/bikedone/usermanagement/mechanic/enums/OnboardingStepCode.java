@@ -10,9 +10,13 @@ public enum OnboardingStepCode {
 
     SERVICE_CATEGORIES,
 
+    SERVICE_RADIUS,
+
     DOCUMENTS,
 
     BANK_DETAILS,
+
+    TRAINING_SOP,
 
     MANUAL_VERIFICATION
 }

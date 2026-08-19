@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Colors, Shadows } from '@/constants/theme';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
@@ -24,8 +24,10 @@ export default function WaitingForApprovalScreen() {
       if (!silent) setChecking(true);
       const res: any = await api.get('/mechanics/onboarding');
 
-      if (res && res.overallStatus === 'ACTIVE') {
+      if (res && (res.overallStatus === 'ACTIVE' || res.overallStatus === 'APPROVED')) {
         router.replace('/(tabs)' as any);
+      } else if (!silent) {
+        Alert.alert('Verification in Progress', 'Your profile is currently under review by our admin team. You will be automatically redirected as soon as it is approved.');
       }
     } catch (err) {
       console.warn('Status check failed:', err);
@@ -86,10 +88,12 @@ const styles = StyleSheet.create({
     width: 160,
     height: 160,
     borderRadius: 80,
-    backgroundColor: 'rgba(242, 86, 29, 0.1)',
+    backgroundColor: Colors.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 36,
+    borderWidth: 1,
+    borderColor: 'rgba(249, 115, 22, 0.2)',
   },
   badgeInner: {
     width: 100,

@@ -247,6 +247,44 @@ export const api = {
   async delete<T>(path: string, options: any = {}): Promise<T> {
     return this.request<T>(path, { ...options, method: "DELETE" });
   },
+
+  async upload<T>(path: string, formData: FormData, options: any = {}): Promise<T> {
+    const { targetService = "OMS", requiresAuth = false } = options;
+    const baseUrl = targetService === "OMS" ? SERVICE_URLS.OMS : SERVICE_URLS.UMS;
+    const url = `${baseUrl}${path}`;
+
+    const headers: Record<string, string> = {};
+    if (requiresAuth) {
+      const token = await tokenStorage.getAccessToken();
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+    }
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers,
+      body: formData,
+    });
+
+    let resJson: any = null;
+    try {
+      const text = await response.text();
+      resJson = text ? JSON.parse(text) : null;
+    } catch {
+      resJson = null;
+    }
+
+    if (!response.ok) {
+      throw new Error(resJson?.message || `Upload failed with status ${response.status}`);
+    }
+
+    if (resJson?.success === false) {
+      throw new Error(resJson.message || `Upload failed with status ${response.status}`);
+    }
+
+    return (resJson?.data !== undefined ? resJson.data : resJson) as T;
+  },
 };
 
 export const omsApi = {
@@ -254,4 +292,7 @@ export const omsApi = {
     api.get<T>(path, { ...options, targetService: "OMS" }),
   post: <T>(path: string, body?: any, options: any = {}): Promise<T> =>
     api.post<T>(path, body, { ...options, targetService: "OMS" }),
+  upload: <T>(path: string, formData: FormData, options: any = {}): Promise<T> =>
+    api.upload<T>(path, formData, { ...options, targetService: "OMS" }),
 };
+

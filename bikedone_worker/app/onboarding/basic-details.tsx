@@ -9,7 +9,7 @@ import {
   Modal,
   Alert,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Colors, Shadows } from '@/constants/theme';
 import { Header } from '@/components/ui/Header';
 import { InputField } from '@/components/ui/InputField';
@@ -17,16 +17,21 @@ import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { useOnboarding } from '@/context/OnboardingContext';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '@/services/api';
+import { uploadSingleImage } from '@/services/imageUploadService';
 import * as ImagePicker from 'expo-image-picker';
+import { ActivityIndicator } from 'react-native';
 
 const EXPERIENCE_OPTIONS = ['1 Year', '2 Years', '3 Years', '5 Years', '5+ Years', '10+ Years'];
 
 export default function BasicDetailsScreen() {
   const router = useRouter();
-  const { data, updateData } = useOnboarding();
+  const { edit } = useLocalSearchParams<{ edit?: string }>();
+  const isEditing = edit === 'true';
+  const { data, updateData, goToNextStep } = useOnboarding();
   const [showExpModal, setShowExpModal] = useState(false);
   const [showPhotoOptionsModal, setShowPhotoOptionsModal] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   const handlePickImage = async (useCamera: boolean) => {
     try {
@@ -41,7 +46,7 @@ export default function BasicDetailsScreen() {
         result = await ImagePicker.launchCameraAsync({
           allowsEditing: true,
           aspect: [1, 1],
-          quality: 0.7,
+          quality: 0.8,
         });
       } else {
         const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -52,14 +57,30 @@ export default function BasicDetailsScreen() {
         result = await ImagePicker.launchImageLibraryAsync({
           allowsEditing: true,
           aspect: [1, 1],
-          quality: 0.7,
+          quality: 0.8,
         });
       }
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        updateData({ profilePhoto: result.assets[0].uri });
+        const pickedAsset = result.assets[0];
+        setUploadingPhoto(true);
+        try {
+          // Upload to Cloudinary
+          const cloudinaryUrl = await uploadSingleImage(
+            pickedAsset.uri,
+            pickedAsset.fileName || `profile_${Date.now()}.jpg`,
+            pickedAsset.mimeType || 'image/jpeg'
+          );
+          updateData({ profilePhoto: cloudinaryUrl });
+        } catch (uploadErr: any) {
+          console.warn('Cloudinary upload error, using local fallback:', uploadErr);
+          updateData({ profilePhoto: pickedAsset.uri });
+        } finally {
+          setUploadingPhoto(false);
+        }
       }
     } catch (error: any) {
+      setUploadingPhoto(false);
       Alert.alert('Image Error', error.message || 'Failed to select image');
     }
   };
@@ -73,20 +94,16 @@ export default function BasicDetailsScreen() {
       Alert.alert('Compulsory Field', 'Please select your experience');
       return;
     }
-    if (!data.profilePhoto) {
-      Alert.alert('Compulsory Field', 'Please upload/select your profile photo');
-      return;
-    }
 
     try {
       setLoading(true);
       await api.post('/mechanics/onboarding/basic-details', {
-        fullName: data.fullName,
+        fullName: data.fullName.trim(),
         experience: data.experience,
-        profilePhotoUrl: data.profilePhoto,
+        profilePhotoUrl: data.profilePhoto || null,
       });
 
-      router.push('/onboarding/shop-type' as any);
+      goToNextStep('BASIC_DETAILS', router, isEditing);
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to save basic details');
     } finally {
@@ -96,14 +113,14 @@ export default function BasicDetailsScreen() {
 
   return (
     <View style={styles.container}>
-      <Header title="Basic Details" showBack={false} step={1} totalSteps={7} />
+      <Header title="Basic Details" showBack={false} stepCode="BASIC_DETAILS" />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.subtitle}>Please provide your basic information (All fields compulsory)</Text>
+        <Text style={styles.subtitle}>Please provide your basic partner profile information</Text>
 
         <InputField
           label="Full Name *"
-          placeholder="Rahul Kumar"
+          placeholder="e.g. Rahul Kumar"
           value={data.fullName}
           onChangeText={(val) => updateData({ fullName: val })}
           icon="person-outline"
@@ -125,14 +142,17 @@ export default function BasicDetailsScreen() {
 
         {/* Profile Photo Picker */}
         <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Profile Photo *</Text>
+          <Text style={styles.label}>Profile Photo (Optional / Cloudinary)</Text>
           <View style={styles.avatarRow}>
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={() => setShowPhotoOptionsModal(true)}
               style={[styles.avatarBox, Shadows.small]}
+              disabled={uploadingPhoto}
             >
-              {data.profilePhoto ? (
+              {uploadingPhoto ? (
+                <ActivityIndicator size="small" color={Colors.primary} />
+              ) : data.profilePhoto ? (
                 <Image source={{ uri: data.profilePhoto }} style={styles.avatarImg} />
               ) : (
                 <Ionicons name="person" size={44} color={Colors.gray400} />
@@ -142,8 +162,17 @@ export default function BasicDetailsScreen() {
               </View>
             </TouchableOpacity>
             <View style={styles.photoInfo}>
-              <Text style={styles.photoTitle}>Upload clear headshot</Text>
-              <Text style={styles.photoDesc}>Tap icon to open Camera or Gallery</Text>
+              <Text style={styles.photoTitle}>
+                {data.profilePhoto ? 'Photo Uploaded (Cloudinary)' : 'Upload clear headshot'}
+              </Text>
+              <Text style={styles.photoDesc}>
+                {uploadingPhoto ? 'Uploading to Cloudinary...' : 'Tap icon to open Camera or Gallery'}
+              </Text>
+              {data.profilePhoto && (
+                <TouchableOpacity onPress={() => updateData({ profilePhoto: null })} style={{ marginTop: 4 }}>
+                  <Text style={{ fontSize: 12, color: '#EF4444', fontWeight: '600' }}>Remove Photo</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         </View>

@@ -133,6 +133,37 @@ public class MechanicOnboardingController {
                 .build();
     }
 
+    @PostMapping("/training-sop")
+    public ApiResponse<MechanicOnboardingProgressResponse> saveTrainingSop(
+            @AuthenticationPrincipal UserPrincipal principal
+    ) {
+        MechanicUser mechanic = principal.getMechanicUser();
+        MechanicOnboardingProgressResponse response = onboardingService.saveTrainingSop(mechanic);
+
+        return ApiResponse.<MechanicOnboardingProgressResponse>builder()
+                .success(true)
+                .message("Training & SOP completed successfully.")
+                .data(response)
+                .timestamp(dateTimeProvider.now())
+                .build();
+    }
+
+    @PostMapping("/complete-step/{stepCode}")
+    public ApiResponse<MechanicOnboardingProgressResponse> completeGenericStep(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable String stepCode
+    ) {
+        MechanicUser mechanic = principal.getMechanicUser();
+        MechanicOnboardingProgressResponse response = onboardingService.completeStep(mechanic, stepCode);
+
+        return ApiResponse.<MechanicOnboardingProgressResponse>builder()
+                .success(true)
+                .message("Step " + stepCode + " completed successfully.")
+                .data(response)
+                .timestamp(dateTimeProvider.now())
+                .build();
+    }
+
     @PostMapping("/submit-verification")
     public ApiResponse<MechanicOnboardingProgressResponse> submitForManualVerification(
             @AuthenticationPrincipal UserPrincipal principal

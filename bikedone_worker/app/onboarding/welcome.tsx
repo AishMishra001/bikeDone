@@ -4,33 +4,48 @@ import { useRouter } from 'expo-router';
 import { Colors, Shadows } from '@/constants/theme';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { Ionicons } from '@expo/vector-icons';
-import { api } from '@/services/api';
 import { useOnboarding } from '@/context/OnboardingContext';
+import { MASTER_STEPS_REGISTRY } from '@/config/onboardingSteps';
 
 export default function WelcomeScreen() {
   const router = useRouter();
-  const { updateData } = useOnboarding();
+  const { fetchProgress } = useOnboarding();
   const [loading, setLoading] = useState(true);
   const [nextStepPath, setNextStepPath] = useState('/onboarding/basic-details');
 
   useEffect(() => {
-    fetchJourneyProgress();
+    loadJourneyProgress();
   }, []);
 
-  const fetchJourneyProgress = async () => {
+  const loadJourneyProgress = async () => {
     try {
       setLoading(true);
-      const res: any = await api.get('/mechanics/onboarding');
+      const res = await fetchProgress();
+
+      const isManualVerificationCompleted = res?.steps?.some(
+        (s: any) => s.stepCode === 'MANUAL_VERIFICATION' && (s.status === 'COMPLETED' || s.status === 'UNDER_REVIEW')
+      );
+      const isUnderReview =
+        isManualVerificationCompleted ||
+        res?.progressPercentage === 100 ||
+        res?.overallStatus === 'UNDER_REVIEW' ||
+        res?.overallStatus === 'SUBMITTED' ||
+        res?.overallStatus === 'MANUAL_VERIFICATION' ||
+        res?.overallStatus === 'PENDING_APPROVAL';
+
+      if (res && (res.overallStatus === 'ACTIVE' || res.overallStatus === 'APPROVED')) {
+        router.replace('/(tabs)' as any);
+        return;
+      }
+
+      if (isUnderReview) {
+        router.replace('/onboarding/approval' as any);
+        return;
+      }
+
       if (res && res.currentStepCode) {
-        const stepMap: Record<string, string> = {
-          BASIC_DETAILS: '/onboarding/basic-details',
-          SHOP_DETAILS: '/onboarding/shop-type',
-          SERVICE_CATEGORIES: '/onboarding/services',
-          DOCUMENTS: '/onboarding/documents',
-          BANK_DETAILS: '/onboarding/bank-details',
-          MANUAL_VERIFICATION: '/onboarding/approval',
-        };
-        const targetPath = stepMap[res.currentStepCode] || '/onboarding/basic-details';
+        const stepDef = MASTER_STEPS_REGISTRY[res.currentStepCode];
+        const targetPath = stepDef ? stepDef.route : '/onboarding/basic-details';
         setNextStepPath(targetPath);
       }
     } catch (err: any) {
@@ -50,7 +65,7 @@ export default function WelcomeScreen() {
         {/* Mechanic Artwork Box */}
         <View style={styles.illustrationContainer}>
           <View style={styles.gearBg}>
-            <Ionicons name="settings-outline" size={140} color="rgba(242, 86, 29, 0.08)" />
+            <Ionicons name="settings-outline" size={140} color="rgba(249, 115, 22, 0.08)" />
           </View>
 
           <View style={[styles.avatarCircle, Shadows.medium]}>
@@ -58,9 +73,9 @@ export default function WelcomeScreen() {
           </View>
         </View>
 
-        <Text style={styles.title}>Welcome Aboard!</Text>
+        <Text style={styles.title}>Welcome Aboard! 🛠️</Text>
         <Text style={styles.subtitle}>
-          Let's set up your profile to start receiving service requests.
+          Join the elite network of MyKaarigar verified partner mechanics. Set up your profile to start receiving doorstep requests.
         </Text>
       </View>
 
